@@ -117,6 +117,7 @@ public abstract class CompactorTest {
   @Before
   public void setup() throws Exception {
     conf = new HiveConf();
+    conf.set(MetastoreConf.ConfVars.TXN_OPENTXN_TIMEOUT.getVarname(), "2000");
     TestTxnDbUtil.setConfValues(conf);
     TestTxnDbUtil.cleanDb(conf);
     TestTxnDbUtil.prepDb(conf);
