@@ -18,11 +18,13 @@
 
 package org.apache.hadoop.hive.ql.metadata;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
 import com.google.common.collect.Maps;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.apache.hadoop.hive.metastore.api.FieldSchema;
 
 /**
@@ -33,10 +35,6 @@ import org.apache.hadoop.hive.metastore.api.FieldSchema;
  * satisfy this
  */
 public class DummyPartition extends Partition {
-
-  @SuppressWarnings("nls")
-  private static final Logger LOG = LoggerFactory
-      .getLogger("hive.ql.metadata.DummyPartition");
 
   private String name;
   private LinkedHashMap<String, String> partSpec;

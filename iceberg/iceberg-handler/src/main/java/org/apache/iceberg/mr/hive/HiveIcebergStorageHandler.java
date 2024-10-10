@@ -473,7 +473,8 @@ public class HiveIcebergStorageHandler implements HiveStoragePredicateHandler, H
         Map<String, String> summary = table.currentSnapshot().summary();
         if (summary != null) {
 
-          if (Boolean.parseBoolean(summary.get(SnapshotSummary.PARTITION_SUMMARY_PROP))) {
+          if (Boolean.parseBoolean(summary.get(SnapshotSummary.PARTITION_SUMMARY_PROP)) &&
+                partish.getPartition() != null) {
             String key = SnapshotSummary.CHANGED_PARTITION_PREFIX + partish.getPartition().getName();
             Map<String, String> map = Maps.newHashMap();
 
@@ -2004,7 +2005,7 @@ public class HiveIcebergStorageHandler implements HiveStoragePredicateHandler, H
 
   public boolean isPartitioned(org.apache.hadoop.hive.ql.metadata.Table hmsTable) {
     if (!Catalogs.hiveCatalog(conf, hmsTable::getProperty) ||
-          hmsTable.getSd().getLocation() == null) {
+          !hmsTable.getTTable().isSetId()) {
       return false;
     }
     Table table = IcebergTableUtil.getTable(conf, hmsTable.getTTable());
@@ -2122,8 +2123,8 @@ public class HiveIcebergStorageHandler implements HiveStoragePredicateHandler, H
 
   @Override
   public List<FieldSchema> getPartitionKeys(org.apache.hadoop.hive.ql.metadata.Table hmsTable) {
-    if (hmsTable.getSd().getLocation() == null) {
-      return null;
+    if (!hmsTable.getTTable().isSetId()) {
+      return Collections.emptyList();
     }
     Table icebergTable = IcebergTableUtil.getTable(conf, hmsTable.getTTable());
     return IcebergTableUtil.getPartitionKeys(icebergTable, icebergTable.spec().specId());

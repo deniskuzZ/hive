@@ -314,6 +314,7 @@ abstract class SnapshotProducer<ThisT> implements SnapshotUpdate<ThisT> {
 
     // copy all aggregatedSummary properties from the implementation
     builder.putAll(summary);
+    aggregatedSummary(builder, previousSummary, summary);
 
     if (Boolean.parseBoolean(summary.get(SnapshotSummary.PARTITION_SUMMARY_PROP))) {
       summary.keySet().stream()
