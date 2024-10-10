@@ -2003,7 +2003,8 @@ public class HiveIcebergStorageHandler implements HiveStoragePredicateHandler, H
   }
 
   public boolean isPartitioned(org.apache.hadoop.hive.ql.metadata.Table hmsTable) {
-    if (hmsTable.getSd().getLocation() == null) {
+    if (!Catalogs.hiveCatalog(conf, hmsTable::getProperty) ||
+          hmsTable.getSd().getLocation() == null) {
       return false;
     }
     Table table = IcebergTableUtil.getTable(conf, hmsTable.getTTable());
