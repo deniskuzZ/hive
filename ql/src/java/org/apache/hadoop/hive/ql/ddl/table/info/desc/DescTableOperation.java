@@ -197,7 +197,7 @@ public class DescTableOperation extends DDLOperation<DescTableDesc> {
 
     TableName tableName = HiveTableName.of(desc.getDbTableName());
     if (null == part) {
-      if (table.isPartitioned()) {
+      if (table.isPartitioned() && !table.alwaysUnpartitioned()) {
         Map<String, String> tableProps = table.getParameters() == null ?
             new HashMap<String, String>() : table.getParameters();
         if (table.isPartitionKey(colNames.get(0))) {
