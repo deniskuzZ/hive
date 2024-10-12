@@ -478,11 +478,13 @@ public class HiveIcebergStorageHandler implements HiveStoragePredicateHandler, H
             String key = SnapshotSummary.CHANGED_PARTITION_PREFIX + partish.getPartition().getName();
             Map<String, String> map = Maps.newHashMap();
 
-            StringTokenizer tokenizer = new StringTokenizer(summary.get(key), ",");
-            while (tokenizer.hasMoreTokens()) {
-              String token = tokenizer.nextToken();
-              String[] keyValue = token.split("=");
-              map.put(keyValue[0], keyValue[1]);
+            if (summary.containsKey(key)) {
+              StringTokenizer tokenizer = new StringTokenizer(summary.get(key), ",");
+              while (tokenizer.hasMoreTokens()) {
+                String token = tokenizer.nextToken();
+                String[] keyValue = token.split("=");
+                map.put(keyValue[0], keyValue[1]);
+              }
             }
             summary = map;
           }
@@ -1888,7 +1890,7 @@ public class HiveIcebergStorageHandler implements HiveStoragePredicateHandler, H
       Context.RewritePolicy policy) throws SemanticException {
     Table table = IcebergTableUtil.getTable(conf, hmsTable.getTTable());
     List<PartitionField> partitionFields = (policy == Context.RewritePolicy.PARTITION) ?
-        IcebergTableUtil.getPartitionFields(table) : table.spec().fields();
+        IcebergTableUtil.getPartitionFields(table, false) : table.spec().fields();
     validatePartSpecImpl(hmsTable, partitionSpec, partitionFields);
   }
 
@@ -1948,7 +1950,7 @@ public class HiveIcebergStorageHandler implements HiveStoragePredicateHandler, H
       return false;
     }
 
-    Expression finalExp = IcebergTableUtil.generateExpressionFromPartitionSpec(table, partitionSpec);
+    Expression finalExp = IcebergTableUtil.generateExpressionFromPartitionSpec(table, partitionSpec, true);
     FindFiles.Builder builder = new FindFiles.Builder(table).withRecordsMatching(finalExp);
     Set<DataFile> dataFiles = Sets.newHashSet(builder.collect());
     boolean result = true;
@@ -2005,7 +2007,9 @@ public class HiveIcebergStorageHandler implements HiveStoragePredicateHandler, H
 
   public boolean isPartitioned(org.apache.hadoop.hive.ql.metadata.Table hmsTable) {
     if (!Catalogs.hiveCatalog(conf, hmsTable::getProperty) ||
-          !hmsTable.getTTable().isSetId()) {
+          !hmsTable.getTTable().isSetId() ||
+          (hmsTable.getAsOfVersion() != null || hmsTable.getAsOfTimestamp() != null) &&
+              hasUndergonePartitionEvolution(hmsTable)) {
       return false;
     }
     Table table = IcebergTableUtil.getTable(conf, hmsTable.getTTable());

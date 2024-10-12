@@ -12242,7 +12242,7 @@ public class SemanticAnalyzer extends BaseSemanticAnalyzer {
     }
 
     // add WriteEntity for each matching partition
-    if (tab.isPartitioned()) {
+    if (tab.isPartitioned() && !tab.alwaysUnpartitioned()) {
       List<String> cols = new ArrayList<String>();
       if (qbp.getAnalyzeRewrite() != null) {
         List<FieldSchema> partitionCols = tab.getPartCols();
