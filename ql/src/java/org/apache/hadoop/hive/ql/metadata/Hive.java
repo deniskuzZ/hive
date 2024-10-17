@@ -4301,7 +4301,7 @@ private void constructOneLBLocationMap(FileStatus fSta,
    */
   public List<Partition> getPartitions(Table tbl, Map<String, String> partialPartSpec)
   throws HiveException {
-    if (tbl.getStorageHandler() != null && tbl.getStorageHandler().alwaysUnpartitioned()) {
+    if (tbl.alwaysUnpartitioned()) {
       return tbl.getStorageHandler().getPartitions(tbl, partialPartSpec, false);
     } else {
       return getPartitions(tbl, partialPartSpec, (short)-1); 
@@ -4554,7 +4554,7 @@ private void constructOneLBLocationMap(FileStatus fSta,
     try {
       Preconditions.checkNotNull(partitions);
       String defaultPartitionName = HiveConf.getVar(conf, ConfVars.DEFAULT_PARTITION_NAME);
-      if (tbl.getStorageHandler() != null && tbl.getStorageHandler().alwaysUnpartitioned()) {
+      if (tbl.alwaysUnpartitioned()) {
         partitions.addAll(tbl.getStorageHandler().getPartitionsByExpr(tbl, expr));
         return false;
       } else {

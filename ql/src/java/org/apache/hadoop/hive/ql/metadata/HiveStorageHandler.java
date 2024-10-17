@@ -260,6 +260,10 @@ public interface HiveStorageHandler extends Configurable {
     return false;
   }
 
+  default boolean canProvidePartitionStatistics(org.apache.hadoop.hive.ql.metadata.Table hmsTable) {
+    return false;
+  }
+
   /**
    * Return some col statistics (Lower bounds, Upper bounds, Null value counts, NaN, total counts) calculated by
    * the underlying storage handler implementation.
