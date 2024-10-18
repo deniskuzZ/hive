@@ -32,13 +32,11 @@ PREHOOK: query: explain
 select i from ice01 where year=2023 and month = 10 and day = 3
 PREHOOK: type: QUERY
 PREHOOK: Input: default@ice01
-PREHOOK: Input: default@ice01@year=2023/month=10/day=3
 PREHOOK: Output: hdfs://### HDFS PATH ###
 POSTHOOK: query: explain
 select i from ice01 where year=2023 and month = 10 and day = 3
 POSTHOOK: type: QUERY
 POSTHOOK: Input: default@ice01
-POSTHOOK: Input: default@ice01@year=2023/month=10/day=3
 POSTHOOK: Output: hdfs://### HDFS PATH ###
 STAGE DEPENDENCIES:
   Stage-1 is a root stage
@@ -69,6 +67,7 @@ STAGE PLANS:
                             input format: org.apache.hadoop.mapred.SequenceFileInputFormat
                             output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
                             serde: org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe
+            Execution mode: vectorized
 
   Stage: Stage-0
     Fetch Operator

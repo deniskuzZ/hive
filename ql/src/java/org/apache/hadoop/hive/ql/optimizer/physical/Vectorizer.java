@@ -44,6 +44,7 @@ import java.util.stream.Collectors;
 import com.google.common.annotations.VisibleForTesting;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.hadoop.hive.metastore.utils.StringUtils;
 import org.apache.hadoop.hive.ql.exec.vector.VectorizedInputFormatInterface;
 import org.apache.hadoop.hive.ql.exec.vector.expressions.ConstantVectorExpression;
 import org.apache.hadoop.hive.ql.exec.vector.expressions.VectorCoalesce;
@@ -1830,7 +1831,8 @@ public class Vectorizer implements PhysicalPlanResolver {
         // (e.g. Avro provides the table schema and ignores the partition schema..).
         //
         String nextDataColumnsString = ObjectInspectorUtils.getFieldNames(partObjectInspector);
-        String[] nextDataColumns = nextDataColumnsString.split(",");
+        String[] nextDataColumns = StringUtils.isEmpty(nextDataColumnsString) ?
+            new String[0] : nextDataColumnsString.split(",");
         List<String> nextDataColumnList = Arrays.asList(nextDataColumns);
 
         /*
