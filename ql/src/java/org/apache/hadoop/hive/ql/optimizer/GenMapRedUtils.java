@@ -34,6 +34,7 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import com.google.common.collect.Sets;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hive.common.BlobStorageUtils;
@@ -76,6 +77,7 @@ import org.apache.hadoop.hive.ql.io.merge.MergeFileWork;
 import org.apache.hadoop.hive.ql.io.orc.OrcFileStripeMergeInputFormat;
 import org.apache.hadoop.hive.ql.io.orc.OrcInputFormat;
 import org.apache.hadoop.hive.ql.io.rcfile.merge.RCFileBlockMergeInputFormat;
+import org.apache.hadoop.hive.ql.metadata.DummyPartition;
 import org.apache.hadoop.hive.ql.metadata.Hive;
 import org.apache.hadoop.hive.ql.metadata.HiveException;
 import org.apache.hadoop.hive.ql.metadata.HiveStorageHandler;
@@ -506,11 +508,20 @@ public final class GenMapRedUtils {
     }
 
     if (partsList == null) {
-      try {
+      Table tab = tsOp.getConf().getTableMetadata();
+      
+      if (tab.alwaysUnpartitioned()) {
+        DummyPartition dummyPartition;
+        try {
+          dummyPartition = new DummyPartition(tab, null, Collections.emptyMap());
+        } catch (HiveException e) {
+          throw new SemanticException("Unable to construct name for dummy partition due to: ", e);
+        }
+        partsList = new PrunedPartitionList(tab, null, Sets.newHashSet(dummyPartition),
+            Collections.emptyList(), false);
+      } else {
         partsList = PartitionPruner.prune(tsOp, parseCtx, alias_id);
         isFullAcidTable = tsOp.getConf().isFullAcidTable();
-      } catch (SemanticException e) {
-        throw e;
       }
     }
 
