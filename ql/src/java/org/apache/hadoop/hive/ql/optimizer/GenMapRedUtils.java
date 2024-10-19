@@ -509,16 +509,13 @@ public final class GenMapRedUtils {
 
     if (partsList == null) {
       Table tab = tsOp.getConf().getTableMetadata();
-      
       if (tab.alwaysUnpartitioned()) {
-        DummyPartition dummyPartition;
         try {
-          dummyPartition = new DummyPartition(tab, null, Collections.emptyMap());
+          partsList = new PrunedPartitionList(tab, null, Sets.newHashSet(new Partition(tab)),
+              Collections.emptyList(), false);
         } catch (HiveException e) {
           throw new SemanticException("Unable to construct name for dummy partition due to: ", e);
         }
-        partsList = new PrunedPartitionList(tab, null, Sets.newHashSet(dummyPartition),
-            Collections.emptyList(), false);
       } else {
         partsList = PartitionPruner.prune(tsOp, parseCtx, alias_id);
         isFullAcidTable = tsOp.getConf().isFullAcidTable();
