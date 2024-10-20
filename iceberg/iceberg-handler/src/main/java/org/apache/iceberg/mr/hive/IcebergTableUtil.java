@@ -129,19 +129,19 @@ public class IcebergTableUtil {
    */
   static Table getTable(Configuration configuration, Properties properties, boolean skipCache) {
     String metaTable = properties.getProperty(IcebergAcidUtil.META_TABLE_PROPERTY);
-    String tableName = properties.getProperty(Catalogs.NAME);
-    String location = properties.getProperty(Catalogs.LOCATION);
-    if (metaTable != null) {
-      // HiveCatalog, HadoopCatalog uses NAME to identify the metadata table
-      properties.setProperty(Catalogs.NAME, tableName + "." + metaTable);
-      // HadoopTable uses LOCATION to identify the metadata table
-      properties.setProperty(Catalogs.LOCATION, location + "#" + metaTable);
-    }
+    Properties props = (metaTable != null) ? new Properties() : properties;
 
-    String tableIdentifier = properties.getProperty(Catalogs.NAME);
+    if (metaTable != null) {
+      props.computeIfAbsent(InputFormatConfig.CATALOG_NAME, properties::get);
+      // HiveCatalog, HadoopCatalog uses NAME to identify the metadata table
+      props.computeIfAbsent(Catalogs.NAME, k -> properties.get(k) + "." + metaTable);
+      // HadoopTable uses LOCATION to identify the metadata table
+      props.computeIfAbsent(Catalogs.LOCATION, k -> properties.get(k) + "#" + metaTable);
+    }
+    String tableIdentifier = props.getProperty(Catalogs.NAME);
     Function<Void, Table> tableLoadFunc =
         unused -> {
-          Table tab = Catalogs.loadTable(configuration, properties);
+          Table tab = Catalogs.loadTable(configuration, props);
           SessionStateUtil.addResource(configuration, tableIdentifier, tab);
           return tab;
         };
