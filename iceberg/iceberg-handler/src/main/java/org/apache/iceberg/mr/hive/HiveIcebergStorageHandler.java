@@ -1899,8 +1899,8 @@ public class HiveIcebergStorageHandler implements HiveStoragePredicateHandler, H
   public void validatePartSpec(org.apache.hadoop.hive.ql.metadata.Table hmsTable, Map<String, String> partitionSpec,
       Context.RewritePolicy policy) throws SemanticException {
     Table table = IcebergTableUtil.getTable(conf, hmsTable.getTTable());
-    List<PartitionField> partitionFields = (policy == Context.RewritePolicy.PARTITION) ?
-        IcebergTableUtil.getPartitionFields(table, false) : table.spec().fields();
+    List<PartitionField> partitionFields = IcebergTableUtil.getPartitionFields(table,
+        policy != Context.RewritePolicy.PARTITION);
     validatePartSpecImpl(hmsTable, partitionSpec, partitionFields);
   }
 
@@ -2007,11 +2007,7 @@ public class HiveIcebergStorageHandler implements HiveStoragePredicateHandler, H
         .map(partName -> {
           Map<String, String> partSpecMap = Maps.newLinkedHashMap();
           Warehouse.makeSpecFromName(partSpecMap, new Path(partName), null);
-          try {
-            return new DummyPartition(table, partName, partSpecMap);
-          } catch (HiveException e) {
-            throw new RuntimeException("Unable to construct name for dummy partition due to: ", e);
-          }
+          return new DummyPartition(table, partName, partSpecMap);
         }).collect(Collectors.toList());
   }
 
@@ -2038,7 +2034,7 @@ public class HiveIcebergStorageHandler implements HiveStoragePredicateHandler, H
     try {
       String partName = Warehouse.makePartName(partitionSpec, false);
       return new DummyPartition(table, partName, partitionSpec);
-    } catch (MetaException | HiveException e) {
+    } catch (MetaException e) {
       throw new SemanticException("Unable to construct name for dummy partition due to: ", e);
     }
   }
@@ -2151,10 +2147,12 @@ public class HiveIcebergStorageHandler implements HiveStoragePredicateHandler, H
   }
 
   @Override
-  public List<Partition> getPartitionsByExpr(org.apache.hadoop.hive.ql.metadata.Table hmsTable,
-      ExprNodeDesc filter, boolean latestSpecOnly) throws SemanticException {
-    SearchArgument sarg = ConvertAstToSearchArg.create(conf, (ExprNodeGenericFuncDesc) filter);
-    Expression exp = HiveIcebergFilterFactory.generateFilterExpression(sarg);
+  public List<Partition> getPartitionsByExpr(org.apache.hadoop.hive.ql.metadata.Table hmsTable, ExprNodeDesc filter,
+      boolean latestSpecOnly) throws SemanticException {
+    Expression exp = HiveIcebergInputFormat.getFilterExpr(conf, (ExprNodeGenericFuncDesc) filter);
+    if (exp == null) {
+      return Lists.newArrayList(new DummyPartition(hmsTable));
+    }
     Table table = IcebergTableUtil.getTable(conf, hmsTable.getTTable());
     int tableSpecId = table.spec().specId();
     Set<Partition> partitions = Sets.newHashSet();
@@ -2170,12 +2168,7 @@ public class HiveIcebergStorageHandler implements HiveStoragePredicateHandler, H
           String partName = spec.partitionToPath(partitionData);
           Map<String, String> partSpecMap = Maps.newLinkedHashMap();
           Warehouse.makeSpecFromName(partSpecMap, new Path(partName), null);
-          DummyPartition partition;
-          try {
-            partition = new DummyPartition(hmsTable, partName, partSpecMap);
-          } catch (HiveException e) {
-            throw new RuntimeException("Unable to construct name for dummy partition due to: ", e);
-          }
+          DummyPartition partition = new DummyPartition(hmsTable, partName, partSpecMap);
           partitions.add(partition);
         }
       });

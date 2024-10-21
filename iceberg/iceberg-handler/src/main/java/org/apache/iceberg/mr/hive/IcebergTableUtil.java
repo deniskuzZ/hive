@@ -484,10 +484,10 @@ public class IcebergTableUtil {
   }
 
   public static List<PartitionField> getPartitionFields(Table table, boolean latestSpecOnly) {
-    return table.specs().values().stream()
-        .filter(spec -> !latestSpecOnly || table.spec().specId() == spec.specId())
-        .flatMap(spec -> spec.fields()
-        .stream()).distinct().collect(Collectors.toList());
+    return latestSpecOnly ? table.spec().fields() :
+      table.specs().values().stream()
+        .flatMap(spec -> spec.fields().stream()).distinct()
+        .collect(Collectors.toList());
   }
 
   /**

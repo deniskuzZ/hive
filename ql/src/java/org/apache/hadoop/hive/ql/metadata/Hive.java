@@ -3652,7 +3652,7 @@ private void constructOneLBLocationMap(FileStatus fSta,
       Table table)
         throws HiveException {
     try {
-      if (table !=null && AcidUtils.isTransactionalTable(table)) {
+      if (AcidUtils.isTransactionalTable(table)) {
         ValidWriteIdList validWriteIdList = getValidWriteIdList(req.getDb_name(), req.getTbl_name());
         req.setValidWriteIdList(validWriteIdList != null ? validWriteIdList.toString() : null);
         req.setId(table.getTTable().getId());
