@@ -425,15 +425,11 @@ public class DummyTxnManager extends HiveTxnManagerImpl {
         String[] nameValue = partn.split("=");
         assert(nameValue.length == 2);
         partialSpec.put(nameValue[0], nameValue[1]);
-        DummyPartition par;
-        try {
-          par = new DummyPartition(p.getTable(), p.getTable().getDbName()
-            + "/" + FileUtils.escapePathName(p.getTable().getTableName()).toLowerCase()
+        DummyPartition par = new DummyPartition(p.getTable(), 
+          p.getTable().getDbName() 
+            + "/" + FileUtils.escapePathName(p.getTable().getTableName()).toLowerCase() 
             + "/" + partialName,
-            partialSpec);
-        } catch (HiveException e) {
-          throw new LockException("Unable to construct name for dummy partition due to: ", e);
-        }
+          partialSpec);
         locks.add(new HiveLockObj(new HiveLockObject(par, lockData), mode));
         partialName.append("/");
       }

@@ -7752,7 +7752,7 @@ public class SemanticAnalyzer extends BaseSemanticAnalyzer {
         try {
           String partName = Warehouse.makePartName(partSpec, false);
           dummyPartition = new DummyPartition(destinationTable, partName, partSpec);
-        } catch (MetaException | HiveException e) {
+        } catch (MetaException e) {
           throw new SemanticException("Unable to construct name for dummy partition due to: ", e);
         }
         if (!outputs.add(new WriteEntity(dummyPartition, determineWriteType(ltd, dest)))) {
@@ -8661,14 +8661,9 @@ public class SemanticAnalyzer extends BaseSemanticAnalyzer {
       else {
         String ppath = dpCtx.getSPPath();
         ppath = ppath.substring(0, ppath.length() - 1);
-        DummyPartition p;
-        try {
-          p = new DummyPartition(dest_tab, dest_tab.getDbName() + 
-              "@" + dest_tab.getTableName() + "@" + ppath, 
-            partSpec);
-        } catch (HiveException e) {
-          throw new SemanticException("Unable to construct name for dummy partition due to: ", e);
-        }
+        DummyPartition p = new DummyPartition(dest_tab, 
+            dest_tab.getDbName() + "@" + dest_tab.getTableName() + "@" + ppath, 
+          partSpec);
         WriteEntity.WriteType writeType;
         if (ltd.isInsertOverwrite()) {
           writeType = WriteEntity.WriteType.INSERT_OVERWRITE;

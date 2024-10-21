@@ -44,17 +44,21 @@ public class DummyPartition extends Partition {
   public DummyPartition(Table tbl, String name) {
     setTable(tbl);
     this.name = name;
-  }  
+  }
 
-  public DummyPartition(Table tbl, String name, Map<String, String> partSpec) throws HiveException {
-    org.apache.hadoop.hive.metastore.api.Partition tPart = 
+  public DummyPartition(Table tbl) {
+    this(tbl, null, Maps.newHashMap());
+  }
+
+  public DummyPartition(Table tbl, String name, Map<String, String> partSpec) {
+    this(tbl, name);
+    org.apache.hadoop.hive.metastore.api.Partition tPart =
         new org.apache.hadoop.hive.metastore.api.Partition();
     tPart.setSd(tbl.getSd().deepCopy());
     tPart.setParameters(Maps.newHashMap());
     
-    this.name = name;
     this.partSpec = Maps.newLinkedHashMap(partSpec);
-    initialize(tbl,tPart);
+    setTPartition(tPart);
   }
 
   public String getName() {
