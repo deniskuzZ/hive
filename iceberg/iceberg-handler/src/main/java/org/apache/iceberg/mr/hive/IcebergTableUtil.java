@@ -129,14 +129,13 @@ public class IcebergTableUtil {
    */
   static Table getTable(Configuration configuration, Properties properties, boolean skipCache) {
     String metaTable = properties.getProperty(IcebergAcidUtil.META_TABLE_PROPERTY);
-    Properties props = (metaTable != null) ? new Properties() : properties;
 
+    Properties props = new Properties(properties); // use input properties as default
     if (metaTable != null) {
-      props.computeIfAbsent(InputFormatConfig.CATALOG_NAME, properties::get);
       // HiveCatalog, HadoopCatalog uses NAME to identify the metadata table
-      props.computeIfAbsent(Catalogs.NAME, k -> properties.get(k) + "." + metaTable);
+      props.put(Catalogs.NAME, properties.get(Catalogs.NAME) + "." + metaTable);
       // HadoopTable uses LOCATION to identify the metadata table
-      props.computeIfAbsent(Catalogs.LOCATION, k -> properties.get(k) + "#" + metaTable);
+      props.put(Catalogs.LOCATION, properties.get(Catalogs.LOCATION) + "#" + metaTable);
     }
     String tableIdentifier = props.getProperty(Catalogs.NAME);
     Function<Void, Table> tableLoadFunc =

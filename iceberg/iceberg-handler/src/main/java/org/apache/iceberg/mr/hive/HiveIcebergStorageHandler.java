@@ -478,57 +478,59 @@ public class HiveIcebergStorageHandler implements HiveStoragePredicateHandler, H
     // For write queries where rows got modified, don't fetch from cache as values could have changed.
     Table table = getTable(hmsTable);
     Map<String, String> stats = Maps.newHashMap();
-    if (getStatsSource().equals(HiveMetaHook.ICEBERG)) {
-      if (table.currentSnapshot() != null) {
-        Map<String, String> summary = table.currentSnapshot().summary();
-        if (summary != null) {
+    if (!getStatsSource().equals(HiveMetaHook.ICEBERG)) {
+      return stats;
+    }
+    if (table.currentSnapshot() != null) {
+      Map<String, String> summary = getPartishSummary(partish, table.currentSnapshot().summary());
 
-          if (Boolean.parseBoolean(summary.get(SnapshotSummary.PARTITION_SUMMARY_PROP)) &&
-                partish.getPartition() != null) {
-            String key = SnapshotSummary.CHANGED_PARTITION_PREFIX + partish.getPartition().getName();
-            Map<String, String> map = Maps.newHashMap();
-
-            if (summary.containsKey(key)) {
-              StringTokenizer tokenizer = new StringTokenizer(summary.get(key), ",");
-              while (tokenizer.hasMoreTokens()) {
-                String token = tokenizer.nextToken();
-                String[] keyValue = token.split("=");
-                map.put(keyValue[0], keyValue[1]);
-              }
-            }
-            summary = map;
-          }
-
-          if (summary.containsKey(SnapshotSummary.TOTAL_DATA_FILES_PROP)) {
-            stats.put(StatsSetupConst.NUM_FILES, summary.get(SnapshotSummary.TOTAL_DATA_FILES_PROP));
-          }
-
-          if (summary.containsKey(SnapshotSummary.TOTAL_RECORDS_PROP)) {
-            long totalRecords = Long.parseLong(summary.get(SnapshotSummary.TOTAL_RECORDS_PROP));
-            if (summary.containsKey(SnapshotSummary.TOTAL_EQ_DELETES_PROP) &&
-                summary.containsKey(SnapshotSummary.TOTAL_POS_DELETES_PROP)) {
-
-              long totalEqDeletes = Long.parseLong(summary.get(SnapshotSummary.TOTAL_EQ_DELETES_PROP));
-              long totalPosDeletes = Long.parseLong(summary.get(SnapshotSummary.TOTAL_POS_DELETES_PROP));
-
-              long actualRecords = totalRecords - (totalEqDeletes > 0 ? 0 : totalPosDeletes);
-              totalRecords = actualRecords > 0 ? actualRecords : totalRecords;
-              // actualRecords maybe -ve in edge cases
-            }
-            stats.put(StatsSetupConst.ROW_COUNT, String.valueOf(totalRecords));
-          }
-
-          if (summary.containsKey(SnapshotSummary.TOTAL_FILE_SIZE_PROP)) {
-            stats.put(StatsSetupConst.TOTAL_SIZE, summary.get(SnapshotSummary.TOTAL_FILE_SIZE_PROP));
-          }
+      if (summary != null) {
+        if (summary.containsKey(SnapshotSummary.TOTAL_DATA_FILES_PROP)) {
+          stats.put(StatsSetupConst.NUM_FILES, summary.get(SnapshotSummary.TOTAL_DATA_FILES_PROP));
         }
-      } else {
-        stats.put(StatsSetupConst.NUM_FILES, "0");
-        stats.put(StatsSetupConst.ROW_COUNT, "0");
-        stats.put(StatsSetupConst.TOTAL_SIZE, "0");
+        if (summary.containsKey(SnapshotSummary.TOTAL_RECORDS_PROP)) {
+          long totalRecords = Long.parseLong(summary.get(SnapshotSummary.TOTAL_RECORDS_PROP));
+          if (summary.containsKey(SnapshotSummary.TOTAL_EQ_DELETES_PROP) &&
+              summary.containsKey(SnapshotSummary.TOTAL_POS_DELETES_PROP)) {
+
+            long totalEqDeletes = Long.parseLong(summary.get(SnapshotSummary.TOTAL_EQ_DELETES_PROP));
+            long totalPosDeletes = Long.parseLong(summary.get(SnapshotSummary.TOTAL_POS_DELETES_PROP));
+
+            long actualRecords = totalRecords - (totalEqDeletes > 0 ? 0 : totalPosDeletes);
+            totalRecords = actualRecords > 0 ? actualRecords : totalRecords;
+            // actualRecords maybe -ve in edge cases
+          }
+          stats.put(StatsSetupConst.ROW_COUNT, String.valueOf(totalRecords));
+        }
+        if (summary.containsKey(SnapshotSummary.TOTAL_FILE_SIZE_PROP)) {
+          stats.put(StatsSetupConst.TOTAL_SIZE, summary.get(SnapshotSummary.TOTAL_FILE_SIZE_PROP));
+        }
       }
+    } else {
+      stats.put(StatsSetupConst.NUM_FILES, "0");
+      stats.put(StatsSetupConst.ROW_COUNT, "0");
+      stats.put(StatsSetupConst.TOTAL_SIZE, "0");
     }
     return stats;
+  }
+
+  private static Map<String, String> getPartishSummary(Partish partish, Map<String, String> summary) {
+    if (summary != null && partish.getPartition() != null &&
+          Boolean.parseBoolean(summary.get(SnapshotSummary.PARTITION_SUMMARY_PROP))) {
+      String key = SnapshotSummary.CHANGED_PARTITION_PREFIX + partish.getPartition().getName();
+      Map<String, String> map = Maps.newHashMap();
+
+      if (summary.containsKey(key)) {
+        StringTokenizer tokenizer = new StringTokenizer(summary.get(key), ",");
+        while (tokenizer.hasMoreTokens()) {
+          String token = tokenizer.nextToken();
+          String[] keyValue = token.split("=");
+          map.put(keyValue[0], keyValue[1]);
+        }
+      }
+      return map;
+    }
+    return summary;
   }
 
   private Table getTable(org.apache.hadoop.hive.ql.metadata.Table hmsTable) {

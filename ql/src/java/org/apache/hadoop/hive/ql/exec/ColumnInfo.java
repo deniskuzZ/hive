@@ -55,7 +55,7 @@ public class ColumnInfo implements Serializable {
    */
   private boolean isVirtualCol;
   
-  private boolean isPartitionCol;
+  private boolean isHiddenPartitionCol;
 
   private ObjectInspector objectInspector;
 
@@ -129,7 +129,7 @@ public class ColumnInfo implements Serializable {
     this.isSkewedCol = columnInfo.isSkewedCol();
     this.tabAlias = columnInfo.getTabAlias();
     this.isVirtualCol = columnInfo.getIsVirtualCol();
-    this.isPartitionCol = columnInfo.getIsPartitionCol();
+    this.isHiddenPartitionCol = columnInfo.isHiddenPartitionCol();
     this.isHiddenVirtualCol = columnInfo.isHiddenVirtualCol();
     this.nullable = columnInfo.nullable;
     this.setType(columnInfo.getType());
@@ -170,11 +170,11 @@ public class ColumnInfo implements Serializable {
   }
 
   public boolean getIsVirtualCol() {
-    return isVirtualCol || isPartitionCol;
+    return isVirtualCol || isHiddenPartitionCol;
   }
 
-  public boolean getIsPartitionCol() {
-    return isPartitionCol;
+  public boolean isHiddenPartitionCol() {
+    return isHiddenPartitionCol;
   }
   
   public boolean isHiddenVirtualCol() {
@@ -205,14 +205,14 @@ public class ColumnInfo implements Serializable {
     this.isVirtualCol = isVirtualCol;
   }
 
-  public void setPartitionCol(boolean isPartitionCol) {
-    this.isPartitionCol = isPartitionCol;
-  }
-
   public void setHiddenVirtualCol(boolean isHiddenVirtualCol) {
     this.isHiddenVirtualCol = isHiddenVirtualCol;
   }
 
+  public void setHiddenPartitionCol(boolean isPartitionCol) {
+    this.isHiddenPartitionCol = isPartitionCol;
+  }
+  
   /**
    * @return the isSkewedCol
    */

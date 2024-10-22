@@ -11958,7 +11958,7 @@ public class SemanticAnalyzer extends BaseSemanticAnalyzer {
               TypeInfoUtils.getTypeInfoFromObjectInspector(fields.get(i)
                   .getFieldObjectInspector()), alias, false);
           if (partCols.contains(colInfo.getInternalName())) {
-            colInfo.setPartitionCol(true);
+            colInfo.setHiddenPartitionCol(true);
           }
           colInfo.setSkewedCol(isSkewedCol(alias, qb, fields.get(i).getFieldName()));
           rwsch.put(alias, fields.get(i).getFieldName(), colInfo);
