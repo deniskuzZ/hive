@@ -428,9 +428,14 @@ public class HiveIcebergStorageHandler implements HiveStoragePredicateHandler, H
 
   @Override
   public boolean canProvidePartitionStatistics(org.apache.hadoop.hive.ql.metadata.Table hmsTable) {
-    Table table = IcebergTableUtil.getTable(conf, hmsTable.getTTable());
-    if (table.currentSnapshot() != null) {
-      Map<String, String> summary = table.currentSnapshot().summary();
+    if (!getStatsSource().equals(HiveMetaHook.ICEBERG)) {
+      return false;
+    }
+    // For write queries where rows got modified, don't fetch from cache as values could have changed.
+    Table table = getTable(hmsTable);
+    Snapshot snapshot = IcebergTableUtil.getTableSnapshot(table, hmsTable);
+    if (snapshot != null) {
+      Map<String, String> summary = snapshot.summary();
       return Boolean.parseBoolean(summary.get(SnapshotSummary.PARTITION_SUMMARY_PROP));
     }
     return false;
@@ -471,18 +476,19 @@ public class HiveIcebergStorageHandler implements HiveStoragePredicateHandler, H
     HiveTableUtil.appendFiles(fromURI, format, icebergTbl, isOverwrite, partitionSpec, conf);
   }
 
-  @SuppressWarnings("checkstyle:CyclomaticComplexity")
   @Override
   public Map<String, String> getBasicStatistics(Partish partish) {
-    org.apache.hadoop.hive.ql.metadata.Table hmsTable = partish.getTable();
-    // For write queries where rows got modified, don't fetch from cache as values could have changed.
-    Table table = getTable(hmsTable);
     Map<String, String> stats = Maps.newHashMap();
     if (!getStatsSource().equals(HiveMetaHook.ICEBERG)) {
       return stats;
     }
-    if (table.currentSnapshot() != null) {
-      Map<String, String> summary = getPartishSummary(partish, table.currentSnapshot().summary());
+    org.apache.hadoop.hive.ql.metadata.Table hmsTable = partish.getTable();
+    // For write queries where rows got modified, don't fetch from cache as values could have changed.
+    Table table = getTable(hmsTable);
+
+    Snapshot snapshot = IcebergTableUtil.getTableSnapshot(table, hmsTable);
+    if (snapshot != null) {
+      Map<String, String> summary = getPartishSummary(partish, snapshot.summary());
 
       if (summary != null) {
         if (summary.containsKey(SnapshotSummary.TOTAL_DATA_FILES_PROP)) {
@@ -640,18 +646,22 @@ public class HiveIcebergStorageHandler implements HiveStoragePredicateHandler, H
   }
 
   @Override
-  public boolean canComputeQueryUsingStats(org.apache.hadoop.hive.ql.metadata.Table hmsTable) {
-    if (getStatsSource().equals(HiveMetaHook.ICEBERG) && hmsTable.getMetaTable() == null) {
-      Table table = getTable(hmsTable);
-      if (table.currentSnapshot() != null) {
-        Map<String, String> summary = table.currentSnapshot().summary();
-        if (summary != null && summary.containsKey(SnapshotSummary.TOTAL_EQ_DELETES_PROP) &&
-            summary.containsKey(SnapshotSummary.TOTAL_POS_DELETES_PROP)) {
+  public boolean canComputeQueryUsingStats(Partish partish) {
+    org.apache.hadoop.hive.ql.metadata.Table hmsTable = partish.getTable();
+    if (!getStatsSource().equals(HiveMetaHook.ICEBERG) ||
+          hmsTable.getMetaTable() != null) {
+      return false;
+    }
+    Table table = getTable(hmsTable);
+    Snapshot snapshot = IcebergTableUtil.getTableSnapshot(table, hmsTable);
+    if (snapshot != null) {
+      Map<String, String> summary = getPartishSummary(partish, snapshot.summary());
+      if (summary != null && summary.containsKey(SnapshotSummary.TOTAL_EQ_DELETES_PROP) &&
+          summary.containsKey(SnapshotSummary.TOTAL_POS_DELETES_PROP)) {
 
-          long totalEqDeletes = Long.parseLong(summary.get(SnapshotSummary.TOTAL_EQ_DELETES_PROP));
-          long totalPosDeletes = Long.parseLong(summary.get(SnapshotSummary.TOTAL_POS_DELETES_PROP));
-          return totalEqDeletes + totalPosDeletes == 0;
-        }
+        long totalEqDeletes = Long.parseLong(summary.get(SnapshotSummary.TOTAL_EQ_DELETES_PROP));
+        long totalPosDeletes = Long.parseLong(summary.get(SnapshotSummary.TOTAL_POS_DELETES_PROP));
+        return totalEqDeletes + totalPosDeletes == 0;
       }
     }
     return false;

@@ -59,6 +59,7 @@ import org.apache.iceberg.PositionDeletesScanTask;
 import org.apache.iceberg.RowLevelOperationMode;
 import org.apache.iceberg.ScanTask;
 import org.apache.iceberg.Schema;
+import org.apache.iceberg.Snapshot;
 import org.apache.iceberg.SnapshotRef;
 import org.apache.iceberg.StructLike;
 import org.apache.iceberg.Table;
@@ -159,6 +160,32 @@ public class IcebergTableUtil {
 
   static Table getTable(Configuration configuration, Properties properties) {
     return getTable(configuration, properties, false);
+  }
+
+  static Snapshot getTableSnapshot(Table table, org.apache.hadoop.hive.ql.metadata.Table hmsTable) {
+    if (hmsTable.getAsOfVersion() != null) {
+      long snapshotId;
+      try {
+        snapshotId = Long.parseLong(hmsTable.getAsOfVersion());
+      } catch (NumberFormatException e) {
+        SnapshotRef ref = table.refs().get(hmsTable.getAsOfVersion());
+        if (ref == null) {
+          throw new RuntimeException("Cannot find matching snapshot ID or reference name for version " +
+              hmsTable.getAsOfVersion());
+        }
+        snapshotId = ref.snapshotId();
+      }
+      return table.snapshot(snapshotId);
+    }
+    return getTableSnapshot(table, hmsTable.getSnapshotRef());
+  }
+
+  static Snapshot getTableSnapshot(Table table, String snapshotRef) {
+    if (snapshotRef != null) {
+      String ref = HiveUtils.getTableSnapshotRef(snapshotRef);
+      return table.snapshot(ref);
+    }
+    return table.currentSnapshot();
   }
 
   static Optional<Path> getColStatsPath(Table table) {
