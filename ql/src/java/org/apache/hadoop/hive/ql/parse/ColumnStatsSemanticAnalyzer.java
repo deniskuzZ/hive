@@ -19,14 +19,17 @@
 package org.apache.hadoop.hive.ql.parse;
 
 import static org.apache.hadoop.hive.ql.metadata.HiveUtils.unparseIdentifier;
+import static org.apache.hadoop.hive.ql.metadata.VirtualColumn.PARTITION_SPEC_ID;
 
 import com.google.common.base.Preconditions;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+import com.google.common.collect.Maps;
 import org.apache.hadoop.hive.common.HiveStatsUtils;
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.conf.HiveConf.ConfVars;
@@ -45,6 +48,7 @@ import org.apache.hadoop.hive.ql.session.SessionState;
 import org.apache.hadoop.hive.ql.session.SessionState.LogHelper;
 import org.apache.hadoop.hive.ql.stats.ColStatsProcessor.ColumnStatsField;
 import org.apache.hadoop.hive.ql.stats.ColStatsProcessor.ColumnStatsType;
+import org.apache.hadoop.hive.ql.stats.StatsUtils;
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector.Category;
 import org.apache.hadoop.hive.serde2.typeinfo.PrimitiveTypeInfo;
@@ -156,7 +160,8 @@ public class ColumnStatsSemanticAnalyzer extends SemanticAnalyzer {
     }
   }
 
-  private static CharSequence genPartitionClause(Table tbl, Map<String, String> partSpec, HiveConf conf) {
+  private static CharSequence genPartitionClause(Table tbl, List<TransformSpec> partTransformSpec, int specId, 
+    Map<String, String> partSpec, HiveConf conf) {
     boolean predPresent = partSpec.values().stream().anyMatch(Objects::nonNull);
     
     StringBuilder whereClause = new StringBuilder(" where ").append(
@@ -167,11 +172,16 @@ public class ColumnStatsSemanticAnalyzer extends SemanticAnalyzer {
         .collect(Collectors.joining(" and "))
     );
 
+    if (specId >= 0) {
+      whereClause.append((predPresent) ? " and " : "")
+          .append(unparseIdentifier(PARTITION_SPEC_ID.getName(), conf) + "=" + specId);
+      predPresent = true;
+    }
+
     StringBuilder groupByClause = new StringBuilder(" group by ").append((
-      tbl.hasNonNativePartitionSupport() ?
-        tbl.getStorageHandler().getPartitionTransformSpec(tbl).stream()
-            .map(spec -> spec.toHiveExpr(conf, false)) :
-        tbl.getPartColNames().stream().map(col -> unparseIdentifier(col, conf))
+      (partTransformSpec != null) ?
+          partTransformSpec.stream().map(spec -> spec.toHiveExpr(conf)) :
+          tbl.getPartColNames().stream().map(col -> unparseIdentifier(col, conf))
       )
       .collect(Collectors.joining(", "))
     );
@@ -216,8 +226,10 @@ public class ColumnStatsSemanticAnalyzer extends SemanticAnalyzer {
   }
 
   private String genRewrittenQuery(List<String> colNames, List<String> colTypes, HiveConf conf,
-      Map<String, String> partSpec, boolean isPartitionStats) throws SemanticException {
-    String rewritten = genRewrittenQuery(tbl, colNames, colTypes, conf, partSpec, isPartitionStats, false);
+      List<TransformSpec> partTransformSpec, int specId, Map<String, String> partSpec, 
+      boolean isPartitionStats) {
+    String rewritten = genRewrittenQuery(tbl, colNames, colTypes, conf, partTransformSpec, specId, partSpec, 
+        isPartitionStats, false);
     isRewritten = true;
     return rewritten;
   }
@@ -227,17 +239,17 @@ public class ColumnStatsSemanticAnalyzer extends SemanticAnalyzer {
    * included in the input table.
    */
   protected static String genRewrittenQuery(Table tbl,
-      HiveConf conf, Map<String, String> partSpec, boolean isPartitionStats,
-      boolean useTableValues) throws SemanticException {
+      HiveConf conf, List<TransformSpec> partTransformSpec, Map<String, String> partSpec, 
+      boolean isPartitionStats) {
     List<String> colNames = Utilities.getColumnNamesFromFieldSchema(tbl.getCols());
     List<String> colTypes = ColumnStatsSemanticAnalyzer.getColumnTypes(tbl, colNames);
     return ColumnStatsSemanticAnalyzer.genRewrittenQuery(
-        tbl, colNames, colTypes, conf, partSpec, isPartitionStats, useTableValues);
+        tbl, colNames, colTypes, conf, partTransformSpec, -1, partSpec, isPartitionStats, true);
   }
 
   private static String genRewrittenQuery(Table tbl, List<String> colNames, List<String> colTypes,
-      HiveConf conf, Map<String, String> partSpec, boolean isPartitionStats,
-      boolean useTableValues) throws SemanticException {
+      HiveConf conf, List<TransformSpec> partTransformSpec, int specId, Map<String, String> partSpec, 
+      boolean isPartitionStats, boolean useTableValues) {
     StringBuilder rewrittenQueryBuilder = new StringBuilder("select ");
 
     StringBuilder columnNamesBuilder = new StringBuilder();
@@ -251,7 +263,12 @@ public class ColumnStatsSemanticAnalyzer extends SemanticAnalyzer {
 
       final String columnName = unparseIdentifier(colNames.get(i), conf);
       final TypeInfo typeInfo = TypeInfoUtils.getTypeInfoFromTypeString(colTypes.get(i));
-      genComputeStats(rewrittenQueryBuilder, conf, i, columnName, typeInfo);
+      
+      try {
+        genComputeStats(rewrittenQueryBuilder, conf, i, columnName, typeInfo);
+      } catch (SemanticException e) {
+        throw new RuntimeException(e);
+      }
 
       columnNamesBuilder.append(columnName);
 
@@ -260,48 +277,49 @@ public class ColumnStatsSemanticAnalyzer extends SemanticAnalyzer {
     }
 
     if (isPartitionStats) {
-      if (tbl.hasNonNativePartitionSupport()) {
-        tbl.getStorageHandler().getPartitionTransformSpec(tbl).forEach(spec -> 
-            rewrittenQueryBuilder.append(", ").append(spec.toHiveExpr(conf, true)));
-      } else {
+      if (partTransformSpec == null) {
         for (FieldSchema fs : tbl.getPartCols()) {
           String identifier = unparseIdentifier(fs.getName(), conf);
           rewrittenQueryBuilder.append(", ").append(identifier);
           columnNamesBuilder.append(", ").append(identifier);
 
           columnDummyValuesBuilder.append(", cast(null as ")
-            .append(TypeInfoUtils.getTypeInfoFromTypeString(fs.getType()).toString()).append(")");
+            .append(TypeInfoUtils.getTypeInfoFromTypeString(fs.getType()).toString())
+            .append(")");
         }
+      } else {
+        rewrittenQueryBuilder.append(", ")
+          .append(TransformSpec.toNamedStruct(partTransformSpec, conf));
       }
     }
 
     rewrittenQueryBuilder.append(" from ");
     if (useTableValues) {
       //TABLE(VALUES(cast(null as int),cast(null as string))) AS tablename(col1,col2)
-      rewrittenQueryBuilder.append("table(values(");
-      // Values
-      rewrittenQueryBuilder.append(columnDummyValuesBuilder);
-      rewrittenQueryBuilder.append(")) as ");
-      rewrittenQueryBuilder.append(unparseIdentifier(tbl.getTableName() ,conf));
-      rewrittenQueryBuilder.append("(");
-      // Columns
-      rewrittenQueryBuilder.append(columnNamesBuilder);
-      rewrittenQueryBuilder.append(")");
+      rewrittenQueryBuilder.append("table(values(")
+        // Values
+        .append(columnDummyValuesBuilder)
+        .append(")) as ")
+        .append(unparseIdentifier(tbl.getTableName() ,conf))
+        .append("(")
+        // Columns
+        .append(columnNamesBuilder)
+        .append(")");
     } else {
-      rewrittenQueryBuilder.append(unparseIdentifier(tbl.getDbName(), conf));
-      rewrittenQueryBuilder.append(".");
-      rewrittenQueryBuilder.append(unparseIdentifier(tbl.getTableName(), conf));
+      rewrittenQueryBuilder.append(unparseIdentifier(tbl.getDbName(), conf))
+        .append(".")
+        .append(unparseIdentifier(tbl.getTableName(), conf));
       
       if (tbl.getMetaTable() != null) {
-        rewrittenQueryBuilder.append(".");
-        rewrittenQueryBuilder.append(unparseIdentifier(tbl.getMetaTable(), conf));
+        rewrittenQueryBuilder.append(".")
+          .append(unparseIdentifier(tbl.getMetaTable(), conf));
       }
     }
 
     // If partition level statistics is requested, add predicate and group by as needed to rewritten
     // query
     if (isPartitionStats) {
-      rewrittenQueryBuilder.append(genPartitionClause(tbl, partSpec, conf));
+      rewrittenQueryBuilder.append(genPartitionClause(tbl, partTransformSpec, specId, partSpec, conf));
     }
 
     String rewrittenQuery = rewrittenQueryBuilder.toString();
@@ -603,25 +621,30 @@ public class ColumnStatsSemanticAnalyzer extends SemanticAnalyzer {
       colNames = getColumnName(ast);
       // Save away the original AST
       originalTree = ast;
-      boolean isPartitionStats = AnalyzeCommandUtils.isPartitionLevelStats(ast);
-      Map<String, String> partSpec = null;
+      boolean isPartitionStats = AnalyzeCommandUtils.isPartitionLevelStats(ast) 
+          || StatsUtils.isPartitionStats(tbl, conf);
+      
+      Map<Integer, List<TransformSpec>> partTransformSpecs = Collections.singletonMap(-1, null);
+      Map<String, String> partSpec = (isPartitionStats) ?
+          AnalyzeCommandUtils.getPartKeyValuePairsFromAST(tbl, ast, conf) : null;
       checkForPartitionColumns(
           colNames, Utilities.getColumnNamesFromFieldSchema(tbl.getPartitionKeys()));
       validateSpecifiedColumnNames(colNames);
-      if (conf.getBoolVar(ConfVars.HIVE_STATS_COLLECT_PART_LEVEL_STATS) && tbl.isPartitioned()
-            && (!tbl.isNonNative() || tbl.getStorageHandler().canSetColStatistics(tbl))) {
-        isPartitionStats = true;
-      }
 
       if (isPartitionStats) {
-        isTableLevel = false;
-        partSpec = AnalyzeCommandUtils.getPartKeyValuePairsFromAST(tbl, ast, conf);
         handlePartialPartitionSpec(partSpec, null);
-      } else {
-        isTableLevel = true;
+        if (tbl.hasNonNativePartitionSupport()) {
+          partTransformSpecs = tbl.getStorageHandler().getPartitionTransformSpecs(tbl);
+        }
       }
       colType = getColumnTypes(tbl, colNames);
-      rewrittenQuery = genRewrittenQuery(colNames, colType, conf, partSpec, isPartitionStats);
+      isTableLevel = !isPartitionStats;
+
+      rewrittenQuery = String.join(" union all ",
+        Maps.transformEntries(partTransformSpecs, (specId, partTransformSpec) ->
+            genRewrittenQuery(colNames, colType, conf, partTransformSpec, specId, partSpec, isPartitionStats))
+          .values());
+      
       rewrittenTree = genRewrittenTree(rewrittenQuery);
     } else {
       // Not an analyze table column compute statistics statement - don't do any rewrites
@@ -661,8 +684,7 @@ public class ColumnStatsSemanticAnalyzer extends SemanticAnalyzer {
    *          is the original analyze ast
    * @param context
    *          the column stats auto gather context
-   * @return
-   * @throws SemanticException
+   * @return the rewritten AST
    */
   public ASTNode rewriteAST(ASTNode ast, ColumnStatsAutoGatherContext context)
       throws SemanticException {
@@ -672,26 +694,27 @@ public class ColumnStatsSemanticAnalyzer extends SemanticAnalyzer {
     tbl = AnalyzeCommandUtils.getTable(ast, this);
 
     colNames = getColumnName(ast);
-    boolean isPartitionStats = AnalyzeCommandUtils.isPartitionLevelStats(ast);
+    boolean isPartitionStats = AnalyzeCommandUtils.isPartitionLevelStats(ast)
+        || StatsUtils.isPartitionStats(tbl, conf);
+    
+    List<TransformSpec> partTransformSpec = null;
     Map<String, String> partSpec = null;
     checkForPartitionColumns(colNames,
         Utilities.getColumnNamesFromFieldSchema(tbl.getPartitionKeys()));
     validateSpecifiedColumnNames(colNames);
-    if (conf.getBoolVar(ConfVars.HIVE_STATS_COLLECT_PART_LEVEL_STATS) && tbl.isPartitioned()
-          && (!tbl.isNonNative() || tbl.getStorageHandler().canSetColStatistics(tbl))) {
-      isPartitionStats = true;
-    }
 
     if (isPartitionStats) {
       partSpec = AnalyzeCommandUtils.getPartKeyValuePairsFromAST(tbl, ast, conf);
       handlePartialPartitionSpec(partSpec, context);
+      if (tbl.hasNonNativePartitionSupport()) {
+        partTransformSpec = tbl.getStorageHandler().getPartitionTransformSpec(tbl);
+      }
     }
-
     colType = getColumnTypes(tbl, colNames);
-
     isTableLevel = !isPartitionStats;
 
-    rewrittenQuery = genRewrittenQuery(colNames, colType, conf, partSpec, isPartitionStats);
+    rewrittenQuery = genRewrittenQuery(colNames, colType, conf, partTransformSpec, -1, 
+        partSpec, isPartitionStats);
     rewrittenTree = genRewrittenTree(rewrittenQuery);
 
     return rewrittenTree;

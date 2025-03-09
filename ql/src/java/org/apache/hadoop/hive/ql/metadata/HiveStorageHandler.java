@@ -573,6 +573,10 @@ public interface HiveStorageHandler extends Configurable {
     return null;
   }
 
+  default Map<Integer,List<TransformSpec>> getPartitionTransformSpecs(org.apache.hadoop.hive.ql.metadata.Table table) {
+    return null;
+  }
+
   /**
    * Creates a DynamicPartitionCtx instance that will be set up by the storage handler itself. Useful for non-native
    * tables where partitions are not handled by Hive, and sorting is required in a custom way before writing the table.

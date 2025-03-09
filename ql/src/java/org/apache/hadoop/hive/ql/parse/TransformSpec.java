@@ -19,10 +19,12 @@ package org.apache.hadoop.hive.ql.parse;
 
 import org.apache.hadoop.conf.Configuration;
 
+import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import static org.apache.hadoop.hive.ql.metadata.HiveUtils.unparseIdentifier;
 
@@ -32,7 +34,7 @@ public class TransformSpec {
   public enum TransformType {
     IDENTITY, YEAR, MONTH, DAY, HOUR, TRUNCATE, BUCKET, VOID
   }
-  
+
   private String columnName;
   private TransformType transformType;
   private Optional<Integer> transformParam;
@@ -89,8 +91,18 @@ public class TransformSpec {
     }
     return transformType.name();
   }
-
-  public String toHiveExpr(Configuration conf, boolean alias) {
+    
+  public static String toNamedStruct(List<TransformSpec> partTransformSpec, Configuration conf) {
+    StringBuilder builder = new StringBuilder("named_struct(");
+    builder.append(
+      partTransformSpec.stream().map(spec ->
+            "'" + spec.getColumnName() + "', " + spec.toHiveExpr(conf))
+        .collect(Collectors.joining(", "))
+      ).append(")");
+    return builder.toString();
+  }
+  
+  public String toHiveExpr(Configuration conf) {
     String identifier = unparseIdentifier(columnName, conf);
     if (transformType == TransformSpec.TransformType.IDENTITY) {
       return identifier;
@@ -102,14 +114,7 @@ public class TransformSpec {
         fn += ", " + transformParam.get();
         break;
     }
-    StringBuilder expr = new StringBuilder();
-    expr.append(fn).append(")");
-    if (!alias) {
-      return expr.toString();
-    }
-    expr.append(" AS ")
-      .append(unparseIdentifier(fieldName));
-    return expr.toString();
+    return  fn + ")";
   }
 
   public static TransformType fromString(String transformString) {

@@ -409,9 +409,10 @@ public class HiveIcebergStorageHandler implements HiveStoragePredicateHandler, H
         .map(VirtualColumn::getName).collect(Collectors.toSet());
 
     if (subExprNodes.removeIf(nodeDesc -> nodeDesc.getCols() != null &&
-        nodeDesc.getCols().stream().anyMatch(skipList::contains))) {
+          nodeDesc.getCols().stream().anyMatch(skipList::contains))) {
       if (subExprNodes.size() == 1) {
-        pushedPredicate = subExprNodes.get(0);
+        pushedPredicate = (subExprNodes.get(0) instanceof ExprNodeGenericFuncDesc) ?
+            subExprNodes.get(0) : null;
       } else if (subExprNodes.isEmpty()) {
         pushedPredicate = null;
       }
@@ -535,7 +536,7 @@ public class HiveIcebergStorageHandler implements HiveStoragePredicateHandler, H
       stats = partish.getPartParameters();
 
       if (!StatsSetupConst.areBasicStatsUptoDate(stats)) {
-        // populate quickStats
+        // populate quick-stats
         stats = getBasicStatistics(partish, true);
       }
       return stats;
@@ -642,12 +643,12 @@ public class HiveIcebergStorageHandler implements HiveStoragePredicateHandler, H
           puffinWriter.add(
             new Blob(
               ColumnStatisticsObj.class.getSimpleName(),
-              ImmutableList.of(0),
+              ImmutableList.of(1),
               snapshotId,
               snapshotSequenceNumber,
               ByteBuffer.wrap(serializeColStats),
               PuffinCompressionCodec.NONE,
-              ImmutableMap.of("partition-name",
+              ImmutableMap.of("partition",
                   String.valueOf(statsObj.getStatsDesc().getPartName()))
             ));
         });
@@ -744,7 +745,7 @@ public class HiveIcebergStorageHandler implements HiveStoragePredicateHandler, H
 
       if (partNames != null) {
         blobMetadata = blobMetadata.stream()
-            .filter(metadata -> partNames.contains(metadata.properties().get("partition-name")))
+            .filter(metadata -> partNames.contains(metadata.properties().get("partition")))
             .collect(Collectors.toList());
       }
       Iterator<ByteBuffer> it = Iterables.transform(reader.readAll(blobMetadata), Pair::second).iterator();
@@ -848,40 +849,40 @@ public class HiveIcebergStorageHandler implements HiveStoragePredicateHandler, H
 
   @Override
   public List<TransformSpec> getPartitionTransformSpec(org.apache.hadoop.hive.ql.metadata.Table hmsTable) {
-    TableDesc tableDesc = Utilities.getTableDesc(hmsTable);
-    Table table = IcebergTableUtil.getTable(conf, tableDesc.getProperties());
+    Table table = IcebergTableUtil.getTable(conf, hmsTable.getTTable());
     return table.spec().fields().stream()
       .filter(f -> !f.transform().isVoid())
       .map(f -> {
-        TransformSpec spec = getTransformSpec(
-            table, f.transform().toString().toUpperCase(), f.sourceId());
+        TransformSpec spec = IcebergTableUtil.getTransformSpec(
+            table, f.transform().toString(), f.sourceId());
         spec.setFieldName(f.name());
         return spec;
       })
       .collect(Collectors.toList());
   }
 
-  private List<TransformSpec> getSortTransformSpec(Table table) {
-    return table.sortOrder().fields().stream().map(s ->
-      getTransformSpec(table, s.transform().toString().toUpperCase(), s.sourceId())
-    ).collect(Collectors.toList());
+  @Override
+  public Map<Integer, List<TransformSpec>> getPartitionTransformSpecs(
+      org.apache.hadoop.hive.ql.metadata.Table hmsTable) {
+    Table table = IcebergTableUtil.getTable(conf, hmsTable.getTTable());
+    return table.specs().entrySet().stream().flatMap(e ->
+      e.getValue().fields().stream()
+        .filter(f -> !f.transform().isVoid())
+        .map(f -> {
+          TransformSpec spec = IcebergTableUtil.getTransformSpec(
+              table, f.transform().toString(), f.sourceId());
+          spec.setFieldName(f.name());
+          return Pair.of(e.getKey(), spec);
+        }))
+      .collect(Collectors.groupingBy(
+          Pair::first, Collectors.mapping(Pair::second, Collectors.toList())));
   }
 
-  private TransformSpec getTransformSpec(Table table, String transformName, int sourceId) {
-    TransformSpec spec = new TransformSpec();
-    spec.setColumnName(table.schema().findColumnName(sourceId));
-    // if the transform name contains '[' it means it has some config params
-    if (transformName.contains("[")) {
-      spec.setTransformType(TransformSpec.TransformType
-          .valueOf(transformName.substring(0, transformName.indexOf("["))));
-      spec.setTransformParam(Optional.of(Integer
-          .valueOf(transformName.substring(transformName.indexOf("[") + 1, transformName.indexOf("]")))));
-    } else {
-      spec.setTransformType(TransformSpec.TransformType.valueOf(transformName));
-      spec.setTransformParam(Optional.empty());
-    }
-
-    return spec;
+  private List<TransformSpec> getSortTransformSpec(Table table) {
+    return table.sortOrder().fields().stream().map(s ->
+        IcebergTableUtil.getTransformSpec(table, s.transform().toString(), s.sourceId())
+      )
+      .collect(Collectors.toList());
   }
 
   @Override

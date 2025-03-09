@@ -541,4 +541,10 @@ public class IcebergTableUtil {
     }
   }
 
+  public static TransformSpec getTransformSpec(Table table, String transformName, int sourceId) {
+    TransformSpec spec = TransformSpec.fromString(transformName.toUpperCase(),
+        table.schema().findColumnName(sourceId));
+    return spec;
+  }
+
 }

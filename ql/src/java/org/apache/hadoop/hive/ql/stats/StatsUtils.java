@@ -1947,6 +1947,11 @@ public class StatsUtils {
     return null;
   }
 
+  public static boolean isPartitionStats(Table table, HiveConf conf) {
+    return conf.getBoolVar(ConfVars.HIVE_STATS_COLLECT_PART_LEVEL_STATS) && table.isPartitioned()
+        && (!table.isNonNative() || table.getStorageHandler().canSetColStatistics(table));
+  }
+
   public static boolean checkCanProvideStats(Table table) {
     return !MetaStoreUtils.isExternalTable(table.getTTable()) || table.isNonNative() 
         && table.getStorageHandler().canProvideBasicStatistics();
