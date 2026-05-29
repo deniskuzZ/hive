@@ -616,7 +616,44 @@ public class HiveIcebergStorageHandler extends DefaultStorageHandler implements 
   @Override
   public boolean setColStatistics(org.apache.hadoop.hive.ql.metadata.Table hmsTable, List<ColumnStatistics> colStats) {
     Table tbl = IcebergTableUtil.getTable(conf, hmsTable.getTTable());
-    return writeColStats(colStats, tbl);
+
+    // Table-level stats go to puffin
+    List<ColumnStatistics> tableStats = colStats.stream()
+        .filter(cs -> cs.getStatsDesc().isIsTblLevel())
+        .collect(java.util.stream.Collectors.toList());
+    boolean puffinResult = tableStats.isEmpty() || writeColStats(tableStats, tbl);
+
+    // Partition-level stats go to the new partition column stats file
+    writePartitionColumnStats(colStats, tbl);
+    return puffinResult;
+  }
+
+  private void writePartitionColumnStats(List<ColumnStatistics> colStats, Table tbl) {
+    if (!tbl.spec().isPartitioned()) {
+      return;
+    }
+    List<ColumnStatistics> partitionStats = colStats.stream()
+        .filter(cs -> !cs.getStatsDesc().isIsTblLevel())
+        .collect(java.util.stream.Collectors.toList());
+    if (partitionStats.isEmpty()) {
+      return;
+    }
+    Snapshot snapshot = tbl.currentSnapshot();
+    if (snapshot == null) {
+      return;
+    }
+    try {
+      long snapshotId = snapshot.snapshotId();
+      PartitionStatisticsFile existingFile = IcebergTableUtil.getPartitionStatsFile(tbl, snapshotId);
+
+      PartitionStatisticsFile newFile = PartitionColumnStatsHandler.writeColumnStatsFile(
+          tbl, snapshotId, partitionStats, existingFile);
+      tbl.updatePartitionStatistics()
+          .setPartitionStatistics(newFile)
+          .commit();
+    } catch (Exception e) {
+      LOG.warn("Unable to write partition column stats file: {}", e.getMessage(), e);
+    }
   }
 
   @SuppressWarnings("checkstyle:CyclomaticComplexity")
@@ -771,12 +808,19 @@ public class HiveIcebergStorageHandler extends DefaultStorageHandler implements 
     double ndvTuner = MetastoreConf.getDoubleVar(getConf(), MetastoreConf.ConfVars.STATS_NDV_TUNER);
 
     Set<String> partitions = Sets.newHashSet(partNames);
-    Predicate<BlobMetadata> filter = metadata -> partitions.contains(metadata.properties().get(PARTITION));
 
-    List<ColumnStatistics> partStats = IcebergTableUtil.readColStats(table, snapshot.snapshotId(), filter);
+    // Read column stats from partition stats file (projects only content_stats, not basic stats)
+    List<ColumnStatistics> partStats = PartitionColumnStatsHandler.readAsColumnStatistics(
+        table, snapshot.snapshotId(), colNames, partitions);
 
-    partStats.forEach(colStats ->
-        colStats.getStatsObj().removeIf(statsObj -> !colNames.contains(statsObj.getColName())));
+    // Fall back to puffin if partition stats file has no column stats
+    if (partStats.isEmpty()) {
+      Predicate<BlobMetadata> filter =
+          metadata -> partitions.contains(metadata.properties().get(PARTITION));
+      partStats = IcebergTableUtil.readColStats(table, snapshot.snapshotId(), filter);
+      partStats.forEach(colStats ->
+          colStats.getStatsObj().removeIf(statsObj -> !colNames.contains(statsObj.getColName())));
+    }
 
     List<ColumnStatisticsObj> colStatsList = MetaStoreServerUtils.aggrPartitionStats(partStats,
         MetaStoreUtils.getDefaultCatalog(conf), hmsTable.getDbName(), hmsTable.getTableName(),
