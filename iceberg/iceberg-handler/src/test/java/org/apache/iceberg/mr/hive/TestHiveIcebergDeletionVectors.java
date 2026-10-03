@@ -22,10 +22,14 @@ package org.apache.iceberg.mr.hive;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.LongStream;
 import java.util.stream.StreamSupport;
+import org.apache.hive.service.cli.HiveSQLException;
+import org.apache.hive.service.cli.OperationHandle;
+import org.apache.hive.service.cli.session.HiveSession;
 import org.apache.iceberg.DeleteFile;
 import org.apache.iceberg.FileContent;
 import org.apache.iceberg.FileFormat;
@@ -33,6 +37,7 @@ import org.apache.iceberg.FileScanTask;
 import org.apache.iceberg.PartitionSpec;
 import org.apache.iceberg.Table;
 import org.apache.iceberg.TableScan;
+import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.data.Record;
 import org.apache.iceberg.io.CloseableIterable;
 import org.apache.iceberg.mr.InputFormatConfig;
@@ -141,5 +146,126 @@ public class TestHiveIcebergDeletionVectors extends HiveIcebergStorageHandlerWit
     Assert.assertEquals("one live DV holding every deleted position", deleted,
         dvs(tasks).stream().mapToLong(DeleteFile::recordCount).sum());
     assertOneDVPerDataFile(tasks);
+  }
+
+  private static void assertOneDVPerDataFileAndNoMerge(Table table) {
+    table.refresh();
+    Assert.assertEquals("DVs merged at commit", Set.of(), assertOneDVPerDataFile(planFiles(table)));
+  }
+
+  private long rowsAffected(String sql) throws HiveSQLException {
+    HiveSession session = shell.getSession();
+    OperationHandle handle = session.executeStatement(sql, Map.of());
+    try {
+      return session.getSessionManager().getOperationManager().getOperation(handle).getNumModifiedRows();
+    } finally {
+      session.closeOperation(handle);
+    }
+  }
+
+  @Test
+  public void testDeleteOfSplitDataFile() {
+    Table table = createSingleFileTable("dv_delete");
+    shell.executeStatement("DELETE FROM dv_delete WHERE customer_id % 7 = 0");
+    Assert.assertEquals(ROWS - (ROWS + 6) / 7, count("SELECT count(*) FROM dv_delete"));
+    assertOneDVPerDataFileAndNoMerge(table);
+  }
+
+  @Test
+  public void testDeleteOfSplitDataFilesInPartitionedTable() {
+    // several writer tasks
+    shell.setHiveSessionValue("mapreduce.job.reduces", "3");
+    shell.setHiveSessionValue("hive.tez.auto.reducer.parallelism", "false");
+    Table table = createTable("dv_delete_part",
+        PartitionSpec.builderFor(HiveIcebergStorageHandlerTestUtils.CUSTOMER_SCHEMA).bucket("customer_id", 3).build());
+    Assert.assertTrue("split data files", planFiles(table).stream()
+        .allMatch(t -> t.file().splitOffsets().size() > 1));
+    shell.executeStatement("DELETE FROM dv_delete_part WHERE customer_id % 7 = 0");
+    Assert.assertEquals(ROWS - (ROWS + 6) / 7, count("SELECT count(*) FROM dv_delete_part"));
+    assertOneDVPerDataFileAndNoMerge(table);
+  }
+
+  @Test
+  public void testSecondDeleteOverExistingDVs() {
+    Table table = createSingleFileTable("dv_delete2");
+    shell.executeStatement("DELETE FROM dv_delete2 WHERE customer_id % 7 = 0");
+    shell.executeStatement("DELETE FROM dv_delete2 WHERE customer_id % 5 = 0");
+    long deleted = LongStream.range(0, ROWS).filter(i -> i % 7 == 0 || i % 5 == 0).count();
+    Assert.assertEquals(ROWS - deleted, count("SELECT count(*) FROM dv_delete2"));
+    table.refresh();
+    Assert.assertEquals("one live DV holding every deleted position", deleted,
+        dvs(planFiles(table)).stream().mapToLong(DeleteFile::recordCount).sum());
+    assertOneDVPerDataFileAndNoMerge(table);
+  }
+
+  @Test
+  public void testUpdateOfSplitDataFile() {
+    Table table = createSingleFileTable("dv_update");
+    shell.executeStatement("UPDATE dv_update SET first_name = 'x' WHERE customer_id % 7 = 0");
+    Assert.assertEquals((ROWS + 6) / 7, count("SELECT count(*) FROM dv_update WHERE first_name = 'x'"));
+    assertOneDVPerDataFileAndNoMerge(table);
+  }
+
+  private void createMergeSource(String select) {
+    shell.executeStatement("CREATE TABLE dv_merge_src STORED BY ICEBERG AS " + select);
+  }
+
+  /**
+   * Both clauses hit the same data file, their deletes go through one delete branch.
+   */
+  private void assertMerge(String merge, long updated, long deleted, long inserted) throws HiveSQLException {
+    Table table = createSingleFileTable("dv_merge");
+    createMergeSource("SELECT customer_id FROM dv_merge WHERE customer_id % 7 = 0 UNION ALL " +
+        "SELECT customer_id + " + ROWS + " FROM dv_merge WHERE customer_id < " + inserted);
+    Assert.assertEquals("rows affected", updated + deleted + inserted, rowsAffected(merge));
+    Assert.assertEquals(ROWS - deleted + inserted, count("SELECT count(*) FROM dv_merge"));
+    Assert.assertEquals(updated, count("SELECT count(*) FROM dv_merge WHERE first_name = 'x'"));
+    assertOneDVPerDataFileAndNoMerge(table);
+  }
+
+  @Test
+  public void testMergeUpdateAndDeleteOfSameDataFile() throws HiveSQLException {
+    assertMerge("MERGE INTO dv_merge t USING dv_merge_src s ON t.customer_id = s.customer_id " +
+        "WHEN MATCHED AND t.customer_id % 2 = 0 THEN UPDATE SET first_name = 'x' " +
+        "WHEN MATCHED THEN DELETE",
+        LongStream.range(0, ROWS).filter(i -> i % 7 == 0 && i % 2 == 0).count(),
+        LongStream.range(0, ROWS).filter(i -> i % 7 == 0 && i % 2 != 0).count(), 0);
+  }
+
+  @Test
+  public void testMergeDeleteBeforeUpdateOfSameDataFile() throws HiveSQLException {
+    assertMerge("MERGE INTO dv_merge t USING dv_merge_src s ON t.customer_id = s.customer_id " +
+        "WHEN MATCHED AND t.customer_id % 2 = 0 THEN DELETE " +
+        "WHEN MATCHED THEN UPDATE SET first_name = 'x'",
+        LongStream.range(0, ROWS).filter(i -> i % 7 == 0 && i % 2 != 0).count(),
+        LongStream.range(0, ROWS).filter(i -> i % 7 == 0 && i % 2 == 0).count(), 0);
+  }
+
+  @Test
+  public void testMergeUpdateDeleteAndInsert() throws HiveSQLException {
+    assertMerge("MERGE INTO dv_merge t USING dv_merge_src s ON t.customer_id = s.customer_id " +
+        "WHEN MATCHED AND t.customer_id % 2 = 0 THEN UPDATE SET first_name = 'x' " +
+        "WHEN MATCHED THEN DELETE " +
+        "WHEN NOT MATCHED THEN INSERT VALUES (s.customer_id, 'y', 'z')",
+        LongStream.range(0, ROWS).filter(i -> i % 7 == 0 && i % 2 == 0).count(),
+        LongStream.range(0, ROWS).filter(i -> i % 7 == 0 && i % 2 != 0).count(), 10);
+  }
+
+  @Test
+  public void testMergeClausesOnDisjointDataFiles() {
+    // customer ids [0, ROWS) in one file and [ROWS, 2 * ROWS) in another
+    Table table = createSingleFileTable("dv_merge");
+    shell.executeStatement(testTables.getInsertQuery(records(ROWS, 2 * ROWS),
+        TableIdentifier.of("default", "dv_merge"), false));
+    createMergeSource("SELECT customer_id FROM dv_merge WHERE customer_id % 7 = 0");
+    shell.executeStatement("MERGE INTO dv_merge t USING dv_merge_src s ON t.customer_id = s.customer_id " +
+        "WHEN MATCHED AND t.customer_id < " + ROWS + " THEN UPDATE SET first_name = 'x' " +
+        "WHEN MATCHED THEN DELETE");
+    long deleted = LongStream.range(ROWS, 2 * ROWS).filter(i -> i % 7 == 0).count();
+    Assert.assertEquals(2 * ROWS - deleted, count("SELECT count(*) FROM dv_merge"));
+    table.refresh();
+    Assert.assertEquals("both data files have a DV", 2,
+        dvs(planFiles(table)).stream().map(DeleteFile::referencedDataFile).distinct().count());
+    assertOneDVPerDataFileAndNoMerge(table);
   }
 }
