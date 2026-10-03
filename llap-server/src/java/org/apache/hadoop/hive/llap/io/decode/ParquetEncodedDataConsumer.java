@@ -162,12 +162,14 @@ public class ParquetEncodedDataConsumer
               new ParquetRowGroupDecoder.TimestampConversionOptions(skipTimestampConversion,
                   writerTimezone, skipProlepticConversion, legacyConversionEnabled));
 
-      long rowsLeft = pages.getRowCount();
+      long rowCount = pages.getRowCount();
+      long rowsLeft = rowCount;
       int batches = 0;
       while (rowsLeft > 0) {
         int batchSize = (int) Math.min(VectorizedRowBatch.DEFAULT_SIZE, rowsLeft);
 
         ColumnVectorBatch cvb = takeBatch(batchSize);
+        cvb.startRowInFile = footer.getBlocks().get(batch.rowGroupIx()).getRowIndexOffset() + rowCount - rowsLeft;
 
         // columnReaders[i] is requestedSchema field i, i.e. the i-th projected column.
         for (int i = 0; i < columnReaders.length; ++i) {
