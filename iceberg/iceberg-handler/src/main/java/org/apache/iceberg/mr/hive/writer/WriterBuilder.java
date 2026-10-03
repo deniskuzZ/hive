@@ -20,6 +20,8 @@
 package org.apache.iceberg.mr.hive.writer;
 
 import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.io.UncheckedIOException;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -31,8 +33,12 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
+import java.util.zip.GZIPInputStream;
+import java.util.zip.GZIPOutputStream;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.hadoop.hive.ql.Context.Operation;
+import org.apache.hadoop.hive.ql.exec.ObjectCache;
+import org.apache.hadoop.hive.ql.metadata.HiveException;
 import org.apache.hadoop.hive.ql.metadata.HiveUtils;
 import org.apache.hadoop.hive.ql.security.authorization.HiveCustomStorageHandlerUtils;
 import org.apache.hadoop.hive.ql.session.SessionStateUtil;
@@ -50,10 +56,12 @@ import org.apache.iceberg.TableProperties;
 import org.apache.iceberg.deletes.DeleteGranularity;
 import org.apache.iceberg.expressions.Expression;
 import org.apache.iceberg.io.CloseableIterable;
+import org.apache.iceberg.io.FileIO;
 import org.apache.iceberg.io.OutputFileFactory;
 import org.apache.iceberg.mr.Catalogs;
 import org.apache.iceberg.mr.InputFormatConfig;
 import org.apache.iceberg.mr.hive.IcebergTableUtil;
+import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 import org.apache.iceberg.relocated.com.google.common.collect.Maps;
 import org.apache.iceberg.relocated.com.google.common.collect.Sets;
 import org.apache.iceberg.util.ContentFileUtil;
@@ -61,12 +69,15 @@ import org.apache.iceberg.util.DeleteFileSet;
 import org.apache.iceberg.util.PropertyUtil;
 import org.apache.iceberg.util.SerializationUtil;
 import org.apache.iceberg.util.SnapshotUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static org.apache.iceberg.TableProperties.DEFAULT_FILE_FORMAT;
 import static org.apache.iceberg.TableProperties.DEFAULT_FILE_FORMAT_DEFAULT;
 import static org.apache.iceberg.TableProperties.DELETE_DEFAULT_FILE_FORMAT;
 
 public class WriterBuilder {
+  private static final Logger LOG = LoggerFactory.getLogger(WriterBuilder.class);
   private final Table table;
   private final Supplier<Map<String, DeleteFileSet>> rewritableDeletes;
   private final Context context;
@@ -83,6 +94,7 @@ public class WriterBuilder {
   public static final String ICEBERG_DELETE_SKIPROWDATA = "iceberg.delete.skiprowdata";
   public static final boolean ICEBERG_DELETE_SKIPROWDATA_DEFAULT = true;
   private boolean shouldAddRowLineageColumns = false;
+  private Supplier<ObjectCache> objectCache = () -> null;
 
   private WriterBuilder(Table table, UnaryOperator<String> ops) {
     this.table = table;
@@ -160,6 +172,12 @@ public class WriterBuilder {
   }
 
   private Map<String, DeleteFileSet> rewritableDeletes(UnaryOperator<String> ops) {
+    String location = ops.apply(InputFormatConfig.REWRITABLE_DELETES_PREFIX + tableName);
+    if (location != null) {
+      return loadRewritableDeletes(location);
+    }
+    Preconditions.checkState(!context.useDVs(),
+        "The rewritable deletes of the DV writers of %s were not planned for the job", tableName);
     // the target ref of the write, a reducer does not see the ref of the scan
     String ref = HiveUtils.getTableSnapshotRef(ops.apply(Catalogs.SNAPSHOT_REF));
     Snapshot snapshot = SnapshotUtil.latestSnapshot(table, ref);
@@ -178,6 +196,61 @@ public class WriterBuilder {
       return rewritableDeletes(scan, context.useDVs());
     }
     return null;
+  }
+
+  /**
+   * Plans the rewritable deletes of the DV writers of a table, and stores them at the given location.
+   */
+  public static void writeRewritableDeletes(Table table, String ref, String location) {
+    Snapshot snapshot = SnapshotUtil.latestSnapshot(table, HiveUtils.getTableSnapshotRef(ref));
+    Map<String, DeleteFileSet> deletes = snapshot == null ? Maps.newHashMap() :
+        rewritableDeletes(table.newBatchScan().useSnapshot(snapshot.snapshotId()), true);
+    try (ObjectOutputStream out = new ObjectOutputStream(
+        new GZIPOutputStream(table.io().newOutputFile(location).create()))) {
+      out.writeObject(deletes);
+    } catch (IOException e) {
+      throw new UncheckedIOException(String.format("Failed to write rewritable deletes to %s", location), e);
+    }
+    LOG.info("Planned rewritable deletes of {} data files to {}", deletes.size(), location);
+  }
+
+  // the writers of a query share the rewritable deletes of the job
+  private Map<String, DeleteFileSet> loadRewritableDeletes(String location) {
+    ObjectCache cache = objectCache.get();
+    if (cache == null) {
+      return readRewritableDeletes(table.io(), location);
+    }
+    try {
+      return cache.<RewritableDeletes>retrieve(location,
+          () -> new RewritableDeletes(readRewritableDeletes(table.io(), location))).deletes();
+    } catch (HiveException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  private static Map<String, DeleteFileSet> readRewritableDeletes(FileIO io, String location) {
+    LOG.info("Loading rewritable deletes from {}", location);
+    try (ObjectInputStream in = new ObjectInputStream(new GZIPInputStream(io.newInputFile(location).newStream()))) {
+      return (Map<String, DeleteFileSet>) in.readObject();
+    } catch (IOException e) {
+      throw new UncheckedIOException(String.format("Failed to read rewritable deletes from %s", location), e);
+    } catch (ClassNotFoundException e) {
+      throw new IllegalStateException(String.format("Failed to read rewritable deletes from %s", location), e);
+    }
+  }
+
+  // keeps the value the object cache logs short
+  private record RewritableDeletes(Map<String, DeleteFileSet> deletes) {
+    @Override
+    public String toString() {
+      return "rewritable deletes of " + deletes.size() + " data files";
+    }
+  }
+
+  public WriterBuilder objectCache(Supplier<ObjectCache> newObjectCache) {
+    this.objectCache = newObjectCache;
+    return this;
   }
 
   private boolean shouldRewriteDeletes() {
