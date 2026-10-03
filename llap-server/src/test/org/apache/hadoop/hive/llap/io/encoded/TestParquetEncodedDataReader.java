@@ -53,6 +53,7 @@ import org.apache.hadoop.hive.common.io.DataCache.DiskRangeListFactory;
 import org.apache.hadoop.hive.common.io.DiskRange;
 import org.apache.hadoop.hive.common.io.DiskRangeList;
 import org.apache.hadoop.hive.common.io.encoded.MemoryBuffer;
+import org.apache.hadoop.hive.common.io.encoded.MemoryBufferOrBuffers;
 import org.apache.hadoop.hive.common.type.DataTypePhysicalVariation;
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.conf.HiveConf.ConfVars;
@@ -87,6 +88,7 @@ import org.apache.hadoop.hive.ql.io.orc.encoded.CacheChunk;
 import org.apache.hadoop.hive.ql.io.orc.encoded.Consumer;
 import org.apache.hadoop.hive.ql.io.parquet.read.DataWritableReadSupport;
 import org.apache.hadoop.hive.ql.io.parquet.serde.ArrayWritableObjectInspector;
+import org.apache.hadoop.hive.ql.io.parquet.vector.ParquetFooterInputFromCache;
 import org.apache.hadoop.hive.ql.io.parquet.vector.VectorizedParquetRecordReader;
 import org.apache.hadoop.hive.ql.io.sarg.ConvertAstToSearchArg;
 import org.apache.hadoop.hive.ql.io.sarg.PredicateLeaf;
@@ -103,6 +105,7 @@ import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.mapred.FileSplit;
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.orc.TypeDescription;
+import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.SimpleGroupFactory;
 import org.apache.parquet.format.converter.ParquetMetadataConverter;
@@ -423,6 +426,42 @@ public class TestParquetEncodedDataReader {
     Run second = read(jobConf(COLUMNS, TYPES, 0), wholeFile());
     assertEquals(1, second.counter(LlapIOCounters.METADATA_CACHE_HIT));
     assertEquals(0, second.counter(LlapIOCounters.METADATA_CACHE_MISS));
+  }
+
+  /** A footer larger than the tail read is read on its own and comes back whole. */
+  @Test
+  public void testFooterLargerThanTailRead() throws Exception {
+    int columns = 2000;
+    Types.MessageTypeBuilder builder = Types.buildMessage();
+    for (int i = 0; i < columns; i++) {
+      builder.optional(PrimitiveTypeName.INT64).named("wide_column_" + i);
+    }
+    MessageType schema = builder.named("wide");
+    Path wide = new Path(tmpDir.toString(), "wide.parquet");
+    try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(wide).withConf(daemonConf).withType(schema)
+        .build()) {
+      Group row = new SimpleGroupFactory(schema).newGroup();
+      for (int i = 0; i < columns; i++) {
+        row.append("wide_column_" + i, (long) i);
+      }
+      writer.write(row);
+    }
+    FileSystem fs = wide.getFileSystem(daemonConf);
+    long length = fs.getFileStatus(wide).getLen();
+    byte[] trailer = new byte[4];
+    try (FSDataInputStream in = fs.open(wide)) {
+      in.readFully(length - 8, trailer);
+    }
+    assertTrue("footer fits in the tail read", BytesUtils.readIntLittleEndian(trailer, 0) > 64 * 1024);
+
+    MemoryBufferOrBuffers footerData =
+        LlapProxy.getIo().getParquetFooterBuffersFromCache(wide, new JobConf(daemonConf), "wide-footer", null);
+    ParquetMetadata cached = ParquetFileReader.readFooter(
+        new ParquetFooterInputFromCache(footerData), ParquetMetadataConverter.NO_FILTER);
+    ParquetMetadata expected = ParquetFileReader.readFooter(
+        HadoopInputFile.fromPath(wide, daemonConf), ParquetMetadataConverter.NO_FILTER);
+    assertEquals(expected.getFileMetaData().getSchema(), cached.getFileMetaData().getSchema());
+    assertEquals(expected.getBlocks().toString(), cached.getBlocks().toString());
   }
 
   /** A Parquet fragment fills in the same counters the LLAP IO summary already shows for an ORC one. */
