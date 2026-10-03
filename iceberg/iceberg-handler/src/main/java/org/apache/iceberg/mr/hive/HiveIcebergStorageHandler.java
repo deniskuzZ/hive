@@ -188,6 +188,7 @@ import org.apache.iceberg.mr.hive.stats.IcebergColStatsWriter;
 import org.apache.iceberg.mr.hive.stats.IcebergPartitionStatsReader;
 import org.apache.iceberg.mr.hive.stats.IcebergStoredStats;
 import org.apache.iceberg.mr.hive.udf.GenericUDFIcebergZorder;
+import org.apache.iceberg.mr.hive.writer.WriterBuilder;
 import org.apache.iceberg.relocated.com.google.common.annotations.VisibleForTesting;
 import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 import org.apache.iceberg.relocated.com.google.common.collect.FluentIterable;
@@ -390,6 +391,26 @@ public class HiveIcebergStorageHandler extends DefaultStorageHandler implements 
     if (catalogName != null) {
       jobConf.set(InputFormatConfig.TABLE_CATALOG_PREFIX + tableName, catalogName);
     }
+  }
+
+  /**
+   * The DV writers of a merge-on-read DML merge the previous deletes of the data files they write. These are planned
+   * once per job, while the job is built, and shipped to the writers in a file.
+   */
+  @Override
+  public void configureJobConf(FileSinkDesc sinkDesc, JobConf jobConf) {
+    TableDesc tableDesc = sinkDesc.getTableInfo();
+    configureJobConf(tableDesc, jobConf);
+    Properties props = tableDesc.getProperties();
+    String key = InputFormatConfig.REWRITABLE_DELETES_PREFIX + tableDesc.getTableName();
+    if (sinkDesc.getWriteOperation() != Operation.DELETE || sinkDesc.isCopyOnWrite() ||
+        IcebergTableUtil.formatVersion(Maps.fromProperties(props)) < 3 || jobConf.get(key) != null) {
+      return;
+    }
+    Table table = IcebergTableUtil.getTable(jobConf, props);
+    String location = HiveTableUtil.rewritableDeletesLocation(table.location(), jobConf);
+    WriterBuilder.writeRewritableDeletes(table, props.getProperty(Catalogs.SNAPSHOT_REF), location);
+    jobConf.set(key, location);
   }
 
   @Override
