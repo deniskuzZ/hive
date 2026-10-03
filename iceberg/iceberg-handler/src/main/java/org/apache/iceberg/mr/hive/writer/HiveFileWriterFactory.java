@@ -33,6 +33,7 @@ import org.apache.iceberg.data.parquet.GenericParquetWriter;
 import org.apache.iceberg.orc.ORC;
 import org.apache.iceberg.parquet.Parquet;
 import org.apache.iceberg.parquet.VariantUtil;
+import org.apache.iceberg.relocated.com.google.common.collect.ImmutableMap;
 
 class HiveFileWriterFactory extends BaseFileWriterFactory<Record> {
 
@@ -47,8 +48,7 @@ class HiveFileWriterFactory extends BaseFileWriterFactory<Record> {
       FileFormat deleteFileFormat,
       int[] equalityFieldIds,
       Schema equalityDeleteRowSchema,
-      SortOrder equalityDeleteSortOrder,
-      Schema positionDeleteRowSchema) {
+      SortOrder equalityDeleteSortOrder) {
     super(
         table,
         dataFileFormat,
@@ -58,7 +58,7 @@ class HiveFileWriterFactory extends BaseFileWriterFactory<Record> {
         equalityFieldIds,
         equalityDeleteRowSchema,
         equalityDeleteSortOrder,
-        positionDeleteRowSchema);
+        ImmutableMap.of());
     properties = table.properties();
   }
 
@@ -120,7 +120,6 @@ class HiveFileWriterFactory extends BaseFileWriterFactory<Record> {
     private FileFormat dataFileFormat;
     private Schema dataSchema;
     private FileFormat deleteFileFormat;
-    private Schema positionDeleteRowSchema;
 
     Builder(Table table) {
       this.table = table;
@@ -141,11 +140,6 @@ class HiveFileWriterFactory extends BaseFileWriterFactory<Record> {
       return this;
     }
 
-    Builder positionDeleteRowSchema(Schema newPositionDeleteRowSchema) {
-      this.positionDeleteRowSchema = newPositionDeleteRowSchema;
-      return this;
-    }
-
     HiveFileWriterFactory build() {
       return new HiveFileWriterFactory(
           table,
@@ -155,8 +149,7 @@ class HiveFileWriterFactory extends BaseFileWriterFactory<Record> {
           deleteFileFormat,
           null,
           null,
-          null,
-          positionDeleteRowSchema);
+          null);
     }
   }
 
