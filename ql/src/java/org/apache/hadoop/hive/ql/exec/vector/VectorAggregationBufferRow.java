@@ -91,6 +91,10 @@ public class VectorAggregationBufferRow {
     accessed++;
   }
 
+  public void incrementAccessCount(int count) {
+    accessed += count;
+  }
+
   public void resetAccessCount() {
     accessed = 0;
   }
