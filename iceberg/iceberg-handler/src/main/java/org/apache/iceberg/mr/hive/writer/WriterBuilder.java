@@ -296,7 +296,6 @@ public class WriterBuilder {
     private final DeleteGranularity deleteGranularity;
     private final boolean useFanoutWriter;
     private final boolean inputOrdered;
-    private final boolean isMergeTask;
     private final boolean useDVs;
     private final Set<String> missingColumns;
 
@@ -316,7 +315,6 @@ public class WriterBuilder {
 
       this.inputOrdered = HiveCustomStorageHandlerUtils.getWriteOperationIsSorted(ops, tableName);
       this.useFanoutWriter = !inputOrdered && IcebergTableUtil.isFanoutEnabled(properties);
-      this.isMergeTask = HiveCustomStorageHandlerUtils.isMergeTaskEnabled(ops, tableName);
 
       this.deleteGranularity = DeleteGranularity.PARTITION;
       this.useDVs = IcebergTableUtil.formatVersion(properties) > 2;
@@ -352,10 +350,6 @@ public class WriterBuilder {
 
     boolean inputOrdered() {
       return inputOrdered;
-    }
-
-    boolean isMergeTask() {
-      return isMergeTask;
     }
 
     public boolean useDVs() {

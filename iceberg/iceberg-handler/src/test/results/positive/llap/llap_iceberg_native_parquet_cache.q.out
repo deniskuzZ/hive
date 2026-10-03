@@ -212,25 +212,25 @@ Model 3	1680004.80	1680004.80
 Model S	1992023.76	4206023.76
 Model Y	7824000.00	7824000.00
 NULL	4840044.00	4840044.00
-PREHOOK: query: SELECT orderid, ROW__POSITION, PARTITION__SPEC__ID, PARTITION__HASH, PARTITION__NAME FROM llap_native_orders ORDER BY orderid
+PREHOOK: query: SELECT orderid, ROW__POSITION, PARTITION__SPEC__ID, PARTITION__NAME FROM llap_native_orders ORDER BY orderid
 PREHOOK: type: QUERY
 PREHOOK: Input: default@llap_native_orders
 #### A masked pattern was here ####
-POSTHOOK: query: SELECT orderid, ROW__POSITION, PARTITION__SPEC__ID, PARTITION__HASH, PARTITION__NAME FROM llap_native_orders ORDER BY orderid
+POSTHOOK: query: SELECT orderid, ROW__POSITION, PARTITION__SPEC__ID, PARTITION__NAME FROM llap_native_orders ORDER BY orderid
 POSTHOOK: type: QUERY
 POSTHOOK: Input: default@llap_native_orders
 #### A masked pattern was here ####
-0	0	0	69905	region=EU/orderid_bucket=0
-1	0	0	85219	region=US/orderid_bucket=0
-2	1	0	69905	region=EU/orderid_bucket=0
-3	0	0	85222	region=US/orderid_bucket=3
-4	0	0	69907	region=EU/orderid_bucket=2
-5	0	0	69908	region=EU/orderid_bucket=3
-6	0	0	69906	region=EU/orderid_bucket=1
-7	0	0	85222	region=US/orderid_bucket=3
-8	1	0	69908	region=EU/orderid_bucket=3
-9	1	0	85222	region=US/orderid_bucket=3
-10	0	0	62574647	region=ASIA/orderid_bucket=0
+0	0	0	region=EU/orderid_bucket=0
+1	0	0	region=US/orderid_bucket=0
+2	1	0	region=EU/orderid_bucket=0
+3	0	0	region=US/orderid_bucket=3
+4	0	0	region=EU/orderid_bucket=2
+5	0	0	region=EU/orderid_bucket=3
+6	0	0	region=EU/orderid_bucket=1
+7	0	0	region=US/orderid_bucket=3
+8	1	0	region=EU/orderid_bucket=3
+9	1	0	region=US/orderid_bucket=3
+10	0	0	region=ASIA/orderid_bucket=0
 PREHOOK: query: SELECT PARTITION__NAME, count(*), count(distinct FILE__PATH), max(ROW__POSITION) FROM llap_native_orders GROUP BY PARTITION__NAME ORDER BY PARTITION__NAME
 PREHOOK: type: QUERY
 PREHOOK: Input: default@llap_native_orders

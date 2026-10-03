@@ -50,7 +50,7 @@ SELECT region, count(*), sum(quantity), min(price), max(price), sum(total), avg(
 SELECT item, sum(price * quantity), sum(total) FROM llap_native_orders WHERE shipped GROUP BY item ORDER BY item;
 
 --virtual columns
-SELECT orderid, ROW__POSITION, PARTITION__SPEC__ID, PARTITION__HASH, PARTITION__NAME FROM llap_native_orders ORDER BY orderid;
+SELECT orderid, ROW__POSITION, PARTITION__SPEC__ID, PARTITION__NAME FROM llap_native_orders ORDER BY orderid;
 SELECT PARTITION__NAME, count(*), count(distinct FILE__PATH), max(ROW__POSITION) FROM llap_native_orders GROUP BY PARTITION__NAME ORDER BY PARTITION__NAME;
 
 --schema evolution: rename and reorder
