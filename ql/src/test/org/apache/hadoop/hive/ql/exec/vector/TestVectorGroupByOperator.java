@@ -30,6 +30,7 @@ import static org.mockito.Mockito.verify;
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryMXBean;
 import java.lang.reflect.Constructor;
+import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -40,6 +41,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Consumer;
 
 import org.apache.calcite.util.Pair;
 import org.apache.hadoop.hive.common.type.HiveDecimal;
@@ -81,14 +83,18 @@ import org.apache.hadoop.hive.ql.udf.generic.GenericUDAFStdSample;
 import org.apache.hadoop.hive.ql.udf.generic.GenericUDAFSum;
 import org.apache.hadoop.hive.ql.udf.generic.GenericUDAFVariance;
 import org.apache.hadoop.hive.ql.udf.generic.GenericUDAFVarianceSample;
+import org.apache.hadoop.hive.ql.util.JavaDataModel;
 import org.apache.hadoop.hive.serde2.io.ByteWritable;
 import org.apache.hadoop.hive.serde2.io.DoubleWritable;
+import org.apache.hadoop.hive.serde2.io.HiveCharWritable;
 import org.apache.hadoop.hive.serde2.io.HiveDecimalWritable;
+import org.apache.hadoop.hive.serde2.io.HiveVarcharWritable;
 import org.apache.hadoop.hive.serde2.io.ShortWritable;
 import org.apache.hadoop.hive.serde2.io.TimestampWritableV2;
 import org.apache.hadoop.hive.serde2.typeinfo.TypeInfo;
 import org.apache.hadoop.hive.serde2.typeinfo.TypeInfoFactory;
 import org.apache.hadoop.io.BooleanWritable;
+import org.apache.hadoop.io.BytesWritable;
 import org.apache.hadoop.io.FloatWritable;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.LongWritable;
@@ -3337,6 +3343,570 @@ public class TestVectorGroupByOperator {
     assertEquals(expected.size(), keys.size());
   }
 
+  @Test
+  public void testSingleBytesKeyModeSelection() throws HiveException {
+    // BytesKeyGroupBy asserts the mode of each bytes key type.
+    assertEquals(VectorGroupByOperator.ProcessingModeHashAggregate.class,
+        hashProcessingModeClass(new String[] {"k1"},
+            new TypeInfo[] {TypeInfoFactory.longTypeInfo}));
+    assertEquals(VectorGroupByOperator.ProcessingModeHashAggregate.class,
+        hashProcessingModeClass(new String[] {"k1", "k2"},
+            new TypeInfo[] {TypeInfoFactory.stringTypeInfo, TypeInfoFactory.stringTypeInfo}));
+    assertEquals(VectorGroupByOperator.ProcessingModeHashAggregate.class,
+        hashProcessingModeClass(new String[] {"k1"},
+            new TypeInfo[] {TypeInfoFactory.stringTypeInfo}, desc -> {
+              desc.setGroupingSetsPresent(true);
+              desc.setListGroupingSets(new ArrayList<>(Arrays.asList(0L, 1L)));
+              desc.getKeys().add(new ExprNodeConstantDesc(TypeInfoFactory.longTypeInfo, 0L));
+              desc.setGroupingSetPosition(1);
+            }));
+  }
 
+  private Class<?> hashProcessingModeClass(String[] keys, TypeInfo[] keyTypeInfos)
+      throws HiveException {
+    return hashProcessingModeClass(keys, keyTypeInfos, desc -> { });
+  }
+
+  private Class<?> hashProcessingModeClass(String[] keys, TypeInfo[] keyTypeInfos,
+      Consumer<GroupByDesc> descSetup) throws HiveException {
+    List<String> columnNames = new ArrayList<>(Arrays.asList(keys));
+    columnNames.add("v");
+    VectorizationContext ctx = new VectorizationContext("name", columnNames);
+    Pair<GroupByDesc, VectorGroupByDesc> pair = buildKeyGroupByDesc(ctx, "count", "v",
+        TypeInfoFactory.longTypeInfo, keys, keyTypeInfos);
+    descSetup.accept(pair.left);
+    CompilationOpContext cCtx = new CompilationOpContext();
+    VectorGroupByOperator vgo = (VectorGroupByOperator) Vectorizer.vectorizeGroupByOperator(
+        OperatorFactory.get(cCtx, pair.left), ctx, pair.right);
+    FakeCaptureVectorToRowOutputOperator.addCaptureOutputChild(cCtx, vgo);
+    vgo.initialize(hconf, null);
+    return ((Object) vgo.processingMode).getClass();
+  }
+
+  @Test
+  public void testSingleBytesKeyNullAndEmpty() throws HiveException {
+    // NULL is the 16th key, which fills the initial capacity of the table, followed by the empty
+    // key, which has zero words and hash, like the unset record of the NULL entry. More keys grow
+    // the table again.
+    byte[][] keys = new byte[40][];
+    keys[16] = bytes("");
+    for (int i = 0; i < keys.length; i++) {
+      if (i != 15 && i != 16) {
+        keys[i] = bytes("k" + i);
+      }
+    }
+    Map<String, List<Long>> expected = new HashMap<>();
+    BytesKeyGroupBy gby = new BytesKeyGroupBy(TypeInfoFactory.stringTypeInfo);
+    gby.process(bytesKeyBatch(keys, false, null, expected));
+    gby.process(bytesKeyBatch(keys(null, "", "", null), false, null, expected));
+    assertEquals(40, gby.mode().keyTable.size());
+    assertEquals(expected, gby.close());
+  }
+
+  @Test
+  public void testSingleBytesKeyNullFlushedAndAddedAgain() throws HiveException {
+    byte[][] keys = new byte[100][];
+    for (int i = 1; i < keys.length; i++) {
+      keys[i] = bytes("k" + i);
+    }
+    Map<String, List<Long>> expected = new HashMap<>();
+    BytesKeyGroupBy gby = new BytesKeyGroupBy(TypeInfoFactory.stringTypeInfo);
+    gby.process(bytesKeyBatch(keys, false, null, expected));
+    // The partial flush emits the 10 oldest entries, NULL first.
+    gby.mode().gcCanary.clear();
+    gby.process(bytesKeyBatch(keys("k50"), false, null, expected));
+    assertEquals(90, gby.mode().keyTable.size());
+    // NULL and k1 get new entries, k1 probing past the slot of its removed entry.
+    gby.process(bytesKeyBatch(keys(null, null, "k1"), false, null, expected));
+    assertEquals(92, gby.mode().keyTable.size());
+    assertEquals(expected, gby.close());
+  }
+
+  @Test
+  public void testSingleBytesKeyRepeating() throws HiveException {
+    Map<String, List<Long>> expected = new HashMap<>();
+    BytesKeyGroupBy gby = new BytesKeyGroupBy(TypeInfoFactory.stringTypeInfo);
+    gby.process(repeatingBytesKeyBatch(bytes("a"), 7, null, expected));
+    gby.process(bytesKeyBatch(keys("a", "b", null), false, null, expected));
+    gby.process(repeatingBytesKeyBatch(bytes("b"), 5, new int[] {1, 3}, expected));
+    gby.process(repeatingBytesKeyBatch(null, 4, null, expected));
+    gby.process(repeatingBytesKeyBatch(null, 6, new int[] {0, 5}, expected));
+    gby.process(repeatingBytesKeyBatch(bytes("c"), 3, null, expected));
+    assertEquals(4, expected.size());
+    // One access per row, except for the row that adds the key.
+    VectorGroupByBytesKeyTable table = gby.mode().keyTable;
+    assertEquals(6 + 1, table.getRow(0).getAccessCount());
+    assertEquals(2, table.getRow(1).getAccessCount());
+    assertEquals(4 + 2, table.getRow(2).getAccessCount());
+    assertEquals(expected, gby.close());
+  }
+
+  @Test
+  public void testSingleBytesKeySelectedInUse() throws HiveException {
+    Map<String, List<Long>> expected = new HashMap<>();
+    BytesKeyGroupBy gby = new BytesKeyGroupBy(TypeInfoFactory.stringTypeInfo);
+    gby.process(bytesKeyBatch(keys("a", "x1", "b", "x2", null, "a"), false, new int[] {0, 2, 4, 5},
+        expected));
+    gby.process(bytesKeyBatch(keys("x3", "b", "x4", null), false, new int[] {1, 3}, expected));
+    assertEquals(3, expected.size());
+    assertEquals(expected, gby.close());
+  }
+
+  @Test
+  public void testSingleBytesKeyCharVarcharBinary() throws HiveException {
+    for (TypeInfo keyTypeInfo : new TypeInfo[] {TypeInfoFactory.getCharTypeInfo(10),
+        TypeInfoFactory.getVarcharTypeInfo(10), TypeInfoFactory.binaryTypeInfo}) {
+      Map<String, List<Long>> expected = new HashMap<>();
+      BytesKeyGroupBy gby = new BytesKeyGroupBy(keyTypeInfo);
+      byte[][] keys = keyTypeInfo == TypeInfoFactory.binaryTypeInfo
+          ? new byte[][] {{0}, {0, 0}, {(byte) 0xFF, 1}, null, {}, {0}}
+          : keys("ab", "abc", "ab c", null, "abcdefghij", "ab");
+      gby.process(bytesKeyBatch(keys, false, null, expected));
+      gby.process(bytesKeyBatch(keys, true, null, expected));
+      assertEquals(keyTypeInfo.toString(), 5, expected.size());
+      assertEquals(keyTypeInfo.toString(), expected, gby.close());
+    }
+  }
+
+  @Test
+  public void testSingleBytesKeyLengths() throws HiveException {
+    // Keys of 0 to 40 bytes that share their prefixes, differ in their last byte or in a trailing
+    // zero byte, referenced both inside a larger buffer and as whole arrays.
+    String chars = "abcdefghijklmnopqrstuvwxyz0123456789ABCDE";
+    List<byte[]> keyList = new ArrayList<>();
+    for (int length = 0; length <= 40; length++) {
+      keyList.add(bytes(chars.substring(0, length)));
+      keyList.add(bytes(chars.substring(0, length) + "\0"));
+      if (length > 0) {
+        keyList.add(bytes(chars.substring(0, length - 1) + "_"));
+      }
+    }
+    byte[][] keys = keyList.toArray(new byte[0][]);
+    Map<String, List<Long>> expected = new HashMap<>();
+    BytesKeyGroupBy gby = new BytesKeyGroupBy(TypeInfoFactory.stringTypeInfo);
+    gby.process(bytesKeyBatch(keys, false, null, expected));
+    gby.process(bytesKeyBatch(keys, true, null, expected));
+    assertEquals(keys.length, expected.size());
+    assertEquals(expected, gby.close());
+  }
+
+  @Test
+  public void testSingleBytesKeyHashCollisions() throws HiveException {
+    // Pairs of keys with the same hash and length that differ in the first word, the second word
+    // or the bytes after them.
+    List<byte[]> keyList = new ArrayList<>();
+    for (String format :
+        new String[] {"%08d", "%08d01234567", "01234567%08d", "0123456789abcdef%08d"}) {
+      keyList.addAll(Arrays.asList(collidingKeys(format)));
+    }
+    byte[][] keys = keyList.toArray(new byte[0][]);
+    Map<String, List<Long>> expected = new HashMap<>();
+    BytesKeyGroupBy gby = new BytesKeyGroupBy(TypeInfoFactory.stringTypeInfo);
+    gby.process(bytesKeyBatch(keys, false, null, expected));
+    gby.process(bytesKeyBatch(keys, true, null, expected));
+    assertEquals(8, expected.size());
+    assertEquals(expected, gby.close());
+  }
+
+  /**
+   * Returns two keys of the format, which has a single int argument, with the same hash.
+   */
+  private static byte[][] collidingKeys(String format) {
+    Map<Integer, byte[]> keysByHash = new HashMap<>();
+    for (int i = 0; ; i++) {
+      byte[] key = bytes(String.format(format, i));
+      byte[] other = keysByHash.put(VectorGroupByBytesKeyTable.hash(key, 0, key.length), key);
+      if (other != null) {
+        return new byte[][] {other, key};
+      }
+    }
+  }
+
+  @Test
+  public void testSingleBytesKeyManyKeys() throws HiveException {
+    Map<String, List<Long>> expected = new HashMap<>();
+    BytesKeyGroupBy gby = new BytesKeyGroupBy(TypeInfoFactory.stringTypeInfo);
+    final int keyCount = 100_000;
+    for (int pass = 0; pass < 2; pass++) {
+      for (int first = 0; first < keyCount; first += VectorizedRowBatch.DEFAULT_SIZE) {
+        byte[][] keys = new byte[Math.min(VectorizedRowBatch.DEFAULT_SIZE, keyCount - first)][];
+        for (int i = 0; i < keys.length; i++) {
+          int key = pass == 0 ? first + i : keyCount - 1 - first - i;
+          keys[i] = bytes(key % 2 == 0 ? "key-" + key : "a-longer-key-than-16-bytes-" + key);
+        }
+        gby.process(bytesKeyBatch(keys, false, null, expected));
+      }
+    }
+    assertEquals(keyCount, gby.mode().keyTable.size());
+    assertEquals(keyCount, expected.size());
+    assertEquals(expected, gby.close());
+  }
+
+  @Test
+  public void testSingleBytesKeyPartialFlush() throws HiveException {
+    // 100 hot keys accessed 11 times, then 900 cold keys, including NULL, accessed once. A partial
+    // flush emits 10% of the entries, the oldest ones accessed at most as often as average.
+    byte[][] hot = new byte[100][];
+    for (int i = 0; i < hot.length; i++) {
+      hot[i] = bytes("hot-" + i);
+    }
+    byte[][] cold = new byte[900][];
+    for (int i = 0; i < cold.length; i++) {
+      cold[i] = i == 500 ? null : bytes("cold-" + i);
+    }
+    byte[][] all = new byte[hot.length + cold.length][];
+    System.arraycopy(hot, 0, all, 0, hot.length);
+    System.arraycopy(cold, 0, all, hot.length, cold.length);
+    byte[][] hotTenTimes = new byte[10 * hot.length][];
+    for (int i = 0; i < hotTenTimes.length; i++) {
+      hotTenTimes[i] = hot[i % hot.length];
+    }
+
+    Map<String, List<Long>> expected = new HashMap<>();
+    BytesKeyGroupBy gby = new BytesKeyGroupBy(TypeInfoFactory.stringTypeInfo);
+    gby.process(bytesKeyBatch(all, false, null, expected));
+    gby.process(bytesKeyBatch(all, false, null, expected));
+    gby.mode().gcCanary.clear();
+    gby.process(bytesKeyBatch(hotTenTimes, false, null, expected));
+    assertEquals(900, gby.mode().keyTable.size());
+    gby.process(bytesKeyBatch(all, false, null, expected));
+
+    assertEquals(expected, gby.close());
+    List<Object> rows = gby.out.getCapturedRows();
+    assertEquals(100 + 1000, rows.size());
+    for (int i = 0; i < 100; i++) {
+      assertEquals("cold-" + i, keyString(((Object[]) rows.get(i))[0]));
+    }
+  }
+
+  @Test
+  public void testSingleBytesKeyPartialFlushKeepsCapacity() throws HiveException {
+    // 33 keys grow the table to a capacity of 64, which it keeps after flushing and compacting 19
+    // of them.
+    hconf.setFloat(HiveConf.ConfVars.HIVE_VECTORIZATION_GROUPBY_FLUSH_PERCENT.varname, 0.6f);
+    byte[][] keys = new byte[33][];
+    for (int i = 0; i < keys.length; i++) {
+      keys[i] = bytes(String.format("key-%04d", i));
+    }
+    long keyMemorySize = JavaDataModel.get().lengthForByteArrayOfSize(8);
+    Map<String, List<Long>> expected = new HashMap<>();
+    BytesKeyGroupBy gby = new BytesKeyGroupBy(TypeInfoFactory.stringTypeInfo);
+    VectorGroupByBytesKeyTable table = gby.mode().keyTable;
+    gby.process(bytesKeyBatch(keys, false, null, expected));
+    long arraysMemorySize = table.getMemorySize() - table.size() * keyMemorySize;
+    gby.mode().gcCanary.clear();
+    gby.process(bytesKeyBatch(keys("key-0000"), false, null, expected));
+    assertEquals(14, table.size());
+    assertEquals(14, table.end());
+    assertEquals(arraysMemorySize, table.getMemorySize() - table.size() * keyMemorySize);
+    assertEquals(expected, gby.close());
+  }
+
+  @Test
+  public void testSingleBytesKeyRemovedEntriesKeepCapacity() throws HiveException {
+    // 40 keys fill 0.6 of a capacity of 64. Each round adds 4 keys and flushes 4, which the table
+    // compacts once they fill its free room instead of growing for them.
+    byte[][] keys = new byte[40][];
+    for (int i = 0; i < keys.length; i++) {
+      keys[i] = bytes(String.format("key-%04d", i));
+    }
+    long keyMemorySize = JavaDataModel.get().lengthForByteArrayOfSize(8);
+    Map<String, List<Long>> expected = new HashMap<>();
+    BytesKeyGroupBy gby = new BytesKeyGroupBy(TypeInfoFactory.stringTypeInfo);
+    VectorGroupByBytesKeyTable table = gby.mode().keyTable;
+    gby.process(bytesKeyBatch(keys, false, null, expected));
+    long arraysMemorySize = table.getMemorySize() - table.size() * keyMemorySize;
+    for (int round = 0; round < 20; round++) {
+      byte[][] added = new byte[4][];
+      for (int i = 0; i < added.length; i++) {
+        added[i] = bytes(String.format("key-%04d", keys.length + round * added.length + i));
+      }
+      gby.mode().gcCanary.clear();
+      gby.process(bytesKeyBatch(added, false, null, expected));
+      assertEquals(40, table.size());
+      assertEquals(arraysMemorySize, table.getMemorySize() - table.size() * keyMemorySize);
+    }
+    assertEquals(expected, gby.close());
+  }
+
+  @Test
+  public void testSingleBytesKeyFullTableGrowsOnCompaction() throws HiveException {
+    // About 110 keys in a capacity of 128. Each round adds 11 keys and flushes 10% of the entries,
+    // which leaves too little free room: the first compaction doubles the capacity, so the next
+    // ones follow only after several rounds rather than on every one.
+    Map<String, List<Long>> expected = new HashMap<>();
+    BytesKeyGroupBy gby = new BytesKeyGroupBy(TypeInfoFactory.stringTypeInfo);
+    VectorGroupByBytesKeyTable table = gby.mode().keyTable;
+    byte[][] keys = new byte[110][];
+    for (int i = 0; i < keys.length; i++) {
+      keys[i] = bytes(String.format("key-%04d", i));
+    }
+    gby.process(bytesKeyBatch(keys, false, null, expected));
+    int compactions = 0;
+    for (int round = 0; round < 20; round++) {
+      byte[][] added = new byte[11][];
+      for (int i = 0; i < added.length; i++) {
+        added[i] = bytes(String.format("key-%04d", keys.length + round * added.length + i));
+      }
+      int end = table.end();
+      gby.mode().gcCanary.clear();
+      gby.process(bytesKeyBatch(added, false, null, expected));
+      if (table.end() < end + added.length) {
+        compactions++;
+      }
+    }
+    assertTrue(compactions + " compactions", compactions > 0 && compactions <= 5);
+    assertEquals(expected, gby.close());
+  }
+
+  @Test
+  public void testSingleBytesKeySmallPartialFlushes() throws HiveException {
+    // With flush.percent 0.001 each flush removes the oldest of 1100 entries, NULL first, in a
+    // table of capacity 2048, which compacts once the removed entries outnumber the others.
+    hconf.setFloat(HiveConf.ConfVars.HIVE_VECTORIZATION_GROUPBY_FLUSH_PERCENT.varname, 0.001f);
+    Map<String, List<Long>> expected = new HashMap<>();
+    BytesKeyGroupBy gby = new BytesKeyGroupBy(TypeInfoFactory.stringTypeInfo);
+    VectorGroupByBytesKeyTable table = gby.mode().keyTable;
+    for (int first = 0; first < 1100; first += 550) {
+      byte[][] keys = new byte[550][];
+      for (int i = 0; i < keys.length; i++) {
+        keys[i] = first + i == 0 ? null : bytes("k" + (first + i));
+      }
+      gby.process(bytesKeyBatch(keys, false, null, expected));
+    }
+    int compactions = 0;
+    int maxRemoved = 0;
+    for (int batch = 0; batch < 700; batch++) {
+      int end = table.end();
+      gby.mode().gcCanary.clear();
+      // NULL is added again once, as the newest entry.
+      gby.process(bytesKeyBatch(keys(batch == 300 ? null : "k1099"), false, null, expected));
+      int removed = table.end() - table.size();
+      assertTrue(removed + " removed of " + table.end(), removed <= table.size());
+      maxRemoved = Math.max(maxRemoved, removed);
+      if (table.end() < end) {
+        compactions++;
+      }
+    }
+    assertEquals(1, compactions);
+    assertTrue(maxRemoved + " removed", maxRemoved >= 500);
+    assertEquals(expected, gby.close());
+  }
+
+  @Test
+  public void testSingleBytesKeyMemoryFlush() throws HiveException {
+    // Keys of 1000 bytes and a 100KB limit keep about 80 entries. Each batch adds 10 keys, so once
+    // the table is full, each batch flushes and the new entries reuse the flushed buffers.
+    long maxMemory = ManagementFactory.getMemoryMXBean().getHeapMemoryUsage().getMax();
+    float memoryUsage = 100.0f * 1024.0f / maxMemory;
+    long maxHashTableMemory = (int) (maxMemory * memoryUsage);
+    BytesKeyGroupBy gby = new BytesKeyGroupBy(TypeInfoFactory.stringTypeInfo,
+        desc -> desc.setGroupByMemoryUsage(memoryUsage));
+    VectorAggregationBufferBatch aggregationBatch = new VectorAggregationBufferBatch();
+    aggregationBatch.compileAggregationBatchInfo(gby.vgo.aggregators);
+    VectorAggregateExpression aggregator = spy(gby.vgo.aggregators[0]);
+    gby.vgo.aggregators[0] = aggregator;
+    VectorGroupByBytesKeyTable table = gby.mode().keyTable;
+    Map<String, List<Long>> expected = new HashMap<>();
+    char[] padding = new char[990];
+    Arrays.fill(padding, 'x');
+    int flushes = 0;
+    int maxEntries = 0;
+    for (int batch = 0; batch < 50; batch++) {
+      int entries = table.size();
+      byte[][] keys = new byte[10][];
+      for (int i = 0; i < keys.length; i++) {
+        keys[i] = bytes(String.format("%010d", batch * keys.length + i) + new String(padding));
+      }
+      gby.process(bytesKeyBatch(keys, false, null, expected));
+      maxEntries = Math.max(maxEntries, entries + keys.length);
+      // The table is estimated, the aggregation buffers have a fixed size.
+      assertEquals(table.size() * aggregationBatch.getAggregatorsFixedSize()
+          + table.getMemorySize(), gby.mode().getHashTableMemorySize());
+      assertTrue(gby.mode().getHashTableMemorySize() <= maxHashTableMemory);
+      if (table.size() < entries + keys.length) {
+        flushes++;
+        assertTrue(table.size() + " entries after a flush", table.size() >= 50);
+      }
+    }
+    assertTrue(flushes + " flushes", flushes >= 30);
+    verify(aggregator, times(maxEntries)).getNewAggregationBuffer();
+    assertEquals(expected, gby.close());
+  }
+
+  @Test
+  public void testSingleBytesKeySwitchToStreaming() throws HiveException {
+    hconf.set("hive.groupby.mapaggr.checkinterval", "1000");
+    hconf.set("hive.vectorized.groupby.maxentries", "100");
+    BytesKeyGroupBy gby = new BytesKeyGroupBy(TypeInfoFactory.stringTypeInfo,
+        desc -> desc.setMinReductionHashAggr(0.4f));
+    Map<String, List<Long>> expected = new HashMap<>();
+    for (int batch = 0; batch < 5; batch++) {
+      byte[][] keys = new byte[VectorizedRowBatch.DEFAULT_SIZE][];
+      for (int i = 0; i < keys.length; i++) {
+        keys[i] = bytes("key-" + (batch * keys.length + i) / 2);
+      }
+      gby.process(bytesKeyBatch(keys, false, null, expected));
+    }
+    assertTrue(gby.vgo.processingMode instanceof VectorGroupByOperator.ProcessingModeStreaming);
+    assertEquals(expected, gby.close());
+  }
+
+  /**
+   * Runs "select count(v), sum(v) from t group by k" in hash mode with a single bytes key.
+   */
+  private final class BytesKeyGroupBy {
+    private final VectorGroupByOperator vgo;
+    private final FakeCaptureVectorToRowOutputOperator out;
+
+    BytesKeyGroupBy(TypeInfo keyTypeInfo) throws HiveException {
+      this(keyTypeInfo, desc -> { });
+    }
+
+    BytesKeyGroupBy(TypeInfo keyTypeInfo, Consumer<GroupByDesc> descSetup) throws HiveException {
+      VectorizationContext ctx = new VectorizationContext("name", Arrays.asList("k", "v"));
+      Pair<GroupByDesc, VectorGroupByDesc> pair = buildKeyGroupByDesc(ctx, "count", "v",
+          TypeInfoFactory.longTypeInfo, new String[] {"k"}, new TypeInfo[] {keyTypeInfo});
+      GroupByDesc desc = pair.left;
+      desc.getAggregators().add(buildAggregationDesc(ctx, "sum", GenericUDAFEvaluator.Mode.PARTIAL1,
+          "v", TypeInfoFactory.longTypeInfo));
+      desc.getOutputColumnNames().add("_col2");
+      descSetup.accept(desc);
+      CompilationOpContext cCtx = new CompilationOpContext();
+      vgo = (VectorGroupByOperator) Vectorizer.vectorizeGroupByOperator(
+          OperatorFactory.get(cCtx, desc), ctx, pair.right);
+      out = FakeCaptureVectorToRowOutputOperator.addCaptureOutputChild(cCtx, vgo);
+      vgo.initialize(hconf, null);
+      assertTrue(vgo.processingMode
+          instanceof VectorGroupByOperator.ProcessingModeHashAggregateSingleBytesKey);
+    }
+
+    VectorGroupByOperator.ProcessingModeHashAggregateSingleBytesKey mode() {
+      return (VectorGroupByOperator.ProcessingModeHashAggregateSingleBytesKey) vgo.processingMode;
+    }
+
+    void process(VectorizedRowBatch batch) throws HiveException {
+      vgo.process(batch, 0);
+    }
+
+    /**
+     * Closes the operator and returns the count and sum of each key, adding up its output rows.
+     */
+    Map<String, List<Long>> close() throws HiveException {
+      vgo.close(false);
+      Map<String, List<Long>> result = new HashMap<>();
+      for (Object row : out.getCapturedRows()) {
+        Object[] fields = (Object[]) row;
+        addCountSum(result, keyString(fields[0]), ((LongWritable) fields[1]).get(),
+            ((LongWritable) fields[2]).get());
+      }
+      return result;
+    }
+  }
+
+  private static void addCountSum(Map<String, List<Long>> result, String key, long count,
+      long sum) {
+    result.merge(key, Arrays.asList(count, sum),
+        (a, b) -> Arrays.asList(a.get(0) + b.get(0), a.get(1) + b.get(1)));
+  }
+
+  private static String keyString(Object key) {
+    if (key == null) {
+      return null;
+    }
+    final byte[] bytes;
+    if (key instanceof HiveCharWritable) {
+      bytes = ((HiveCharWritable) key).getStrippedValue().copyBytes();
+    } else if (key instanceof HiveVarcharWritable) {
+      bytes = ((HiveVarcharWritable) key).getTextValue().copyBytes();
+    } else if (key instanceof BytesWritable) {
+      bytes = ((BytesWritable) key).copyBytes();
+    } else {
+      bytes = ((Text) key).copyBytes();
+    }
+    return keyString(bytes);
+  }
+
+  private static String keyString(byte[] key) {
+    return key == null ? null : new String(key, StandardCharsets.ISO_8859_1);
+  }
+
+  private static byte[] bytes(String key) {
+    return key.getBytes(StandardCharsets.ISO_8859_1);
+  }
+
+  private static byte[][] keys(String... keys) {
+    return Arrays.stream(keys).map(key -> key == null ? null : bytes(key)).toArray(byte[][]::new);
+  }
+
+  /**
+   * Returns a batch of the keys, a null key being NULL, with value i at row i, and adds its
+   * selected rows to expected. The keys are set by reference to their arrays or copied into the
+   * column buffer.
+   */
+  private static VectorizedRowBatch bytesKeyBatch(byte[][] keys, boolean byRef, int[] selected,
+      Map<String, List<Long>> expected) {
+    VectorizedRowBatch batch = new VectorizedRowBatch(2);
+    BytesColumnVector keyColumn = new BytesColumnVector();
+    keyColumn.initBuffer();
+    LongColumnVector valueColumn = new LongColumnVector();
+    for (int i = 0; i < keys.length; i++) {
+      if (keys[i] == null) {
+        keyColumn.noNulls = false;
+        keyColumn.isNull[i] = true;
+      } else if (byRef) {
+        keyColumn.setRef(i, keys[i], 0, keys[i].length);
+      } else {
+        keyColumn.setVal(i, keys[i]);
+      }
+      valueColumn.vector[i] = i;
+    }
+    batch.cols[0] = keyColumn;
+    batch.cols[1] = valueColumn;
+    setSelection(batch, keys.length, selected);
+    for (int i = 0; i < batch.size; i++) {
+      int row = batch.selectedInUse ? batch.selected[i] : i;
+      addCountSum(expected, keyString(keys[row]), 1, row);
+    }
+    return batch;
+  }
+
+  /**
+   * Returns a batch of size rows with a repeating key, NULL for a null key, and value i at row i,
+   * and adds its selected rows to expected.
+   */
+  private static VectorizedRowBatch repeatingBytesKeyBatch(byte[] key, int size, int[] selected,
+      Map<String, List<Long>> expected) {
+    VectorizedRowBatch batch = new VectorizedRowBatch(2);
+    BytesColumnVector keyColumn = new BytesColumnVector();
+    keyColumn.initBuffer();
+    keyColumn.isRepeating = true;
+    if (key == null) {
+      keyColumn.noNulls = false;
+      keyColumn.isNull[0] = true;
+    } else {
+      keyColumn.setVal(0, key);
+    }
+    LongColumnVector valueColumn = new LongColumnVector();
+    for (int i = 0; i < size; i++) {
+      valueColumn.vector[i] = i;
+    }
+    batch.cols[0] = keyColumn;
+    batch.cols[1] = valueColumn;
+    setSelection(batch, size, selected);
+    for (int i = 0; i < batch.size; i++) {
+      addCountSum(expected, keyString(key), 1, batch.selectedInUse ? batch.selected[i] : i);
+    }
+    return batch;
+  }
+
+  private static void setSelection(VectorizedRowBatch batch, int size, int[] selected) {
+    if (selected == null) {
+      batch.size = size;
+    } else {
+      batch.selectedInUse = true;
+      System.arraycopy(selected, 0, batch.selected, 0, selected.length);
+      batch.size = selected.length;
+    }
+  }
 }
-
