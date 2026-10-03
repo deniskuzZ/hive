@@ -618,7 +618,7 @@ public class VectorGroupByOperator extends Operator<GroupByDesc>
      * Computes the memory limits for hash table flush (spill).
      */
     private void computeMemoryLimits() {
-      fixedHashEntrySize = getKeyFixedSize() + aggregationBatchInfo.getAggregatorsFixedSize();
+      fixedHashEntrySize = getKeyFixedSize() + getAggregatorsFixedSize();
 
       MemoryMXBean memoryMXBean = ManagementFactory.getMemoryMXBean();
       maxMemory = isLlap ? getConf().getMaxMemoryAvailable() : memoryMXBean.getHeapMemoryUsage().getMax();
@@ -638,7 +638,7 @@ public class VectorGroupByOperator extends Operator<GroupByDesc>
           hashTableMemoryPercentage,
           fixedHashEntrySize,
           getKeyFixedSize(),
-          aggregationBatchInfo.getAggregatorsFixedSize());
+          getAggregatorsFixedSize());
       }
     }
 
@@ -654,6 +654,20 @@ public class VectorGroupByOperator extends Operator<GroupByDesc>
      */
     int getKeyVariableSize(int batchSize) {
       return keyWrappersBatch.getVariableSize(batchSize);
+    }
+
+    /**
+     * Returns the fixed size of the aggregation buffers of an entry.
+     */
+    long getAggregatorsFixedSize() {
+      return aggregationBatchInfo.getAggregatorsFixedSize();
+    }
+
+    /**
+     * Returns the variable size of the aggregation buffers of the current batch.
+     */
+    int getAggregatorsVariableSize(int batchSize) {
+      return aggregationBatchInfo.getVariableSize(batchSize);
     }
 
     /**
@@ -788,7 +802,7 @@ public class VectorGroupByOperator extends Operator<GroupByDesc>
      */
     private void updateAvgVariableSize(VectorizedRowBatch batch) {
       int keyVariableSize = getKeyVariableSize(batch.size);
-      int aggVariableSize = aggregationBatchInfo.getVariableSize(batch.size);
+      int aggVariableSize = getAggregatorsVariableSize(batch.size);
 
       // This assumes the distribution of variable size keys/aggregates in the input
       // is the same as the distribution of variable sizes in the hash entries
@@ -827,9 +841,12 @@ public class VectorGroupByOperator extends Operator<GroupByDesc>
 
   /**
    * Hash aggregate mode for a single STRING, CHAR, VARCHAR or BINARY key, which looks up the key
-   * bytes in a {@link VectorGroupByBytesKeyTable}. The memory of the table is estimated from its
-   * arrays and key bytes, so the per entry estimate only covers the aggregation buffers. While the
-   * table grows, its old and new arrays are both live; that transient is not accounted.
+   * bytes in a {@link VectorGroupByBytesKeyTable}. When {@link VectorGroupByAggregationColumns}
+   * covers every aggregator, the aggregation state of the entries is kept there instead of in
+   * aggregation buffers. The memory of the table is estimated from its arrays and key bytes, and
+   * that of the aggregation columns from their arrays, so the per entry estimate only covers the
+   * aggregation buffers, if any. While the table or the columns grow, their old and new arrays are
+   * both live; that transient is not accounted.
    */
   final class ProcessingModeHashAggregateSingleBytesKey extends ProcessingModeHashAggregate {
 
@@ -837,6 +854,14 @@ public class VectorGroupByOperator extends Operator<GroupByDesc>
 
     @VisibleForTesting
     final VectorGroupByBytesKeyTable keyTable = new VectorGroupByBytesKeyTable();
+
+    // The aggregation state of the entries; null when kept in aggregation buffers.
+    @VisibleForTesting
+    final VectorGroupByAggregationColumns aggregationColumns =
+        VectorGroupByAggregationColumns.create(aggregators);
+
+    // Entries whose aggregation columns are initialized.
+    private int initializedEntries;
 
     // Table entries of the rows of the current batch.
     private final int[] batchEntries = new int[VectorizedRowBatch.DEFAULT_SIZE];
@@ -847,14 +872,35 @@ public class VectorGroupByOperator extends Operator<GroupByDesc>
       aggregationBatchInfo.startBatch();
 
       final BytesColumnVector keyColumn = (BytesColumnVector) batch.cols[keyColumnNum];
-      if (keyColumn.isRepeating) {
+      if (aggregationColumns == null && keyColumn.isRepeating) {
         // One buffer set for the whole batch, which processAggregators aggregates at once.
         aggregationBatchInfo.mapAggregationBufferSet(
             getOrAllocate(findOrAdd(keyColumn, 0), batch.size), 0);
         return;
       }
-      // Looking up all keys before mapping the rows measured up to 18% faster than one loop.
+      findOrAddEntries(keyColumn, batch);
       final int size = batch.size;
+      if (aggregationColumns != null) {
+        initAddedEntries(size);
+        return;
+      }
+      final int[] entries = batchEntries;
+      for (int i = 0; i < size; i++) {
+        aggregationBatchInfo.mapAggregationBufferSet(getOrAllocate(entries[i], 1), i);
+      }
+    }
+
+    /**
+     * Sets the table entry of each row of the batch in batchEntries, adding the absent keys.
+     */
+    private void findOrAddEntries(BytesColumnVector keyColumn, VectorizedRowBatch batch) {
+      final int size = batch.size;
+      final int[] entries = batchEntries;
+      if (keyColumn.isRepeating) {
+        Arrays.fill(entries, 0, size, findOrAdd(keyColumn, 0));
+        return;
+      }
+      // Looking up all keys before mapping the rows measured up to 18% faster than one loop.
       final boolean selectedInUse = batch.selectedInUse;
       final int[] selected = batch.selected;
       final boolean noNulls = keyColumn.noNulls;
@@ -862,15 +908,11 @@ public class VectorGroupByOperator extends Operator<GroupByDesc>
       final byte[][] vector = keyColumn.vector;
       final int[] start = keyColumn.start;
       final int[] length = keyColumn.length;
-      final int[] entries = batchEntries;
       for (int i = 0; i < size; i++) {
         final int row = selectedInUse ? selected[i] : i;
         entries[i] = noNulls || !isNull[row]
             ? keyTable.findOrAdd(vector[row], start[row], length[row])
             : keyTable.findOrAddNull();
-      }
-      for (int i = 0; i < size; i++) {
-        aggregationBatchInfo.mapAggregationBufferSet(getOrAllocate(entries[i], 1), i);
       }
     }
 
@@ -901,6 +943,33 @@ public class VectorGroupByOperator extends Operator<GroupByDesc>
     }
 
     /**
+     * Initializes the aggregation columns of the entries added by the rowCount rows of the batch,
+     * the newest entries of the table, and counts an access for each row except for those that
+     * added an entry; {@link VectorGroupByAggregationColumns#aggregate} counts the accesses of each
+     * entry.
+     */
+    private void initAddedEntries(int rowCount) {
+      final int end = keyTable.end();
+      final int added = end - initializedEntries;
+      if (added > 0) {
+        aggregationColumns.initEntries(initializedEntries, end);
+        initializedEntries = end;
+        numEntriesHashTable += added;
+        numEntriesSinceCheck += added;
+      }
+      totalAccessCount += rowCount - added;
+    }
+
+    @Override
+    protected void processAggregators(VectorizedRowBatch batch) throws HiveException {
+      if (aggregationColumns != null) {
+        aggregationColumns.aggregate(batch, batchEntries);
+      } else {
+        super.processAggregators(batch);
+      }
+    }
+
+    /**
      * Emits the entries of the table. A partial flush visits the entries oldest first, emits those
      * accessed at most as often as the average and resets the access count of the others, then
      * removes the emitted entries. Oldest first is the chosen eviction order: it is the entry order
@@ -918,26 +987,23 @@ public class VectorGroupByOperator extends Operator<GroupByDesc>
       int entriesFlushed = 0;
       final int end = keyTable.end();
       for (int entry = 0; entry < end; entry++) {
-        final VectorAggregationBufferRow bufferRow = keyTable.getRow(entry);
-        if (bufferRow == null) {
+        if (keyTable.isRemoved(entry)) {
           // Removed by an earlier partial flush.
           continue;
         }
-        if (!all && avgAccess >= 1 && bufferRow.getAccessCount() > avgAccess) {
+        final int accessCount = getAccessCount(entry);
+        if (!all && avgAccess >= 1 && accessCount > avgAccess) {
           // resetting to give chance for other entries
-          totalAccessCount -= bufferRow.getAccessCount();
-          bufferRow.resetAccessCount();
+          totalAccessCount -= accessCount;
+          resetAccessCount(entry);
           continue;
         }
 
-        finishAggregators(bufferRow, false);
-        writeEntryRow(entry, bufferRow);
+        writeEntryRow(entry);
 
         if (!all) {
-          totalAccessCount -= bufferRow.getAccessCount();
-          bufferRow.resetAccessCount();
-          reusableAggregationBufferRows.add(bufferRow);
-          keyTable.remove(entry);
+          totalAccessCount -= accessCount;
+          removeEntry(entry);
           --numEntriesHashTable;
           if (++entriesFlushed >= entriesToFlush) {
             break;
@@ -951,18 +1017,46 @@ public class VectorGroupByOperator extends Operator<GroupByDesc>
         numEntriesHashTable = 0;
         numFlushedOutEntriesBeforeFinalFlush = 0;
       } else {
-        keyTable.compactIfSparse();
+        keyTable.compactIfSparse(aggregationColumns);
         numFlushedOutEntriesBeforeFinalFlush += entriesFlushed;
+      }
+      initializedEntries = keyTable.end();
+    }
+
+    private int getAccessCount(int entry) {
+      return aggregationColumns != null ? aggregationColumns.getAccessCount(entry)
+          : keyTable.getRow(entry).getAccessCount();
+    }
+
+    private void resetAccessCount(int entry) {
+      if (aggregationColumns != null) {
+        aggregationColumns.resetAccessCount(entry);
+      } else {
+        keyTable.getRow(entry).resetAccessCount();
       }
     }
 
-    private void writeEntryRow(int entry, VectorAggregationBufferRow bufferRow)
-        throws HiveException {
+    private void removeEntry(int entry) {
+      if (aggregationColumns == null) {
+        final VectorAggregationBufferRow bufferRow = keyTable.getRow(entry);
+        bufferRow.resetAccessCount();
+        reusableAggregationBufferRows.add(bufferRow);
+      }
+      keyTable.remove(entry);
+    }
+
+    private void writeEntryRow(int entry) throws HiveException {
       final int batchIndex = outputBatch.size;
       keyTable.writeKey(entry, (BytesColumnVector) outputBatch.cols[0], batchIndex);
-      for (int i = 0; i < aggregators.length; ++i) {
-        aggregators[i].assignRowColumn(outputBatch, batchIndex, i + 1,
-            bufferRow.getAggregationBuffer(i));
+      if (aggregationColumns != null) {
+        aggregationColumns.write(entry, outputBatch, batchIndex, 1);
+      } else {
+        final VectorAggregationBufferRow bufferRow = keyTable.getRow(entry);
+        finishAggregators(bufferRow, false);
+        for (int i = 0; i < aggregators.length; ++i) {
+          aggregators[i].assignRowColumn(outputBatch, batchIndex, i + 1,
+              bufferRow.getAggregationBuffer(i));
+        }
       }
       ++outputBatch.size;
       if (outputBatch.size == VectorizedRowBatch.DEFAULT_SIZE) {
@@ -981,8 +1075,19 @@ public class VectorGroupByOperator extends Operator<GroupByDesc>
     }
 
     @Override
+    long getAggregatorsFixedSize() {
+      return aggregationColumns != null ? 0 : super.getAggregatorsFixedSize();
+    }
+
+    @Override
+    int getAggregatorsVariableSize(int batchSize) {
+      return aggregationColumns != null ? 0 : super.getAggregatorsVariableSize(batchSize);
+    }
+
+    @Override
     long getHashTableMemorySize() {
-      return super.getHashTableMemorySize() + keyTable.getMemorySize();
+      return super.getHashTableMemorySize() + keyTable.getMemorySize()
+          + (aggregationColumns != null ? aggregationColumns.getMemorySize() : 0);
     }
   }
 

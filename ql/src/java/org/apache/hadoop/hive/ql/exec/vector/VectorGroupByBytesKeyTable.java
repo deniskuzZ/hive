@@ -43,6 +43,16 @@ import com.google.common.annotations.VisibleForTesting;
  */
 final class VectorGroupByBytesKeyTable {
 
+  /**
+   * Follows the renumbering of the remaining entries by a compaction.
+   */
+  interface EntryMover {
+    /**
+     * Moves entry entries[i] to entry i for each i below count, the entries being increasing.
+     */
+    void moveEntries(int[] entries, int count);
+  }
+
   private static final VarHandle LONG_LE =
       MethodHandles.byteArrayViewVarHandle(long[].class, ByteOrder.LITTLE_ENDIAN);
 
@@ -145,6 +155,13 @@ final class VectorGroupByBytesKeyTable {
   }
 
   /**
+   * Returns whether the entry was removed.
+   */
+  boolean isRemoved(int entry) {
+    return keys[entry] == null && entry != nullEntry;
+  }
+
+  /**
    * Sets the key of the entry at the given row of the column.
    */
   void writeKey(int entry, BytesColumnVector column, int row) {
@@ -180,22 +197,26 @@ final class VectorGroupByBytesKeyTable {
    * table from them, keeping the capacity, as the table refills after a partial flush, unless they
    * fill more than 3/4 of it: then the capacity doubles, as the next compaction would otherwise
    * follow after a few removals and rebuild the whole table for them. A sparse table compacts after
-   * at least as many removals as there are remaining entries.
+   * at least as many removals as there are remaining entries. The mover, if any, follows the
+   * renumbering.
    */
-  void compactIfSparse() {
+  void compactIfSparse(EntryMover mover) {
     if (2 * size >= end && end - size < rows.length - end) {
       return;
     }
     int kept = 0;
     // A local, not the field: storing the field in this loop is ~2.7x slower under G1.
     int keptNullEntry = -1;
+    // Recorded even without a mover: a conditional store here measured 3.5x slower under C2.
+    final int[] keptEntries = new int[size];
     for (int entry = 0; entry < end; entry++) {
-      if (rows[entry] == null) {
+      if (isRemoved(entry)) {
         continue;
       }
       if (entry == nullEntry) {
         keptNullEntry = kept;
       }
+      keptEntries[kept] = entry;
       System.arraycopy(entryWords, ENTRY_WORDS * entry, entryWords, ENTRY_WORDS * kept,
           ENTRY_WORDS);
       keys[kept] = keys[entry];
@@ -206,6 +227,10 @@ final class VectorGroupByBytesKeyTable {
     Arrays.fill(rows, kept, end, null);
     end = kept;
     nullEntry = keptNullEntry;
+    if (mover != null) {
+      // One pass per array of the mover: moving all of them per entry measured 10x slower.
+      mover.moveEntries(keptEntries, kept);
+    }
     resize(4 * kept > 3 * rows.length ? 2 * rows.length : rows.length);
   }
 
