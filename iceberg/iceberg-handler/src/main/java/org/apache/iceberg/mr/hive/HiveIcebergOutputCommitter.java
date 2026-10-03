@@ -293,6 +293,7 @@ public class HiveIcebergOutputCommitter extends OutputCommitter {
                 HiveTableUtil.jobLocation(table.location(), jobConf, jobContext.getJobID()))
             );
             commitTable(table.io(), fileExecutor, output, jobContexts, operation);
+            deleteRewritableDeletes(output, jobContexts);
           });
 
       // Cleanup any merge input files.
@@ -303,6 +304,24 @@ public class HiveIcebergOutputCommitter extends OutputCommitter {
     for (JobContext jobContext : jobContextList) {
       cleanup(jobContext, jobLocations);
     }
+  }
+
+  private static void deleteRewritableDeletes(OutputTable output, Collection<JobContext> jobContexts) {
+    String key = InputFormatConfig.REWRITABLE_DELETES_PREFIX + output.tableName;
+    jobContexts.stream()
+        .map(JobContext::getJobConf)
+        // the key can come from the session: remove only a location planned for this query
+        .filter(conf -> conf.get(key) != null &&
+            HiveTableUtil.isRewritableDeletesLocation(output.table.location(), conf, conf.get(key)))
+        .map(conf -> conf.get(key))
+        .distinct()
+        .forEach(location -> {
+          try {
+            output.table.io().deleteFile(location);
+          } catch (RuntimeException e) {
+            LOG.warn("Failed to remove the rewritable deletes {}", location, e);
+          }
+        });
   }
 
   private static Multimap<OutputTable, JobContext> collectOutputs(List<JobContext> jobContextList) {
@@ -362,6 +381,8 @@ public class HiveIcebergOutputCommitter extends OutputCommitter {
           .executeWith(tableExecutor)
           .onFailure((output, ex) -> LOG.warn("Failed cleanup table {} on abort job", output, ex))
           .run(output -> {
+            // first: listing a job location fails when no writer task committed
+            deleteRewritableDeletes(output, outputs.get(output));
             for (JobContext jobContext : outputs.get(output)) {
               LOG.info("Cleaning job for jobID: {}, table: {}", jobContext.getJobID(), output);
               Table table = output.table;
