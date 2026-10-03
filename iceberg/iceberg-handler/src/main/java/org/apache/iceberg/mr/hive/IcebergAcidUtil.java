@@ -234,10 +234,6 @@ public class IcebergAcidUtil {
     return rec.get(DELETE_FILE_META_COLS.get(MetadataColumns.FILE_PATH), String.class);
   }
 
-  public static long getFilePosition(Record rec) {
-    return rec.get(FILE_READ_META_COLS.get(MetadataColumns.ROW_POSITION), Long.class);
-  }
-
   public static long getDeleteFilePosition(Record rec) {
     return rec.get(DELETE_FILE_META_COLS.get(MetadataColumns.ROW_POSITION), Long.class);
   }
@@ -281,9 +277,11 @@ public class IcebergAcidUtil {
 
   public static class VirtualColumnAwareIterator<T> implements CloseableIterator<T> {
 
+    private static final int ROW_POSITION_INDEX = FILE_READ_META_COLS.get(MetadataColumns.ROW_POSITION);
+
     private final CloseableIterator<T> currentIterator;
     private final GenericRecord current;
-    private final Configuration conf;
+    private final IOContext ioContext;
 
     private final int specId;
     private final String filePath;
@@ -293,13 +291,13 @@ public class IcebergAcidUtil {
       this.currentIterator = currentIterator;
       this.current = GenericRecord.create(
           new Schema(columns.subList(FILE_READ_META_COLS.size(), columns.size())));
-      this.conf = conf;
+      this.ioContext = IOContextMap.get(conf);
 
       this.specId = task.file().specId();
       this.filePath = task.file().location();
 
-      IOContext ioContext = IOContextMap.get(conf);
-      ioContext.setPartitionName(IcebergTableUtil.toPartitionName(task.spec(), task.file().partition()));
+      ioContext.setPartitionName(
+          IcebergTableUtil.toPartitionName(task.spec(), task.file().partition()));
       ioContext.setPartitionKey(serializePartition(task.file().partition(), task.spec()));
     }
 
@@ -318,12 +316,10 @@ public class IcebergAcidUtil {
       T next = currentIterator.next();
       GenericRecord rec = (GenericRecord) next;
       IcebergAcidUtil.copyFields(rec, FILE_READ_META_COLS.size(), current.size(), current);
-      PositionDeleteInfo.setIntoConf(conf,
-          specId,
-          filePath,
-          IcebergAcidUtil.getFilePosition(rec));
-      RowLineageInfo.setRowLineageInfoIntoConf(RowLineageReader.readRowId(rec),
-          RowLineageReader.readLastUpdatedSequenceNumber(rec), conf);
+      ioContext.setPositionDeleteInfo(
+          new PositionDeleteInfo(specId, filePath, rec.get(ROW_POSITION_INDEX, Long.class)));
+      ioContext.setRowLineageInfo(new RowLineageInfo(
+          RowLineageReader.readRowId(rec), RowLineageReader.readLastUpdatedSequenceNumber(rec)));
       return (T) current;
     }
   }
