@@ -243,6 +243,10 @@ public class HiveIcebergStorageHandler extends DefaultStorageHandler implements 
 
   private static final List<FieldSchema> EMPTY_ORDERING = ImmutableList.of();
 
+  private static final List<FieldSchema> EMPTY_COLUMNS = ImmutableList.of();
+
+  private static final List<FieldSchema> DV_DISTRIBUTION = schema(ImmutableList.of(FILE_PATH));
+
   @Override
   public Class<? extends InputFormat> getInputFormatClass() {
     return HiveIcebergInputFormat.class;
@@ -1609,13 +1613,23 @@ public class HiveIcebergStorageHandler extends DefaultStorageHandler implements 
   @Override
   public List<FieldSchema> acidSortColumns(org.apache.hadoop.hive.ql.metadata.Table table, Operation operation) {
     return switch (operation) {
-      case DELETE -> IcebergTableUtil.isFanoutEnabled(table.getParameters()) ?
-        EMPTY_ORDERING : POSITION_DELETE_ORDERING;
+      // a DV writer does not need its deletes ordered
+      case DELETE -> IcebergTableUtil.isFanoutEnabled(table.getParameters()) ||
+          IcebergTableUtil.formatVersion(table.getParameters()) >= 3 ? EMPTY_ORDERING : POSITION_DELETE_ORDERING;
       case MERGE -> POSITION_DELETE_ORDERING;
       // For update operations we use the same sort order defined by
       // {@link #createDPContext(HiveConf, org.apache.hadoop.hive.ql.metadata.Table)}
       default -> EMPTY_ORDERING;
     };
+  }
+
+  /**
+   * A task writes one DV per data file, so all deletes of a data file must reach the same task.
+   */
+  @Override
+  public List<FieldSchema> acidDistributeColumns(org.apache.hadoop.hive.ql.metadata.Table table,
+      Operation operation) {
+    return IcebergTableUtil.formatVersion(table.getParameters()) >= 3 ? DV_DISTRIBUTION : EMPTY_COLUMNS;
   }
 
   @Override
