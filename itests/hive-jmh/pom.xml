@@ -98,6 +98,25 @@
       <version>${mockito-inline.version}</version>
     </dependency>
   </dependencies>
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <configuration>
+          <!-- JMH generates the benchmark classes and META-INF/BenchmarkList with its annotation processor. -->
+          <proc combine.self="override">full</proc>
+          <annotationProcessorPaths>
+            <path>
+              <groupId>org.openjdk.jmh</groupId>
+              <artifactId>jmh-generator-annprocess</artifactId>
+              <version>${jmh.version}</version>
+            </path>
+          </annotationProcessorPaths>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
   <profiles>
     <profile>
       <id>perf</id>
@@ -118,6 +137,12 @@
                     <transformer implementation="com.github.edwgiz.mavenShadePlugin.log4j2CacheTransformer.PluginsCacheFileTransformer"/>
                     <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
                       <mainClass>org.openjdk.jmh.Main</mainClass>
+                      <!-- dnsjava ships its InetAddressResolverProvider only under META-INF/versions/18 (a
+                           multi-release jar); without this entry the shaded jar drops that version selection
+                           and the JDK 18+ service loader fails with "Provider ... not found" on every run. -->
+                      <manifestEntries>
+                        <Multi-Release>true</Multi-Release>
+                      </manifestEntries>
                     </transformer>
                   </transformers>
                   <filters>
