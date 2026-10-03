@@ -20,49 +20,62 @@
 package org.apache.iceberg.mr.hive.writer;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.apache.hadoop.io.Writable;
 import org.apache.iceberg.DeleteFile;
-import org.apache.iceberg.PartitionKey;
+import org.apache.iceberg.PartitionSpec;
+import org.apache.iceberg.StructLike;
 import org.apache.iceberg.Table;
-import org.apache.iceberg.data.GenericRecord;
 import org.apache.iceberg.data.Record;
-import org.apache.iceberg.deletes.PositionDelete;
 import org.apache.iceberg.io.DeleteWriteResult;
 import org.apache.iceberg.io.OutputFileFactory;
 import org.apache.iceberg.mr.hive.FilesForCommit;
 import org.apache.iceberg.mr.hive.IcebergAcidUtil;
 import org.apache.iceberg.mr.hive.writer.WriterBuilder.Context;
 import org.apache.iceberg.mr.mapred.Container;
+import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
+import org.apache.iceberg.relocated.com.google.common.collect.Maps;
+import org.apache.iceberg.types.Type;
 import org.apache.iceberg.util.DeleteFileSet;
 
 class HiveIcebergDeleteWriter extends HiveIcebergWriterBase {
 
-  private final GenericRecord rowDataTemplate;
-  private final boolean isMergeTask;
+  private final boolean useDVs;
+  // the partitions of the deleted records by spec and serialized partition
+  private final Map<Integer, Map<ByteBuffer, StructLike>> partitions;
 
   HiveIcebergDeleteWriter(
       Table table, Map<String, DeleteFileSet> rewritableDeletes,
       HiveFileWriterFactory writerFactory, OutputFileFactory deleteFileFactory,
       Context context) {
     super(table, newDeleteWriter(table, rewritableDeletes, writerFactory, deleteFileFactory, context));
-
-    this.rowDataTemplate = GenericRecord.create(table.schema());
-    this.isMergeTask = context.isMergeTask();
+    this.useDVs = context.useDVs();
+    this.partitions = Maps.newHashMapWithExpectedSize(specs.size());
   }
 
   @Override
   public void write(Writable row) throws IOException {
     Record rec = ((Container<Record>) row).get();
-    PositionDelete<Record> positionDelete = IcebergAcidUtil.getPositionDelete(rec, rowDataTemplate, isMergeTask);
-    int specId = IcebergAcidUtil.parseSpecId(rec);
-    PartitionKey partitionKey = isMergeTask ? IcebergAcidUtil.parsePartitionKey(rec) :
-        partition(positionDelete.row(), specId);
-    // the delete writers write no row data
-    positionDelete.set(positionDelete.path(), positionDelete.pos(), null);
-    writer.write(positionDelete, specs.get(specId), partitionKey);
+    PartitionSpec spec = specs.get(IcebergAcidUtil.parseSpecId(rec));
+    StructLike partition = partitions.computeIfAbsent(spec.specId(), id -> newPartitionCache(spec))
+        .computeIfAbsent(IcebergAcidUtil.parseSerializedPartition(rec),
+            serialized -> IcebergAcidUtil.deserializePartition(serialized, spec));
+    writer.write(IcebergAcidUtil.getPositionDelete(rec), spec, partition);
+  }
+
+  /**
+   * A position delete file applies to the data files of its partition. The partition field of a dropped source column
+   * has the unknown type, so the partition of a position delete file cannot hold the value of the data files.
+   */
+  private Map<ByteBuffer, StructLike> newPartitionCache(PartitionSpec spec) {
+    Preconditions.checkArgument(useDVs || spec.partitionType().fields().stream()
+            .noneMatch(field -> field.type().typeId() == Type.TypeID.UNKNOWN),
+        "Cannot delete from the data files of partition spec %s: the source column of a partition field was dropped",
+        spec.specId());
+    return Maps.newHashMap();
   }
 
   @Override

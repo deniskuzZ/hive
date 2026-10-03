@@ -24,43 +24,34 @@ import org.apache.hadoop.conf.Configuration;
 public class PositionDeleteInfo {
 
   private static final String CONF_KEY_SPEC_ID = "hive.io.context.position.delete.spec.id";
-  private static final String CONF_KEY_PART_HASH = "hive.io.context.position.delete.partition.hash";
   private static final String CONF_KEY_FILE_PATH = "hive.io.context.position.delete.file.path";
   private static final String CONF_KEY_ROW_POSITION = "hive.io.context.position.delete.row.position";
 
   public static PositionDeleteInfo parseFromConf(Configuration conf) {
     int specId = conf.getInt(CONF_KEY_SPEC_ID, -1);
-    long partHash = conf.getLong(CONF_KEY_PART_HASH, -1);
     String filePath = conf.get(CONF_KEY_FILE_PATH);
     long rowPos = conf.getLong(CONF_KEY_ROW_POSITION, -1);
-    return new PositionDeleteInfo(specId, partHash, filePath, rowPos);
+    return new PositionDeleteInfo(specId, filePath, rowPos);
   }
 
-  public static void setIntoConf(Configuration conf, int specId, long partHash, String filePath, long filePos) {
+  public static void setIntoConf(Configuration conf, int specId, String filePath, long filePos) {
     conf.setInt(CONF_KEY_SPEC_ID, specId);
-    conf.setLong(CONF_KEY_PART_HASH, partHash);
     conf.set(CONF_KEY_FILE_PATH, filePath);
     conf.setLong(CONF_KEY_ROW_POSITION, filePos);
   }
 
   private final int specId;
-  private final long partitionHash;
   private final String filePath;
   private final long filePos;
 
-  public PositionDeleteInfo(int specId, long partitionHash, String filePath, long filePos) {
+  public PositionDeleteInfo(int specId, String filePath, long filePos) {
     this.specId = specId;
-    this.partitionHash = partitionHash;
     this.filePath = filePath;
     this.filePos = filePos;
   }
 
   public int getSpecId() {
     return specId;
-  }
-
-  public long getPartitionHash() {
-    return partitionHash;
   }
 
   public String getFilePath() {
