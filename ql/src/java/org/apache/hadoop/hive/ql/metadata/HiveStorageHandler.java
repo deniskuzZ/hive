@@ -603,6 +603,20 @@ public interface HiveStorageHandler extends Configurable {
   }
 
   /**
+   * {@link org.apache.hadoop.hive.ql.metadata.HiveStorageHandler} method to get the columns the deleted records of a
+   * DELETE/UPDATE/MERGE statement are distributed by in the rewritten query. {@link #acidSortColumns} orders them
+   * within a writer.
+   *
+   * @param table the table which is being deleted/updated/merged into
+   * @param operation the operation type we are executing
+   * @return the list of columns that should be used as distribute columns in the rewritten ACID query
+   */
+  default List<FieldSchema> acidDistributeColumns(org.apache.hadoop.hive.ql.metadata.Table table,
+      Operation operation) {
+    return Collections.emptyList();
+  }
+
+  /**
    * Check if the underlying storage handler implementation supports sort columns.
    * @return true if the storage handler can support it
    */
