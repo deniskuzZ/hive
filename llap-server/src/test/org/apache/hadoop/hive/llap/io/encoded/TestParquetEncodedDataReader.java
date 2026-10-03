@@ -715,6 +715,7 @@ public class TestParquetEncodedDataReader {
 
     assertEquals(2, run.counter(LlapIOCounters.SELECTED_ROWGROUPS));
     // Groups 0 and 2 are selected, so row group 2 follows row group 0 with nothing in between.
+    assertEquals(Arrays.asList(0L, 1024L, 3000L, 4024L), run.startRows);
     assertArrayEquals(project(expectedRow(3000), 0, 3), run.rows.get(ROWS_PER_GROUP));
   }
 
@@ -1339,6 +1340,7 @@ public class TestParquetEncodedDataReader {
   private static final class Run {
     final List<Object[]> rows;
     final List<Integer> batchSizes;
+    final List<Long> startRows;
     final ColumnVector[] firstBatchCols;
     final boolean done;
     final Throwable error;
@@ -1352,6 +1354,7 @@ public class TestParquetEncodedDataReader {
         List<MemoryBuffer> buffers, List<long[]> reads, Ledger ledger) {
       this.rows = c.rows;
       this.batchSizes = c.batchSizes;
+      this.startRows = c.startRows;
       this.firstBatchCols = c.firstBatchCols;
       this.done = c.done;
       this.error = c.error;
@@ -1379,6 +1382,7 @@ public class TestParquetEncodedDataReader {
   private static final class CapturingConsumer implements Consumer<ColumnVectorBatch> {
     final List<Object[]> rows = new ArrayList<>();
     final List<Integer> batchSizes = new ArrayList<>();
+    final List<Long> startRows = new ArrayList<>();
     ColumnVector[] firstBatchCols;
     boolean done;
     Throwable error;
@@ -1389,6 +1393,7 @@ public class TestParquetEncodedDataReader {
         firstBatchCols = cvb.cols.clone();
       }
       batchSizes.add(cvb.size);
+      startRows.add(cvb.startRowInFile);
       for (int r = 0; r < cvb.size; ++r) {
         Object[] row = new Object[cvb.cols.length];
         for (int c = 0; c < cvb.cols.length; ++c) {
