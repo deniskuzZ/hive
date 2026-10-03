@@ -25,13 +25,16 @@ import java.util.stream.StreamSupport;
 import org.apache.iceberg.DataFile;
 import org.apache.iceberg.DeleteFile;
 import org.apache.iceberg.FileFormat;
+import org.apache.iceberg.FileScanTask;
 import org.apache.iceberg.PartitionSpec;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.Table;
 import org.apache.iceberg.TableProperties;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.data.IcebergGenerics;
 import org.apache.iceberg.data.Record;
 import org.apache.iceberg.deletes.PositionDelete;
+import org.apache.iceberg.io.CloseableIterable;
 import org.apache.iceberg.mr.TestHelper;
 import org.apache.iceberg.mr.hive.test.TestTables.TestTableType;
 import org.apache.iceberg.mr.hive.test.utils.HiveIcebergStorageHandlerTestUtils;
@@ -348,6 +351,10 @@ public class TestHiveIcebergCRUD extends HiveIcebergStorageHandlerWithEngineBase
 
     List<Object[]> objects = shell.executeStatement("SELECT * FROM customers ORDER BY customer_id, last_name");
     Assert.assertEquals(7, objects.size());
+    // partition-filtered reads of files of the old spec find the deletes, which carry the partitions of that spec
+    Assert.assertEquals(0L, shell.executeStatement(
+        "SELECT count(*) FROM customers WHERE last_name IN ('Barna', 'Burr', 'Pierce', 'Silver') " +
+        "AND (customer_id = 3 OR given_name = 'Joanna')").get(0)[0]);
 
     Schema newSchema = new Schema(
         optional(2, "given_name", Types.StringType.get()),
@@ -562,8 +569,67 @@ public class TestHiveIcebergCRUD extends HiveIcebergStorageHandlerWithEngineBase
   }
 
   @Test
+  public void testDeleteFromFilesOfSpecWithDroppedSource() throws IOException {
+    Assume.assumeTrue(formatVersion >= 2 && testTableType == TestTableType.HIVE_CATALOG);
+    // a Hive query reads the Iceberg partition statistics, which fail once a partition source is dropped
+    shell.setHiveSessionValue("hive.iceberg.stats.source", "metastore");
+    shell.executeStatement(String.format("CREATE EXTERNAL TABLE dropped (id int, name string, region string) " +
+        "PARTITIONED BY SPEC (region) STORED BY ICEBERG STORED AS %s TBLPROPERTIES ('format-version'='%d')",
+        fileFormat, formatVersion));
+    shell.executeStatement("INSERT INTO dropped VALUES (1, 'a', 'eu'), (2, 'b', 'us'), (3, 'c', 'eu'), (4, 'd', 'us')");
+    shell.executeStatement("ALTER TABLE dropped SET PARTITION SPEC (bucket(2, id))");
+    shell.executeStatement("INSERT INTO dropped VALUES (5, 'e', 'eu'), (6, 'f', 'us')");
+    shell.executeStatement("ALTER TABLE dropped DROP COLUMN region");
+    shell.executeStatement("CREATE EXTERNAL TABLE dropped_src (id int) STORED BY ICEBERG");
+    shell.executeStatement("INSERT INTO dropped_src VALUES (3), (4), (7)");
+
+    // the statements delete from files of both specs
+    if (formatVersion == 2) {
+      IllegalArgumentException failure = Assert.assertThrows(IllegalArgumentException.class,
+          () -> shell.executeStatement("DELETE FROM dropped WHERE id IN (1, 5)"));
+      Assert.assertTrue(failure.getMessage(), failure.getMessage().contains(
+          "Cannot delete from the data files of partition spec 0: the source column of a partition field was dropped"));
+      Assert.assertEquals(List.of("1:a", "2:b", "3:c", "4:d", "5:e", "6:f"),
+          rows(testTables.loadTable(TableIdentifier.of("default", "dropped"))));
+      return;
+    }
+    shell.executeStatement("DELETE FROM dropped WHERE id IN (1, 5)");
+    shell.executeStatement("UPDATE dropped SET name = 'upd' WHERE id IN (2, 6)");
+    shell.executeStatement("MERGE INTO dropped t USING dropped_src s ON t.id = s.id " +
+        "WHEN MATCHED AND t.id = 3 THEN UPDATE SET name = 'mrg' WHEN MATCHED THEN DELETE " +
+        "WHEN NOT MATCHED THEN INSERT VALUES (s.id, 'new')");
+
+    Table table = testTables.loadTable(TableIdentifier.of("default", "dropped"));
+    Assert.assertEquals(List.of("2:upd", "3:mrg", "6:upd", "7:new"), rows(table));
+    // a DV holds the partition of its data file, but for the field of the dropped source, which reads as null
+    try (CloseableIterable<FileScanTask> tasks = table.newScan().planFiles()) {
+      for (FileScanTask task : tasks) {
+        for (DeleteFile dv : task.deletes()) {
+          Assert.assertEquals(task.file().specId(), dv.specId());
+          List<Types.NestedField> fields = task.spec().partitionType().fields();
+          for (int pos = 0; pos < fields.size(); pos++) {
+            Object expected = fields.get(pos).type().typeId() == Type.TypeID.UNKNOWN ? null :
+                task.file().partition().get(pos, Object.class);
+            Assert.assertEquals(expected, dv.partition().get(pos, Object.class));
+          }
+        }
+      }
+    }
+  }
+
+  // reads with Iceberg: Hive fails to plan a query of a table whose partition source was dropped
+  private static List<String> rows(Table table) throws IOException {
+    try (CloseableIterable<Record> records = IcebergGenerics.read(table).build()) {
+      return StreamSupport.stream(records.spliterator(), false)
+          .map(row -> row.getField("id") + ":" + row.getField("name"))
+          .sorted()
+          .toList();
+    }
+  }
+
+  @Test
   public void testUpdateForSupportedTypes() throws IOException {
-    Assume.assumeTrue(formatVersion == 2);
+    Assume.assumeTrue(formatVersion >= 2);
 
     for (int i = 0; i < SUPPORTED_TYPES.size(); i++) {
       Type type = SUPPORTED_TYPES.get(i);

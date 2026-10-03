@@ -40,16 +40,29 @@ public class NonNativeAcidMultiInsertSqlGenerator extends MultiInsertSqlGenerato
 
   @Override
   public void appendAcidSelectColumns(Operation operation) {
-    appendAcidSelectColumns(operation, false, false);
+    appendAcidSelectColumns(targetTable.getStorageHandler().acidSelectColumns(targetTable, operation), false, false);
   }
 
   @Override
   public void appendAcidSelectColumnsForDeletedRecords(Operation operation, boolean skipPrefix) {
-    appendAcidSelectColumns(operation, true, skipPrefix);
+    appendAcidSelectColumns(
+        targetTable.getStorageHandler().acidSelectColumns(targetTable, operation), true, skipPrefix);
   }
 
-  private void appendAcidSelectColumns(Operation operation, boolean markRowIdAsDeleted, boolean skipPrefix) {
-    List<FieldSchema> acidSelectColumns = targetTable.getStorageHandler().acidSelectColumns(targetTable, operation);
+  @Override
+  public void appendDeletedRecordColumns() {
+    appendAcidSelectColumns(deletedRecordColumns(), false, false);
+  }
+
+  // the virtual columns of the records a merge-on-read statement deletes
+  private List<FieldSchema> deletedRecordColumns() {
+    return targetTable.getStorageHandler().acidVirtualColumns().stream()
+        .map(column -> new FieldSchema(column.getName(), column.getTypeInfo().getTypeName(), ""))
+        .toList();
+  }
+
+  private void appendAcidSelectColumns(List<FieldSchema> acidSelectColumns, boolean markRowIdAsDeleted,
+      boolean skipPrefix) {
     for (FieldSchema fieldSchema : acidSelectColumns) {
       boolean deletedRowId = markRowIdAsDeleted && fieldSchema.equals(targetTable.getStorageHandler().getRowId());
       String identifier = deletedRowId ?
