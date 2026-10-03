@@ -21,12 +21,12 @@ package org.apache.hadoop.hive.llap.io.api.impl;
 
 import java.util.ArrayList;
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -50,6 +50,7 @@ import org.apache.hadoop.hive.llap.io.decode.ColumnVectorProducer.SchemaEvolutio
 import org.apache.hadoop.hive.llap.io.decode.ReadPipeline;
 import org.apache.hadoop.hive.llap.tezplugins.LlapTezUtils;
 import org.apache.hadoop.hive.ql.exec.TableScanOperator;
+import org.apache.hadoop.hive.ql.exec.vector.ColumnVector;
 import org.apache.hadoop.hive.ql.exec.vector.VectorizedRowBatch;
 import org.apache.hadoop.hive.ql.exec.vector.VectorizedRowBatchCtx;
 import org.apache.hadoop.hive.ql.io.AcidUtils;
@@ -85,7 +86,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 
-import static java.util.stream.Collectors.toList;
 import static org.apache.hadoop.hive.llap.LlapHiveUtils.throwIfCacheOnlyRead;
 
 class LlapRecordReader implements RecordReader<NullWritable, VectorizedRowBatch>, Consumer<ColumnVectorBatch>,
@@ -96,6 +96,10 @@ class LlapRecordReader implements RecordReader<NullWritable, VectorizedRowBatch>
 
   private final FileSplit split;
   private final IncludesImpl includes;
+  // next()'s column bookkeeping, derived from includes' column ids on the first batch, when the file schema has been
+  // applied: the reader decodes nothing before it has created the schema evolution.
+  private int[] vrbColumnIds;
+  private int[] missingColumnIds;
   private final SearchArgument sarg;
   private final VectorizedRowBatchCtx rbCtx;
   private final boolean isVectorized;
@@ -381,6 +385,17 @@ class LlapRecordReader implements RecordReader<NullWritable, VectorizedRowBatch>
     return true;
   }
 
+  private void deriveColumnIds() {
+    if (vrbColumnIds != null) {
+      return;
+    }
+    List<Integer> logicalOrderedColumnIds = includes.getLogicalOrderedColumnIds();
+    vrbColumnIds = logicalOrderedColumnIds.stream().mapToInt(Integer::intValue).toArray();
+    Set<Integer> ordered = new HashSet<>(logicalOrderedColumnIds);
+    missingColumnIds = includes.getReaderLogicalColumnIds().stream()
+        .filter(id -> !ordered.contains(id)).mapToInt(Integer::intValue).toArray();
+  }
+
   @Override
   public boolean next(NullWritable key, VectorizedRowBatch vrb) throws IOException {
     assert vrb != null;
@@ -441,11 +456,16 @@ class LlapRecordReader implements RecordReader<NullWritable, VectorizedRowBatch>
         throw new AssertionError("Unsupported mode");
       }
     } else {
-      List<Integer> logicalOrderedColumnIds = includes.getLogicalOrderedColumnIds();
-      long cvbColsPresent = Arrays.stream(cvb.cols).filter(Objects::nonNull).count();
-      if (logicalOrderedColumnIds.size() != cvbColsPresent) {
+      deriveColumnIds();
+      int cvbColsPresent = 0;
+      for (ColumnVector cv : cvb.cols) {
+        if (cv != null) {
+          cvbColsPresent++;
+        }
+      }
+      if (vrbColumnIds.length != cvbColsPresent) {
         throw new RuntimeException("Unexpected number of columns, VRB has "
-            + logicalOrderedColumnIds.size() + " included, but the reader returned "
+            + vrbColumnIds.length + " included, but the reader returned "
             + cvbColsPresent);
       }
       // VRB was created from VrbCtx, so we already have pre-allocated column vectors.
@@ -453,17 +473,14 @@ class LlapRecordReader implements RecordReader<NullWritable, VectorizedRowBatch>
       // Reader may return nulls in cvb.cols if the file schema lacked any of the columns that were required by reader
       // schema, they are dealt with later.
       for (int ixInReadSet = 0; ixInReadSet < cvbColsPresent; ++ixInReadSet) {
-        int ixInVrb = logicalOrderedColumnIds.get(ixInReadSet);
-        cvb.swapColumnVector(ixInReadSet, vrb.cols, ixInVrb);
+        cvb.swapColumnVector(ixInReadSet, vrb.cols, vrbColumnIds[ixInReadSet]);
       }
       // null out col vectors for which the (ORC) file had no data
-      List<Integer> missingColIndices = includes.getReaderLogicalColumnIds().stream()
-          .filter(idx -> !includes.getLogicalOrderedColumnIds().contains(idx)).collect(toList());
-      if (missingColIndices.size() != (cvb.cols.length - cvbColsPresent)) {
-        throw new RuntimeException("Unexpected number of missing columns, expected " + missingColIndices.size() +
+      if (missingColumnIds.length != (cvb.cols.length - cvbColsPresent)) {
+        throw new RuntimeException("Unexpected number of missing columns, expected " + missingColumnIds.length +
             ", but reader returned " + (cvb.cols.length - cvbColsPresent) + " missing column vectors.");
       }
-      for (int index : missingColIndices) {
+      for (int index : missingColumnIds) {
         vrb.cols[index].noNulls = false;
         vrb.cols[index].isRepeating = true;
         vrb.cols[index].isNull[0] = true;
