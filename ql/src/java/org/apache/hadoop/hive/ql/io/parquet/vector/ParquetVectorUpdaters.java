@@ -23,20 +23,33 @@ import org.apache.hadoop.hive.ql.exec.vector.BytesColumnVector;
 import org.apache.hadoop.hive.ql.exec.vector.ColumnVector;
 import org.apache.hadoop.hive.ql.exec.vector.DoubleColumnVector;
 import org.apache.hadoop.hive.ql.exec.vector.LongColumnVector;
+import org.apache.hadoop.hive.ql.exec.vector.TimestampColumnVector;
+import org.apache.hadoop.hive.ql.io.parquet.timestamp.NanoTime;
+import org.apache.hadoop.hive.ql.io.parquet.timestamp.NanoTimeUtils;
 import org.apache.hadoop.hive.serde2.io.HiveDecimalWritable;
 import org.apache.hadoop.hive.serde2.objectinspector.PrimitiveObjectInspector.PrimitiveCategory;
 import org.apache.hadoop.hive.serde2.typeinfo.DecimalTypeInfo;
 import org.apache.hadoop.hive.serde2.typeinfo.PrimitiveTypeInfo;
 import org.apache.hadoop.hive.serde2.typeinfo.TypeInfo;
+import org.apache.parquet.column.Dictionary;
+import org.apache.parquet.schema.LogicalTypeAnnotation.TimestampLogicalTypeAnnotation;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+
 /**
  * The updaters that read PLAIN pages in bulk, one per family of Hive vector, for the pairings of Parquet and Hive type
- * that need no conversion per value. Each reads the non-NULL values densely, then spreads them over the NULL rows; the
- * dictionary half is the vector kind's.
+ * that need no conversion per value, or only arithmetic. Each reads the non-NULL values densely, then spreads them over
+ * the NULL rows, or, for timestamps, converts each value into its row as it reads it; the dictionary half is the vector
+ * kind's.
  */
 final class ParquetVectorUpdaters {
+
+  private static final long NANOS_PER_SECOND = 1_000_000_000L;
 
   private ParquetVectorUpdaters() {
   }
@@ -166,6 +179,128 @@ final class ParquetVectorUpdaters {
         }
       }
     }
+  }
+
+  /**
+   * INT64 TIMESTAMP_MILLIS, _MICROS or _NANOS into TIMESTAMP, as {@code ParquetTimestampUtils.getTimestamp} reads it:
+   * the wall clock in UTC, or in the system zone when the value is adjusted to UTC. The dictionary converts the same
+   * way.
+   */
+  static final class Int64TimestampUpdater extends DictionaryValues.Timestamps implements ParquetVectorUpdater {
+    private final long unitsPerSecond;
+    private final int nanosPerUnit;
+    private final ZoneOffsets zone;
+
+    Int64TimestampUpdater(ParquetDataColumnReader dictionary, PrimitiveType type, TypeInfo hiveType) {
+      super(dictionary, type, hiveType);
+      TimestampLogicalTypeAnnotation timestamp = (TimestampLogicalTypeAnnotation) type.getLogicalTypeAnnotation();
+      this.unitsPerSecond = switch (timestamp.getUnit()) {
+        case MILLIS -> 1_000L;
+        case MICROS -> 1_000_000L;
+        case NANOS -> NANOS_PER_SECOND;
+      };
+      this.nanosPerUnit = (int) (NANOS_PER_SECOND / unitsPerSecond);
+      this.zone = timestamp.isAdjustedToUTC() ? offsetsUnlessUtc(ZoneId.systemDefault()) : null;
+    }
+
+    @Override
+    public void readValues(int total, int nonNull, int offset, ColumnVector column,
+        VectorizedPlainValuesReader values) {
+      TimestampColumnVector c = (TimestampColumnVector) column;
+      for (int i = offset; i < offset + total; i++) {
+        if (!c.isNull[i]) {
+          set(c, i, values.readLong());
+        }
+      }
+    }
+
+    @Override
+    void convertEntries(int from, int count, ColumnVector entries, LongColumnVector identity) {
+      Dictionary values = dictionary.getDictionary();
+      for (int id = from; id < from + count; id++) {
+        set((TimestampColumnVector) entries, id, values.decodeToLong(id));
+      }
+    }
+
+    private void set(TimestampColumnVector c, int row, long value) {
+      int nanos = (int) (Math.floorMod(value, unitsPerSecond) * nanosPerUnit);
+      setLocal(c, row, Math.floorDiv(value, unitsPerSecond), nanos, zone);
+    }
+  }
+
+  /**
+   * INT96 into TIMESTAMP, as {@code NanoTimeUtils.getTimestamp} reads it into the target zone. From the Gregorian
+   * switchover to the end of year 9999 a Julian day is a proleptic Gregorian day and the conversion is arithmetic; a
+   * day outside that range, which the per-value conversion rebases from the hybrid calendar or rejects, goes through
+   * that conversion. Legacy conversion only reaches this updater into UTC, where it changes nothing in that range. The
+   * dictionary converts the same way.
+   */
+  static final class Int96TimestampUpdater extends DictionaryValues.Timestamps implements ParquetVectorUpdater {
+    private static final long NANOS_PER_DAY = 86_400 * NANOS_PER_SECOND;
+    /** The Julian days of 1970-01-01, 1582-10-15 and 9999-12-31. */
+    private static final int EPOCH_JULIAN_DAY = 2_440_588;
+    private static final int FIRST_GREGORIAN_JULIAN_DAY = 2_299_161;
+    private static final int LAST_JULIAN_DAY = 5_373_484;
+
+    private final ZoneId targetZone;
+    private final ZoneOffsets zone;
+    private final boolean legacyConversion;
+
+    Int96TimestampUpdater(ParquetDataColumnReader dictionary, PrimitiveType type, TypeInfo hiveType, ZoneId targetZone,
+        boolean legacyConversion) {
+      super(dictionary, type, hiveType);
+      this.targetZone = targetZone;
+      this.zone = offsetsUnlessUtc(targetZone);
+      this.legacyConversion = legacyConversion;
+    }
+
+    @Override
+    public void readValues(int total, int nonNull, int offset, ColumnVector column,
+        VectorizedPlainValuesReader values) {
+      TimestampColumnVector c = (TimestampColumnVector) column;
+      for (int i = offset; i < offset + total; i++) {
+        if (!c.isNull[i]) {
+          set(c, i, values.readLong(), values.readInt());
+        }
+      }
+    }
+
+    @Override
+    void convertEntries(int from, int count, ColumnVector entries, LongColumnVector identity) {
+      Dictionary values = dictionary.getDictionary();
+      for (int id = from; id < from + count; id++) {
+        ByteBuffer value = values.decodeToBinary(id).toByteBuffer().order(ByteOrder.LITTLE_ENDIAN);
+        set((TimestampColumnVector) entries, id, value.getLong(), value.getInt());
+      }
+    }
+
+    private void set(TimestampColumnVector c, int row, long nanosOfDay, int julianDay) {
+      long day = julianDay + Math.floorDiv(nanosOfDay, NANOS_PER_DAY);
+      if (day >= FIRST_GREGORIAN_JULIAN_DAY && day <= LAST_JULIAN_DAY) {
+        long nanoOfDay = Math.floorMod(nanosOfDay, NANOS_PER_DAY);
+        setLocal(c, row, (day - EPOCH_JULIAN_DAY) * 86_400 + nanoOfDay / NANOS_PER_SECOND,
+            (int) (nanoOfDay % NANOS_PER_SECOND), zone);
+      } else {
+        c.set(row, NanoTimeUtils.getTimestamp(new NanoTime(julianDay, nanosOfDay), targetZone, legacyConversion)
+            .toSqlTimestamp());
+      }
+    }
+  }
+
+  /** The offsets of a zone, or null for UTC. */
+  private static ZoneOffsets offsetsUnlessUtc(ZoneId zone) {
+    return zone.normalized().equals(ZoneOffset.UTC) ? null : new ZoneOffsets(zone.getRules());
+  }
+
+  /**
+   * Sets row {@code i} to an instant as {@code java.sql.Timestamp} holds its wall clock in {@code zone}, UTC when null:
+   * the floor millisecond and the nanos of the second. Leaving the range of a long throws, as the per-value path does.
+   */
+  private static void setLocal(TimestampColumnVector c, int i, long epochSecond, int nanos, ZoneOffsets zone) {
+    // The instant's own millisecond: it fits a long even where the product wraps.
+    long millis = epochSecond * 1000 + nanos / 1_000_000;
+    c.time[i] = zone == null ? millis : Math.addExact(millis, zone.seconds(epochSecond) * 1000L);
+    c.nanos[i] = nanos;
   }
 
   /** Moves the dense values {@code v[offset .. offset + nonNull)} out to the non-NULL rows, from the last one. */
