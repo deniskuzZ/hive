@@ -994,6 +994,11 @@ public class VectorGroupByOperator extends Operator<GroupByDesc>
         numFlushedOutEntriesBeforeFinalFlush += entriesFlushed;
       }
       initializedEntries = keyTable.end();
+      entriesChanged();
+    }
+
+    /** Called after every flush, which removes, renumbers or clears entries of the table. */
+    void entriesChanged() {
     }
 
     private int getAccessCount(int entry) {
@@ -1073,6 +1078,10 @@ public class VectorGroupByOperator extends Operator<GroupByDesc>
 
     private final int keyColumnNum = keyExpressions[0].getOutputColumnNum();
 
+    // The table entry of each id of the dictionary memoToken names, -1 until a row reads the id.
+    private int[] memo = new int[0];
+    private long memoToken;
+
     @Override
     boolean findOrAddEntries(VectorizedRowBatch batch) {
       final BytesColumnVector keyColumn = (BytesColumnVector) batch.cols[keyColumnNum];
@@ -1083,6 +1092,10 @@ public class VectorGroupByOperator extends Operator<GroupByDesc>
             ? keyTable.findOrAdd(keyColumn.vector[0], keyColumn.start[0], keyColumn.length[0])
             : keyTable.findOrAddNull());
         return true;
+      }
+      if (keyColumn.dictionaryToken != 0) {
+        findOrAddDictionaryEntries(keyColumn, size, batch.selectedInUse, batch.selected);
+        return false;
       }
       // Looking up all keys before mapping the rows measured up to 18% faster than one loop.
       final boolean selectedInUse = batch.selectedInUse;
@@ -1099,6 +1112,44 @@ public class VectorGroupByOperator extends Operator<GroupByDesc>
             : keyTable.findOrAddNull();
       }
       return false;
+    }
+
+    /**
+     * The entries of rows a dictionary decoded: an id's entry is looked up by its value the first time a row reads it
+     * since the dictionary or the table last changed, and kept in the memo.
+     */
+    private void findOrAddDictionaryEntries(BytesColumnVector keyColumn, int size, boolean selectedInUse,
+        int[] selected) {
+      if (keyColumn.dictionaryToken != memoToken) {
+        if (memo.length < keyColumn.dictionarySize) {
+          memo = new int[keyColumn.dictionarySize];
+        }
+        Arrays.fill(memo, 0, keyColumn.dictionarySize, -1);
+        memoToken = keyColumn.dictionaryToken;
+      }
+      final int[] memo = this.memo;
+      final int[] ids = keyColumn.dictionaryIds;
+      final int[] entries = batchEntries;
+      final boolean noNulls = keyColumn.noNulls;
+      final boolean[] isNull = keyColumn.isNull;
+      for (int i = 0; i < size; i++) {
+        final int row = selectedInUse ? selected[i] : i;
+        if (noNulls || !isNull[row]) {
+          int entry = memo[ids[row]];
+          if (entry < 0) {
+            entry = keyTable.findOrAdd(keyColumn.vector[row], keyColumn.start[row], keyColumn.length[row]);
+            memo[ids[row]] = entry;
+          }
+          entries[i] = entry;
+        } else {
+          entries[i] = keyTable.findOrAddNull();
+        }
+      }
+    }
+
+    @Override
+    void entriesChanged() {
+      memoToken = 0;
     }
 
     @Override

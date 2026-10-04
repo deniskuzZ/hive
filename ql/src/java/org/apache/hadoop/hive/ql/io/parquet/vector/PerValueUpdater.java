@@ -78,6 +78,11 @@ final class PerValueUpdater implements ParquetVectorUpdater {
   }
 
   @Override
+  public void endBatch(ColumnVector column, boolean dictionaryOnly) {
+    dictionaryValues.endBatch(column, dictionaryOnly);
+  }
+
+  @Override
   public boolean readsPlainInBulk() {
     return false;
   }

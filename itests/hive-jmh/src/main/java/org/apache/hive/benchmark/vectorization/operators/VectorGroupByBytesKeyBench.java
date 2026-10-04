@@ -138,6 +138,10 @@ public class VectorGroupByBytesKeyBench {
     @Param({"random", "cyclic", "clustered"})
     public String order;
 
+    /** Whether the key column carries the Parquet dictionary ids and token (HIVE-30119). */
+    @Param({"false"})
+    public boolean dictionaryIds;
+
     @Param({"false", "true"})
     public boolean selectedInUse;
 
@@ -197,12 +201,19 @@ public class VectorGroupByBytesKeyBench {
             int id = switch (order) {
               case "random" -> keyRandom.nextInt(NDV);
               case "cyclic" -> row % NDV;
+              // 1TRC station: 206 distinct ids per 1024-row window, all 412 over the dictionaries.
+              case "cyclic206" -> row % (NDV / 2) + d % 2 * (NDV / 2);
               case "clustered" -> ((d * BATCHES_PER_DICT * BATCH + row) / 64) % NDV;
               default -> throw new IllegalArgumentException(order);
             };
             ids[d][b][i] = id;
             key.setRef(i, dictionary, offsets[id], offsets[id + 1] - offsets[id]);
             value.vector[i] = valueRandom.nextInt(19999) - 9999;
+          }
+          if (dictionaryIds) {
+            key.dictionaryIds = ids[d][b];
+            key.dictionaryToken = d + 1;
+            key.dictionarySize = NDV;
           }
           vrb.cols[0] = key;
           vrb.cols[1] = value;

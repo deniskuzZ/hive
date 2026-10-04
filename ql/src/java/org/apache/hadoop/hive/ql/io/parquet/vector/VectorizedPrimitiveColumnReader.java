@@ -115,6 +115,7 @@ public class VectorizedPrimitiveColumnReader implements VectorizedColumnReader {
       valuesLeftInPage -= n;
       rowId += n;
     }
+    updater.endBatch(column, dictionaryOnly);
     // A NULL makes a batch non-repeating, as does a caller that did not allow it (a struct field).
     column.isRepeating = column.isRepeating && column.noNulls
         && updater.isRepeating(column, total, dictionaryOnly, repeatedId >= 0);
