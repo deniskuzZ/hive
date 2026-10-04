@@ -840,17 +840,14 @@ public class VectorGroupByOperator extends Operator<GroupByDesc>
   }
 
   /**
-   * Hash aggregate mode for a single STRING, CHAR, VARCHAR or BINARY key, which looks up the key
-   * bytes in a {@link VectorGroupByBytesKeyTable}. When {@link VectorGroupByAggregationColumns}
-   * covers every aggregator, the aggregation state of the entries is kept there instead of in
-   * aggregation buffers. The memory of the table is estimated from its arrays and key bytes, and
-   * that of the aggregation columns from their arrays, so the per entry estimate only covers the
-   * aggregation buffers, if any. While the table or the columns grow, their old and new arrays are
-   * both live; that transient is not accounted.
+   * Hash aggregate mode that looks up the keys in a {@link VectorGroupByBytesKeyTable}. When
+   * {@link VectorGroupByAggregationColumns} covers every aggregator, the aggregation state of the
+   * entries is kept there instead of in aggregation buffers. The memory of the table is estimated
+   * from its arrays and key bytes, and that of the aggregation columns from their arrays, so the
+   * per entry estimate only covers the aggregation buffers, if any. While the table or the columns
+   * grow, their old and new arrays are both live; that transient is not accounted.
    */
-  final class ProcessingModeHashAggregateSingleBytesKey extends ProcessingModeHashAggregate {
-
-    private final int keyColumnNum = keyExpressions[0].getOutputColumnNum();
+  abstract class ProcessingModeHashAggregateKeyTable extends ProcessingModeHashAggregate {
 
     @VisibleForTesting
     final VectorGroupByBytesKeyTable keyTable = new VectorGroupByBytesKeyTable();
@@ -864,62 +861,38 @@ public class VectorGroupByOperator extends Operator<GroupByDesc>
     private int initializedEntries;
 
     // Table entries of the rows of the current batch.
-    private final int[] batchEntries = new int[VectorizedRowBatch.DEFAULT_SIZE];
+    final int[] batchEntries = new int[VectorizedRowBatch.DEFAULT_SIZE];
+
+    /**
+     * Sets the table entry of each row of the batch in batchEntries, adding the absent keys.
+     * Returns whether every row has the same key.
+     */
+    abstract boolean findOrAddEntries(VectorizedRowBatch batch);
+
+    /**
+     * Sets the key of the entry at the given row of the output batch.
+     */
+    abstract void writeKey(int entry, int batchIndex);
 
     @Override
     void prepareBatchAggregationBufferSets(VectorizedRowBatch batch,
         boolean[] currentGroupingSetsOverrideIsNulls) throws HiveException {
       aggregationBatchInfo.startBatch();
-
-      final BytesColumnVector keyColumn = (BytesColumnVector) batch.cols[keyColumnNum];
-      if (aggregationColumns == null && keyColumn.isRepeating) {
-        // One buffer set for the whole batch, which processAggregators aggregates at once.
-        aggregationBatchInfo.mapAggregationBufferSet(
-            getOrAllocate(findOrAdd(keyColumn, 0), batch.size), 0);
-        return;
-      }
-      findOrAddEntries(keyColumn, batch);
+      final boolean isRepeating = findOrAddEntries(batch);
       final int size = batch.size;
       if (aggregationColumns != null) {
         initAddedEntries(size);
         return;
       }
       final int[] entries = batchEntries;
+      if (isRepeating) {
+        // One buffer set for the whole batch, which processAggregators aggregates at once.
+        aggregationBatchInfo.mapAggregationBufferSet(getOrAllocate(entries[0], size), 0);
+        return;
+      }
       for (int i = 0; i < size; i++) {
         aggregationBatchInfo.mapAggregationBufferSet(getOrAllocate(entries[i], 1), i);
       }
-    }
-
-    /**
-     * Sets the table entry of each row of the batch in batchEntries, adding the absent keys.
-     */
-    private void findOrAddEntries(BytesColumnVector keyColumn, VectorizedRowBatch batch) {
-      final int size = batch.size;
-      final int[] entries = batchEntries;
-      if (keyColumn.isRepeating) {
-        Arrays.fill(entries, 0, size, findOrAdd(keyColumn, 0));
-        return;
-      }
-      // Looking up all keys before mapping the rows measured up to 18% faster than one loop.
-      final boolean selectedInUse = batch.selectedInUse;
-      final int[] selected = batch.selected;
-      final boolean noNulls = keyColumn.noNulls;
-      final boolean[] isNull = keyColumn.isNull;
-      final byte[][] vector = keyColumn.vector;
-      final int[] start = keyColumn.start;
-      final int[] length = keyColumn.length;
-      for (int i = 0; i < size; i++) {
-        final int row = selectedInUse ? selected[i] : i;
-        entries[i] = noNulls || !isNull[row]
-            ? keyTable.findOrAdd(vector[row], start[row], length[row])
-            : keyTable.findOrAddNull();
-      }
-    }
-
-    private int findOrAdd(BytesColumnVector keyColumn, int row) {
-      return keyColumn.noNulls || !keyColumn.isNull[row]
-          ? keyTable.findOrAdd(keyColumn.vector[row], keyColumn.start[row], keyColumn.length[row])
-          : keyTable.findOrAddNull();
     }
 
     /**
@@ -1047,14 +1020,14 @@ public class VectorGroupByOperator extends Operator<GroupByDesc>
 
     private void writeEntryRow(int entry) throws HiveException {
       final int batchIndex = outputBatch.size;
-      keyTable.writeKey(entry, (BytesColumnVector) outputBatch.cols[0], batchIndex);
+      writeKey(entry, batchIndex);
       if (aggregationColumns != null) {
-        aggregationColumns.write(entry, outputBatch, batchIndex, 1);
+        aggregationColumns.write(entry, outputBatch, batchIndex, outputKeyLength);
       } else {
         final VectorAggregationBufferRow bufferRow = keyTable.getRow(entry);
         finishAggregators(bufferRow, false);
         for (int i = 0; i < aggregators.length; ++i) {
-          aggregators[i].assignRowColumn(outputBatch, batchIndex, i + 1,
+          aggregators[i].assignRowColumn(outputBatch, batchIndex, outputKeyLength + i,
               bufferRow.getAggregationBuffer(i));
         }
       }
@@ -1088,6 +1061,125 @@ public class VectorGroupByOperator extends Operator<GroupByDesc>
     long getHashTableMemorySize() {
       return super.getHashTableMemorySize() + keyTable.getMemorySize()
           + (aggregationColumns != null ? aggregationColumns.getMemorySize() : 0);
+    }
+  }
+
+  /**
+   * Hash aggregate mode for a single STRING, CHAR, VARCHAR or BINARY key, which looks up the key
+   * bytes in the table.
+   */
+  final class ProcessingModeHashAggregateSingleBytesKey
+      extends ProcessingModeHashAggregateKeyTable {
+
+    private final int keyColumnNum = keyExpressions[0].getOutputColumnNum();
+
+    @Override
+    boolean findOrAddEntries(VectorizedRowBatch batch) {
+      final BytesColumnVector keyColumn = (BytesColumnVector) batch.cols[keyColumnNum];
+      final int size = batch.size;
+      final int[] entries = batchEntries;
+      if (keyColumn.isRepeating) {
+        Arrays.fill(entries, 0, size, keyColumn.noNulls || !keyColumn.isNull[0]
+            ? keyTable.findOrAdd(keyColumn.vector[0], keyColumn.start[0], keyColumn.length[0])
+            : keyTable.findOrAddNull());
+        return true;
+      }
+      // Looking up all keys before mapping the rows measured up to 18% faster than one loop.
+      final boolean selectedInUse = batch.selectedInUse;
+      final int[] selected = batch.selected;
+      final boolean noNulls = keyColumn.noNulls;
+      final boolean[] isNull = keyColumn.isNull;
+      final byte[][] vector = keyColumn.vector;
+      final int[] start = keyColumn.start;
+      final int[] length = keyColumn.length;
+      for (int i = 0; i < size; i++) {
+        final int row = selectedInUse ? selected[i] : i;
+        entries[i] = noNulls || !isNull[row]
+            ? keyTable.findOrAdd(vector[row], start[row], length[row])
+            : keyTable.findOrAddNull();
+      }
+      return false;
+    }
+
+    @Override
+    void writeKey(int entry, int batchIndex) {
+      keyTable.writeKey(entry, (BytesColumnVector) outputBatch.cols[0], batchIndex);
+    }
+  }
+
+  /**
+   * Hash aggregate mode for a single LONG key (BOOLEAN, TINYINT, SMALLINT, INT, BIGINT, DATE,
+   * INTERVAL_YEAR_MONTH), which looks up the key values in the table. That measured 1.2x faster
+   * than looking up serialized values.
+   */
+  final class ProcessingModeHashAggregateSingleLongKey extends ProcessingModeHashAggregateKeyTable {
+
+    private final int keyColumnNum = keyExpressions[0].getOutputColumnNum();
+
+    @Override
+    boolean findOrAddEntries(VectorizedRowBatch batch) {
+      final LongColumnVector keyColumn = (LongColumnVector) batch.cols[keyColumnNum];
+      final int size = batch.size;
+      final int[] entries = batchEntries;
+      final long[] vector = keyColumn.vector;
+      if (keyColumn.isRepeating) {
+        Arrays.fill(entries, 0, size, keyColumn.noNulls || !keyColumn.isNull[0]
+            ? keyTable.findOrAdd(vector[0]) : keyTable.findOrAddNull());
+        return true;
+      }
+      final boolean selectedInUse = batch.selectedInUse;
+      final int[] selected = batch.selected;
+      final boolean noNulls = keyColumn.noNulls;
+      final boolean[] isNull = keyColumn.isNull;
+      for (int i = 0; i < size; i++) {
+        final int row = selectedInUse ? selected[i] : i;
+        entries[i] = noNulls || !isNull[row]
+            ? keyTable.findOrAdd(vector[row])
+            : keyTable.findOrAddNull();
+      }
+      return false;
+    }
+
+    @Override
+    void writeKey(int entry, int batchIndex) {
+      keyTable.writeKey(entry, (LongColumnVector) outputBatch.cols[0], batchIndex);
+    }
+  }
+
+  /**
+   * Hash aggregate mode for keys of two or more LONG and BYTES columns, which looks up the keys
+   * serialized by a {@link VectorGroupByKeySerializer} in the table.
+   */
+  final class ProcessingModeHashAggregateSerializedKey extends ProcessingModeHashAggregateKeyTable {
+
+    private final VectorGroupByKeySerializer keySerializer;
+
+    ProcessingModeHashAggregateSerializedKey() {
+      final int[] keyColumnNums = new int[keyExpressions.length];
+      for (int i = 0; i < keyExpressions.length; i++) {
+        keyColumnNums[i] = keyExpressions[i].getOutputColumnNum();
+      }
+      keySerializer =
+          new VectorGroupByKeySerializer(keyWrappersBatch.columnVectorTypes, keyColumnNums);
+    }
+
+    @Override
+    boolean findOrAddEntries(VectorizedRowBatch batch) {
+      keySerializer.serialize(batch);
+      final byte[] bytes = keySerializer.getBytes();
+      final int[] starts = keySerializer.getStarts();
+      final int[] lengths = keySerializer.getLengths();
+      final int size = batch.size;
+      final int[] entries = batchEntries;
+      for (int i = 0; i < size; i++) {
+        entries[i] = keyTable.findOrAdd(bytes, starts[i], lengths[i]);
+      }
+      return false;
+    }
+
+    @Override
+    void writeKey(int entry, int batchIndex) {
+      keySerializer.deserialize(keyTable.getKey(entry), outputBatch, batchIndex);
     }
   }
 
@@ -1491,9 +1583,15 @@ public class VectorGroupByOperator extends Operator<GroupByDesc>
       processingMode = this.new ProcessingModeGlobalAggregate();
       break;
     case HASH:
-      processingMode = isSingleBytesKey() ?
-          this.new ProcessingModeHashAggregateSingleBytesKey() :
-          this.new ProcessingModeHashAggregate();
+      if (isSingleKey(ColumnVector.Type.BYTES)) {
+        processingMode = this.new ProcessingModeHashAggregateSingleBytesKey();
+      } else if (isSingleKey(ColumnVector.Type.LONG)) {
+        processingMode = this.new ProcessingModeHashAggregateSingleLongKey();
+      } else if (isSerializedKey()) {
+        processingMode = this.new ProcessingModeHashAggregateSerializedKey();
+      } else {
+        processingMode = this.new ProcessingModeHashAggregate();
+      }
       break;
     case MERGE_PARTIAL:
       Preconditions.checkState(!groupingSetsPresent);
@@ -1510,12 +1608,20 @@ public class VectorGroupByOperator extends Operator<GroupByDesc>
   }
 
   /**
-   * Returns whether there is a single STRING, CHAR, VARCHAR or BINARY key. Grouping sets add their
-   * id as a LONG key, so they never have a single bytes key.
+   * Returns whether there is a single key, of the given column type. Grouping sets add their id as
+   * a key, so they never have a single key.
    */
-  private boolean isSingleBytesKey() {
-    return keyExpressions.length == 1 &&
-        keyWrappersBatch.columnVectorTypes[0] == ColumnVector.Type.BYTES;
+  private boolean isSingleKey(ColumnVector.Type type) {
+    return keyExpressions.length == 1 && keyWrappersBatch.columnVectorTypes[0] == type;
+  }
+
+  /**
+   * Returns whether the keys are two or more LONG and BYTES columns, which the bytes key table
+   * looks up once serialized. Grouping sets are excluded.
+   */
+  private boolean isSerializedKey() {
+    return !groupingSetsPresent
+        && VectorGroupByKeySerializer.covers(keyWrappersBatch.columnVectorTypes);
   }
 
   @VisibleForTesting
