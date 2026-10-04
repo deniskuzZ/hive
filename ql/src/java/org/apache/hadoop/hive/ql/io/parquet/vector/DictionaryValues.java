@@ -41,7 +41,7 @@ import static org.apache.hadoop.hive.ql.io.parquet.vector.PerValueUpdater.setNul
  */
 abstract class DictionaryValues {
 
-  private final ParquetDataColumnReader dictionary;
+  final ParquetDataColumnReader dictionary;
   private final PrimitiveType type;
   private final TypeInfo hiveType;
   private final boolean skipProlepticConversion;
@@ -100,12 +100,12 @@ abstract class DictionaryValues {
         identity.vector[id] = id;
       }
       try {
-        decodeDictionaryIds(0, size, v, hiveType, identity);
+        convertEntries(0, size, v, identity);
       } catch (RuntimeException e) {
         errors = new RuntimeException[size];
         for (int id = 0; id < size; id++) {
           try {
-            decodeDictionaryIds(id, 1, v, hiveType, identity);
+            convertEntries(id, 1, v, identity);
           } catch (RuntimeException entryError) {
             errors[id] = entryError;
           }
@@ -119,6 +119,11 @@ abstract class DictionaryValues {
       }
     }
     return entries;
+  }
+
+  /** Converts the entries {@code [from, from + count)}; {@code identity} holds each entry's id at its row. */
+  void convertEntries(int from, int count, ColumnVector entries, LongColumnVector identity) {
+    decodeDictionaryIds(from, count, entries, hiveType, identity);
   }
 
   /** NULLs the rows of {@code [offset, offset + total)} whose entry is NULL. */

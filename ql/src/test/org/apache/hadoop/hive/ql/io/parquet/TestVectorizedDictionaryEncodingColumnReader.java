@@ -148,6 +148,12 @@ public class TestVectorizedDictionaryEncodingColumnReader extends VectorizedColu
   }
 
   @Test
+  public void testTimestampConversions() throws Exception {
+    timestampConversionsRead(WriterVersion.PARQUET_1_0, isDictionaryEncoding);
+    timestampConversionsRead(WriterVersion.PARQUET_2_0, isDictionaryEncoding);
+  }
+
+  @Test
   public void testRejectedTimestamp() throws Exception {
     rejectedTimestampRead(isDictionaryEncoding);
   }
