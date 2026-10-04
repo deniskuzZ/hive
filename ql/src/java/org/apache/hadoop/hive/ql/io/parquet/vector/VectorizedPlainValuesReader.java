@@ -80,6 +80,19 @@ final class VectorizedPlainValuesReader {
     bit = b;
   }
 
+  /** The next value, for a conversion that reads a value at a time; an INT96 is a long, then an int. */
+  long readLong() {
+    long value = buffer.getLong(position);
+    position += Long.BYTES;
+    return value;
+  }
+
+  int readInt() {
+    int value = buffer.getInt(position);
+    position += Integer.BYTES;
+    return value;
+  }
+
   /** Big-endian two's-complement values of {@code width} bytes, as their low 64 bits. */
   void readBigEndianLongs(int n, int width, long[] values, int offset) {
     int p = position;
