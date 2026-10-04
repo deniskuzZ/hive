@@ -20,6 +20,7 @@
 package org.apache.hadoop.hive.ql.exec.vector;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
@@ -3350,12 +3351,39 @@ public class TestVectorGroupByOperator {
   @Test
   public void testSingleBytesKeyModeSelection() throws HiveException {
     // BytesKeyGroupBy asserts the mode of each bytes key type.
-    assertEquals(VectorGroupByOperator.ProcessingModeHashAggregate.class,
+    assertEquals(VectorGroupByOperator.ProcessingModeHashAggregateSingleLongKey.class,
         hashProcessingModeClass(new String[] {"k1"},
             new TypeInfo[] {TypeInfoFactory.longTypeInfo}));
-    assertEquals(VectorGroupByOperator.ProcessingModeHashAggregate.class,
+    assertEquals(VectorGroupByOperator.ProcessingModeHashAggregateSingleLongKey.class,
+        hashProcessingModeClass(new String[] {"k1"},
+            new TypeInfo[] {TypeInfoFactory.dateTypeInfo}));
+    assertEquals(VectorGroupByOperator.ProcessingModeHashAggregateSerializedKey.class,
         hashProcessingModeClass(new String[] {"k1", "k2"},
             new TypeInfo[] {TypeInfoFactory.stringTypeInfo, TypeInfoFactory.stringTypeInfo}));
+    assertEquals(VectorGroupByOperator.ProcessingModeHashAggregateSerializedKey.class,
+        hashProcessingModeClass(new String[] {"k1", "k2"},
+            new TypeInfo[] {TypeInfoFactory.dateTypeInfo, TypeInfoFactory.getCharTypeInfo(10)}));
+    assertEquals(VectorGroupByOperator.ProcessingModeHashAggregate.class,
+        hashProcessingModeClass(new String[] {"k1", "k2"},
+            new TypeInfo[] {TypeInfoFactory.longTypeInfo, TypeInfoFactory.doubleTypeInfo}));
+    assertEquals(VectorGroupByOperator.ProcessingModeHashAggregate.class,
+        hashProcessingModeClass(new String[] {"k1"},
+            new TypeInfo[] {TypeInfoFactory.getDecimalTypeInfo(10, 2)}));
+    // a decimal of at most 18 digits is serialized as its decimal64 value
+    assertEquals(VectorGroupByOperator.ProcessingModeHashAggregateSerializedKey.class,
+        hashProcessingModeClass(new String[] {"k1", "k2"},
+            new TypeInfo[] {TypeInfoFactory.intTypeInfo, TypeInfoFactory.getDecimalTypeInfo(18, 2)}));
+    assertEquals(VectorGroupByOperator.ProcessingModeHashAggregate.class,
+        hashProcessingModeClass(new String[] {"k1", "k2"},
+            new TypeInfo[] {TypeInfoFactory.intTypeInfo, TypeInfoFactory.getDecimalTypeInfo(19, 2)}));
+    assertEquals(VectorGroupByOperator.ProcessingModeHashAggregate.class,
+        hashProcessingModeClass(new String[] {"k1"},
+            new TypeInfo[] {TypeInfoFactory.longTypeInfo}, desc -> {
+              desc.setGroupingSetsPresent(true);
+              desc.setListGroupingSets(new ArrayList<>(Arrays.asList(0L, 1L)));
+              desc.getKeys().add(new ExprNodeConstantDesc(TypeInfoFactory.longTypeInfo, 0L));
+              desc.setGroupingSetPosition(1);
+            }));
     assertEquals(VectorGroupByOperator.ProcessingModeHashAggregate.class,
         hashProcessingModeClass(new String[] {"k1"},
             new TypeInfo[] {TypeInfoFactory.stringTypeInfo}, desc -> {
@@ -3551,6 +3579,136 @@ public class TestVectorGroupByOperator {
     assertEquals(keyCount, gby.mode().keyTable.size());
     assertEquals(keyCount, expected.size());
     assertEquals(expected, gby.close());
+  }
+
+  @Test
+  public void testBytesKeyTableTaggedSlots() {
+    // The capacity that tags the slots, keys of equal hash, growth while tagged, then removals and
+    // a compaction while tagged.
+    VectorGroupByBytesKeyTable table = new VectorGroupByBytesKeyTable();
+    final int tagged = 1 << 15;
+    byte[][] keys = new byte[3 * tagged][];
+    for (int i = 0; i < keys.length; i++) {
+      keys[i] = bytes((i % 2 == 0 ? "k-" : "a-key-longer-than-16-bytes-") + i);
+    }
+    assertFalse(table.startBatch());
+    for (int i = 0; i < tagged; i++) {
+      assertEquals(i, table.findOrAdd(keys[i], 0, keys[i].length));
+    }
+    assertTrue(table.startBatch());
+    for (int i = 0; i < tagged; i++) {
+      assertEquals(i, table.findOrAddTagged(keys[i], 0, keys[i].length));
+    }
+    byte[][] colliding = collidingKeys("tagged-%08d");
+    assertEquals(tagged, table.findOrAddTagged(colliding[0], 0, colliding[0].length));
+    assertEquals(tagged + 1, table.findOrAddTagged(colliding[1], 0, colliding[1].length));
+    assertEquals(tagged, table.findOrAddTagged(colliding[0], 0, colliding[0].length));
+    for (int i = tagged; i < keys.length; i++) {
+      assertEquals(i + 2, table.findOrAddTagged(keys[i], 0, keys[i].length));
+    }
+    for (int i = 0; i < keys.length; i++) {
+      assertEquals(i < tagged ? i : i + 2, table.findOrAddTagged(keys[i], 0, keys[i].length));
+    }
+    for (int i = 0; i < keys.length; i++) {
+      if (i % 3 != 0) {
+        table.remove(i < tagged ? i : i + 2);
+      }
+    }
+    table.compactIfSparse(null);
+    assertTrue(table.startBatch());
+    final int size = table.size();
+    assertEquals(table.end(), size);
+    Set<Integer> entries = new HashSet<>();
+    for (int i = 0; i < keys.length; i += 3) {
+      int entry = table.findOrAddTagged(keys[i], 0, keys[i].length);
+      assertTrue(entry < size);
+      assertTrue(entries.add(entry));
+    }
+    assertEquals(size, table.findOrAddTagged(keys[1], 0, keys[1].length));
+    assertEquals(size + 1, table.size());
+  }
+
+  @Test
+  public void testSingleBytesKeyTaggedSlots() throws HiveException {
+    for (boolean aggregationBuffers : new boolean[] {false, true}) {
+      // 40000 keys tag the slots of the table, then the same keys again, a repeating key, NULLs
+      // and a partial flush while tagged.
+      Map<String, List<Long>> expected = new HashMap<>();
+      BytesKeyGroupBy gby = new BytesKeyGroupBy(TypeInfoFactory.stringTypeInfo, aggregationBuffers);
+      final int keyCount = 40_000;
+      for (int pass = 0; pass < 2; pass++) {
+        for (int first = 0; first < keyCount; first += VectorizedRowBatch.DEFAULT_SIZE) {
+          byte[][] keys = new byte[Math.min(VectorizedRowBatch.DEFAULT_SIZE, keyCount - first)][];
+          for (int i = 0; i < keys.length; i++) {
+            int key = first + i;
+            keys[i] = key % 1000 == 7 ? null
+                : bytes(key % 2 == 0 ? "key-" + key : "a-longer-key-than-16-bytes-" + key);
+          }
+          gby.process(bytesKeyBatch(keys, false, null, expected));
+        }
+        gby.process(repeatingBytesKeyBatch(bytes("key-2"), 100, null, expected));
+        gby.mode().gcCanary.clear();
+      }
+      assertTrue(gby.mode().keyTable.startBatch());
+      assertEquals(expected, gby.close());
+    }
+  }
+
+  @Test
+  public void testSerializedKeyTaggedSlots() throws HiveException {
+    for (boolean aggregationBuffers : new boolean[] {false, true}) {
+      Map<List<Object>, List<Long>> expected = new HashMap<>();
+      KeyTableGroupBy gby = new KeyTableGroupBy(new TypeInfo[] {
+          TypeInfoFactory.longTypeInfo, TypeInfoFactory.stringTypeInfo}, aggregationBuffers);
+      final int keyCount = 40_000;
+      for (int pass = 0; pass < 2; pass++) {
+        for (int first = 0; first < keyCount; first += VectorizedRowBatch.DEFAULT_SIZE) {
+          Object[][] columns = new Object[2][Math.min(VectorizedRowBatch.DEFAULT_SIZE,
+              keyCount - first)];
+          for (int i = 0; i < columns[0].length; i++) {
+            int key = first + i;
+            columns[0][i] = key % 1000 == 7 ? null : (long) (key / 3);
+            columns[1][i] = "s" + key % 3;
+          }
+          gby.process(multiKeyBatch(columns, null, expected));
+        }
+        gby.mode().gcCanary.clear();
+      }
+      assertTrue(gby.mode().keyTable.startBatch());
+      assertEquals(expected, gby.close());
+    }
+  }
+
+  @Test
+  public void testSerializedKeyDecimal() throws HiveException {
+    // An int and a decimal(8,2) key: 1.5 and 1.50 are one key, NULL is a key, and a selection and a
+    // repeating decimal column are read as for a LONG key.
+    String[] decimals = {"0", "1.5", "1.50", "-1.5", "999999.99", "-999999.99", "0.01", "12345.6"};
+    for (boolean aggregationBuffers : new boolean[] {false, true}) {
+      Map<List<Object>, List<Long>> expected = new HashMap<>();
+      KeyTableGroupBy gby = new KeyTableGroupBy(new TypeInfo[] {
+          TypeInfoFactory.longTypeInfo, TypeInfoFactory.getDecimalTypeInfo(8, 2)}, aggregationBuffers);
+      Object[][] columns = new Object[2][VectorizedRowBatch.DEFAULT_SIZE];
+      for (int i = 0; i < columns[0].length; i++) {
+        columns[0][i] = (long) (i % 5);
+        columns[1][i] = i % 9 == 8 ? null : HiveDecimal.create(decimals[i % decimals.length]);
+      }
+      gby.process(multiKeyBatch(columns, null, expected));
+      int[] selected = new int[columns[0].length / 3];
+      for (int i = 0; i < selected.length; i++) {
+        selected[i] = 3 * i + 1;
+      }
+      gby.process(multiKeyBatch(columns, selected, expected));
+      Object[][] repeating = new Object[2][VectorizedRowBatch.DEFAULT_SIZE];
+      for (int i = 0; i < repeating[0].length; i++) {
+        repeating[0][i] = (long) (i % 5);
+        repeating[1][i] = HiveDecimal.create("1.50");
+      }
+      VectorizedRowBatch batch = multiKeyBatch(repeating, null, expected);
+      batch.cols[1].isRepeating = true;
+      gby.process(batch);
+      assertEquals(expected, gby.close());
+    }
   }
 
   @Test
@@ -3769,6 +3927,190 @@ public class TestVectorGroupByOperator {
           keys[i] = bytes("key-" + (batch * keys.length + i) / 2);
         }
         gby.process(bytesKeyBatch(keys, false, null, expected));
+      }
+      assertTrue(gby.vgo.processingMode instanceof VectorGroupByOperator.ProcessingModeStreaming);
+      assertEquals(expected, gby.close());
+    }
+  }
+
+  @Test
+  public void testSerializedKeyNullsAndLengths() throws HiveException {
+    for (boolean aggregationBuffers : new boolean[] {false, true}) {
+      // Pairs of keys that differ only by a NULL, by which LONG value takes 8 bytes or by where
+      // one BYTES value ends.
+      Object[][] longLong = {
+          {null, 0L, 1L, 1L, null, 0L, Long.MIN_VALUE, -1L, Long.MAX_VALUE, 1L, 0x2_0000_0001L},
+          {1L, 1L, null, 0L, null, 0L, Long.MAX_VALUE, -1L, Long.MIN_VALUE, 0x3_0000_0002L, 3L}};
+      Object[][] bytesBytes = {
+          {"ab", "a", null, "", "a", "a", null, "", "x\0", "x"},
+          {"c", "bc", "a", "a", null, "", null, "", "", "\0"}};
+      Object[][] longBytes = {
+          {1L, null, 0L, 1L, 1L, null},
+          {"x", "x", "x", null, "", null}};
+      Object[][] bytesLongBytes = {
+          {"a", "ab", "a", null, ""},
+          {7L, 7L, null, 7L, 7L},
+          {"bc", "c", "bc", "abc", "abc"}};
+      for (Object[][] columns : new Object[][][] {longLong, bytesBytes, longBytes, bytesLongBytes}) {
+        Map<List<Object>, List<Long>> expected = new HashMap<>();
+        KeyTableGroupBy gby = new KeyTableGroupBy(keyTypeInfos(columns), aggregationBuffers);
+        gby.process(multiKeyBatch(columns, null, expected));
+        gby.process(multiKeyBatch(columns, new int[] {0, 2, 3}, expected));
+        assertEquals(columns[0].length, gby.mode().keyTable.size());
+        assertEquals(expected, gby.close());
+      }
+    }
+  }
+
+  @Test
+  public void testSingleLongKey() throws HiveException {
+    long[] colliding = collidingLongKeys();
+    for (boolean aggregationBuffers : new boolean[] {false, true}) {
+      // NULL and 0, keys of equal hash, and repeating keys.
+      Object[][] columns =
+          {{0L, null, 5L, null, 0L, -1L, 1L << 32, Long.MIN_VALUE, colliding[0], colliding[1]}};
+      Map<List<Object>, List<Long>> expected = new HashMap<>();
+      KeyTableGroupBy gby = new KeyTableGroupBy(keyTypeInfos(columns), aggregationBuffers);
+      gby.process(multiKeyBatch(columns, null, expected));
+      gby.process(multiKeyBatch(columns, new int[] {1, 2, 9}, expected));
+      for (Object first : new Object[] {7L, null}) {
+        VectorizedRowBatch batch = multiKeyBatch(new Object[][] {{first, 8L, 0L}}, null, null);
+        repeating(batch.cols[0]);
+        addExpected(batch, 1, expected);
+        gby.process(batch);
+      }
+      if (aggregationBuffers) {
+        // The row that added the entry is not an access.
+        VectorGroupByBytesKeyTable table = gby.mode().keyTable;
+        assertEquals(2, table.getRow(table.findOrAdd(7L)).getAccessCount());
+      }
+      assertEquals(9, gby.mode().keyTable.size());
+      assertEquals(expected, gby.close());
+    }
+  }
+
+  @Test
+  public void testSingleLongKeyMemory() {
+    // LONG keys have no key bytes: only the table arrays count.
+    VectorGroupByBytesKeyTable table = new VectorGroupByBytesKeyTable();
+    long arrays = table.getMemorySize();
+    for (long key = 0; key < 10; key++) {
+      table.findOrAdd(key);
+    }
+    assertEquals(arrays, table.getMemorySize());
+    for (int entry = 0; entry < 5; entry++) {
+      table.remove(entry);
+    }
+    assertEquals(arrays, table.getMemorySize());
+  }
+
+  /**
+   * Returns two LONG keys that have the same hash in the table.
+   */
+  private static long[] collidingLongKeys() {
+    Map<Integer, Long> keysByHash = new HashMap<>();
+    byte[] bytes = new byte[Long.BYTES];
+    for (long key = 1000; ; key++) {
+      for (int i = 0; i < Long.BYTES; i++) {
+        bytes[i] = (byte) (key >>> (Byte.SIZE * i));
+      }
+      Long other = keysByHash.put(VectorGroupByBytesKeyTable.hash(bytes, 0, Long.BYTES), key);
+      if (other != null) {
+        return new long[] {other, key};
+      }
+    }
+  }
+
+  @Test
+  public void testSerializedKeyRepeatingSelected() throws HiveException {
+    for (boolean aggregationBuffers : new boolean[] {false, true}) {
+      Map<List<Object>, List<Long>> expected = new HashMap<>();
+      KeyTableGroupBy gby = new KeyTableGroupBy(new TypeInfo[] {
+          TypeInfoFactory.longTypeInfo, TypeInfoFactory.stringTypeInfo,
+          TypeInfoFactory.longTypeInfo}, aggregationBuffers);
+      Object[][] columns = {
+          {3L, 4L, 3L, 4L},
+          {"a", "b", null, "a"},
+          {null, null, null, null}};
+      for (int[] selected : new int[][] {null, {1, 3}}) {
+        for (int repeating = 0; repeating < 8; repeating++) {
+          VectorizedRowBatch batch = multiKeyBatch(columns, selected, null);
+          for (int c = 0; c < columns.length; c++) {
+            if ((repeating & (1 << c)) != 0) {
+              repeating(batch.cols[c]);
+            }
+          }
+          addExpected(batch, columns.length, expected);
+          gby.process(batch);
+        }
+      }
+      // (3, a), (4, b), (3, NULL), (4, a), and (3, b) when only the first column repeats.
+      assertEquals(5, gby.mode().keyTable.size());
+      assertEquals(expected, gby.close());
+    }
+  }
+
+  @Test
+  public void testSerializedKeyRandom() throws HiveException {
+    // Random keys of four columns, with NULLs, LONG values of 4 and 8 bytes, repeating columns and
+    // selected rows, through the partial flushes of a small memory limit.
+    Random random = new Random(41);
+    TypeInfo[] typeInfos = {TypeInfoFactory.stringTypeInfo, TypeInfoFactory.longTypeInfo,
+        TypeInfoFactory.getVarcharTypeInfo(20), TypeInfoFactory.intTypeInfo};
+    for (boolean aggregationBuffers : new boolean[] {false, true}) {
+      hconf.set("hive.vectorized.groupby.maxentries", "100");
+      hconf.set("hive.vectorized.groupby.checkinterval", "10");
+      KeyTableGroupBy gby = new KeyTableGroupBy(typeInfos, aggregationBuffers,
+          desc -> desc.setGroupByMemoryUsage(0.0001f));
+      Map<List<Object>, List<Long>> expected = new HashMap<>();
+      for (int b = 0; b < 200; b++) {
+        int size = 1 + random.nextInt(VectorizedRowBatch.DEFAULT_SIZE);
+        Object[][] columns = new Object[typeInfos.length][size];
+        for (int i = 0; i < size; i++) {
+          columns[0][i] = random.nextInt(10) == 0 ? null : "s" + random.nextInt(30);
+          columns[1][i] = random.nextInt(10) == 0 ? null
+              : ((long) random.nextInt(5) - 2) << (random.nextBoolean() ? 0 : 33);
+          columns[2][i] = random.nextInt(10) == 0 ? null
+              : "x".repeat(random.nextInt(4)) + random.nextInt(3);
+          columns[3][i] = random.nextInt(10) == 0 ? null : (long) random.nextInt(4);
+        }
+        int[] selected = null;
+        if (random.nextBoolean()) {
+          selected = random.ints(0, size).distinct().limit(1 + random.nextInt(size)).sorted()
+              .toArray();
+        }
+        VectorizedRowBatch batch = multiKeyBatch(columns, selected, null);
+        for (int c = 0; c < columns.length; c++) {
+          if (random.nextInt(8) == 0) {
+            repeating(batch.cols[c]);
+          }
+        }
+        addExpected(batch, columns.length, expected);
+        gby.process(batch);
+      }
+      assertTrue(gby.out.getCapturedRows().size() + " rows before close",
+          gby.out.getCapturedRows().size() > 1000);
+      assertEquals(expected, gby.close());
+    }
+  }
+
+  @Test
+  public void testSerializedKeySwitchToStreaming() throws HiveException {
+    for (boolean aggregationBuffers : new boolean[] {false, true}) {
+      hconf.set("hive.groupby.mapaggr.checkinterval", "1000");
+      hconf.set("hive.vectorized.groupby.maxentries", "100");
+      KeyTableGroupBy gby = new KeyTableGroupBy(new TypeInfo[] {
+          TypeInfoFactory.longTypeInfo, TypeInfoFactory.stringTypeInfo}, aggregationBuffers,
+          desc -> desc.setMinReductionHashAggr(0.4f));
+      Map<List<Object>, List<Long>> expected = new HashMap<>();
+      for (int b = 0; b < 5; b++) {
+        Object[][] columns = new Object[2][VectorizedRowBatch.DEFAULT_SIZE];
+        for (int i = 0; i < columns[0].length; i++) {
+          int key = (b * columns[0].length + i) / 2;
+          columns[0][i] = (long) key;
+          columns[1][i] = "key-" + key % 7;
+        }
+        gby.process(multiKeyBatch(columns, null, expected));
       }
       assertTrue(gby.vgo.processingMode instanceof VectorGroupByOperator.ProcessingModeStreaming);
       assertEquals(expected, gby.close());
@@ -4218,8 +4560,164 @@ public class TestVectorGroupByOperator {
     }
   }
 
-  private static void addCountSum(Map<String, List<Long>> result, String key, long count,
-      long sum) {
+  private final class KeyTableGroupBy {
+    private final VectorGroupByOperator vgo;
+    private final FakeCaptureVectorToRowOutputOperator out;
+    private final int keyCount;
+
+    KeyTableGroupBy(TypeInfo[] keyTypeInfos, boolean aggregationBuffers) throws HiveException {
+      this(keyTypeInfos, aggregationBuffers, desc -> { });
+    }
+
+    KeyTableGroupBy(TypeInfo[] keyTypeInfos, boolean aggregationBuffers,
+        Consumer<GroupByDesc> descSetup) throws HiveException {
+      keyCount = keyTypeInfos.length;
+      String[] keys = new String[keyCount];
+      List<String> columnNames = new ArrayList<>();
+      for (int i = 0; i < keyCount; i++) {
+        keys[i] = "k" + i;
+        columnNames.add(keys[i]);
+      }
+      columnNames.add("v");
+      VectorizationContext ctx = new VectorizationContext("name", columnNames);
+      Pair<GroupByDesc, VectorGroupByDesc> pair = buildKeyGroupByDesc(ctx, "count", "v",
+          TypeInfoFactory.longTypeInfo, keys, keyTypeInfos);
+      GroupByDesc desc = pair.left;
+      desc.getAggregators().add(buildAggregationDesc(ctx, "sum", GenericUDAFEvaluator.Mode.PARTIAL1,
+          "v", TypeInfoFactory.longTypeInfo));
+      desc.getOutputColumnNames().add("_col" + (keyCount + 1));
+      if (aggregationBuffers) {
+        desc.getAggregators().add(buildAggregationDesc(ctx, "avg",
+            GenericUDAFEvaluator.Mode.PARTIAL1, "v", TypeInfoFactory.longTypeInfo));
+        desc.getOutputColumnNames().add("_col" + (keyCount + 2));
+      }
+      descSetup.accept(desc);
+      CompilationOpContext cCtx = new CompilationOpContext();
+      vgo = (VectorGroupByOperator) Vectorizer.vectorizeGroupByOperator(
+          OperatorFactory.get(cCtx, desc), ctx, pair.right);
+      out = FakeCaptureVectorToRowOutputOperator.addCaptureOutputChild(cCtx, vgo);
+      vgo.initialize(hconf, null);
+      assertEquals(keyCount == 1
+          ? VectorGroupByOperator.ProcessingModeHashAggregateSingleLongKey.class
+          : VectorGroupByOperator.ProcessingModeHashAggregateSerializedKey.class,
+          ((Object) vgo.processingMode).getClass());
+      assertEquals(aggregationBuffers, mode().aggregationColumns == null);
+    }
+
+    VectorGroupByOperator.ProcessingModeHashAggregateKeyTable mode() {
+      return (VectorGroupByOperator.ProcessingModeHashAggregateKeyTable) vgo.processingMode;
+    }
+
+    void process(VectorizedRowBatch batch) throws HiveException {
+      vgo.process(batch, 0);
+    }
+
+    /**
+     * Closes the operator and returns the count and sum of each key, adding up its output rows.
+     */
+    Map<List<Object>, List<Long>> close() throws HiveException {
+      vgo.close(false);
+      Map<List<Object>, List<Long>> result = new HashMap<>();
+      for (Object row : out.getCapturedRows()) {
+        Object[] fields = (Object[]) row;
+        List<Object> key = new ArrayList<>();
+        for (int i = 0; i < keyCount; i++) {
+          Object field = fields[i];
+          key.add(field == null ? null : field instanceof LongWritable
+              ? (Object) ((LongWritable) field).get() : field instanceof IntWritable
+              ? (Object) (long) ((IntWritable) field).get() : field instanceof HiveDecimalWritable
+              ? ((HiveDecimalWritable) field).getHiveDecimal() : keyString(field));
+        }
+        addCountSum(result, key, ((LongWritable) fields[keyCount]).get(),
+            ((LongWritable) fields[keyCount + 1]).get());
+      }
+      return result;
+    }
+  }
+
+  /**
+   * Returns the type of each key column: BIGINT for Long values, STRING for String values.
+   */
+  private static TypeInfo[] keyTypeInfos(Object[][] columns) {
+    TypeInfo[] typeInfos = new TypeInfo[columns.length];
+    for (int c = 0; c < columns.length; c++) {
+      typeInfos[c] = Arrays.stream(columns[c]).anyMatch(v -> v instanceof String)
+          ? TypeInfoFactory.stringTypeInfo : TypeInfoFactory.longTypeInfo;
+    }
+    return typeInfos;
+  }
+
+  /**
+   * Returns a batch with a key column per array, of Long or String values, a null value being NULL,
+   * and value i at row i, and adds its selected rows to expected unless it is null.
+   */
+  private static VectorizedRowBatch multiKeyBatch(Object[][] columns, int[] selected,
+      Map<List<Object>, List<Long>> expected) {
+    int size = columns[0].length;
+    VectorizedRowBatch batch = new VectorizedRowBatch(columns.length + 1);
+    for (int c = 0; c < columns.length; c++) {
+      boolean isBytes = Arrays.stream(columns[c]).anyMatch(v -> v instanceof String);
+      boolean isDecimal = Arrays.stream(columns[c]).anyMatch(v -> v instanceof HiveDecimal);
+      ColumnVector column = isBytes ? new BytesColumnVector()
+          : isDecimal ? new DecimalColumnVector(VectorizedRowBatch.DEFAULT_SIZE, 8, 2) : new LongColumnVector();
+      if (isBytes) {
+        ((BytesColumnVector) column).initBuffer();
+      }
+      for (int i = 0; i < size; i++) {
+        Object value = columns[c][i];
+        if (value == null) {
+          column.noNulls = false;
+          column.isNull[i] = true;
+        } else if (isBytes) {
+          ((BytesColumnVector) column).setVal(i, bytes((String) value));
+        } else if (isDecimal) {
+          ((DecimalColumnVector) column).set(i, (HiveDecimal) value);
+        } else {
+          ((LongColumnVector) column).vector[i] = (Long) value;
+        }
+      }
+      batch.cols[c] = column;
+    }
+    LongColumnVector valueColumn = new LongColumnVector();
+    for (int i = 0; i < size; i++) {
+      valueColumn.vector[i] = i;
+    }
+    batch.cols[columns.length] = valueColumn;
+    setSelection(batch, size, selected);
+    if (expected != null) {
+      addExpected(batch, columns.length, expected);
+    }
+    return batch;
+  }
+
+  /**
+   * Adds the count and sum of the selected rows of the batch, read from its columns, to expected.
+   */
+  private static void addExpected(VectorizedRowBatch batch, int keyCount,
+      Map<List<Object>, List<Long>> expected) {
+    for (int i = 0; i < batch.size; i++) {
+      int row = batch.selectedInUse ? batch.selected[i] : i;
+      List<Object> key = new ArrayList<>();
+      for (int c = 0; c < keyCount; c++) {
+        ColumnVector column = batch.cols[c];
+        int r = column.isRepeating ? 0 : row;
+        if (!column.noNulls && column.isNull[r]) {
+          key.add(null);
+        } else if (column instanceof LongColumnVector) {
+          key.add(((LongColumnVector) column).vector[r]);
+        } else if (column instanceof DecimalColumnVector) {
+          key.add(((DecimalColumnVector) column).vector[r].getHiveDecimal());
+        } else {
+          BytesColumnVector bytes = (BytesColumnVector) column;
+          key.add(keyString(Arrays.copyOfRange(bytes.vector[r], bytes.start[r],
+              bytes.start[r] + bytes.length[r])));
+        }
+      }
+      addCountSum(expected, key, 1, ((LongColumnVector) batch.cols[keyCount]).vector[row]);
+    }
+  }
+
+  private static <K> void addCountSum(Map<K, List<Long>> result, K key, long count, long sum) {
     result.merge(key, Arrays.asList(count, sum),
         (a, b) -> Arrays.asList(a.get(0) + b.get(0), a.get(1) + b.get(1)));
   }
