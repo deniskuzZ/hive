@@ -154,6 +154,11 @@ public class TestVectorizedDictionaryEncodingColumnReader extends VectorizedColu
   }
 
   @Test
+  public void testDictionaryIds() throws Exception {
+    dictionaryIdsRead(isDictionaryEncoding);
+  }
+
+  @Test
   public void testRejectedTimestamp() throws Exception {
     rejectedTimestampRead(isDictionaryEncoding);
   }

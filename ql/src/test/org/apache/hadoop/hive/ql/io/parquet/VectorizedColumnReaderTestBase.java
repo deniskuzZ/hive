@@ -46,6 +46,7 @@ import org.apache.hadoop.hive.ql.io.parquet.serde.ArrayWritableObjectInspector;
 import org.apache.hadoop.hive.ql.io.parquet.timestamp.NanoTime;
 import org.apache.hadoop.hive.ql.io.parquet.timestamp.NanoTimeUtils;
 import org.apache.hadoop.hive.ql.io.parquet.timestamp.ParquetTimestampUtils;
+import org.apache.hadoop.hive.ql.io.parquet.vector.VectorizedDummyColumnReader;
 import org.apache.hadoop.hive.ql.io.parquet.vector.VectorizedParquetRecordReader;
 import org.apache.hadoop.hive.ql.io.parquet.vector.VectorizedPrimitiveColumnReader;
 import org.apache.hadoop.hive.ql.metadata.HiveException;
@@ -65,9 +66,15 @@ import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.parquet.column.ColumnDescriptor;
+import org.apache.parquet.column.Dictionary;
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
+import org.apache.parquet.column.page.DataPage;
+import org.apache.parquet.column.page.DataPageV1;
+import org.apache.parquet.column.page.DataPageV2;
+import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.page.PageReadStore;
+import org.apache.parquet.column.page.PageReader;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.SimpleGroupFactory;
 import org.apache.parquet.hadoop.ParquetFileReader;
@@ -1829,9 +1836,10 @@ public class VectorizedColumnReaderTestBase {
     };
   }
 
-  /** One batch as read: flags, NULL map and values. */
+  /** One batch as read: flags, NULL map and values; for a bytes vector, its dictionary token, size and ids. */
   protected record Batch(boolean noNulls, boolean isRepeating, boolean[] isNull, long[] longs, double[] doubles,
-      HiveDecimal[] decimals, byte[][] bytes, java.sql.Timestamp[] timestamps) {
+      HiveDecimal[] decimals, byte[][] bytes, java.sql.Timestamp[] timestamps, long dictionaryToken,
+      int dictionarySize, int[] dictionaryIds) {
   }
 
   protected static ColumnVector newVector(TypeInfo hiveType, boolean decimal64, int size) {
@@ -1896,6 +1904,9 @@ public class VectorizedColumnReaderTestBase {
     HiveDecimal[] decimals = null;
     byte[][] bytes = null;
     java.sql.Timestamp[] timestamps = null;
+    long dictionaryToken = 0;
+    int dictionarySize = 0;
+    int[] dictionaryIds = null;
     if (cv instanceof LongColumnVector c) {
       longs = Arrays.copyOf(c.vector, n);
     } else if (cv instanceof DoubleColumnVector c) {
@@ -1905,6 +1916,9 @@ public class VectorizedColumnReaderTestBase {
       for (int i = 0; i < n; i++) {
         bytes[i] = isNull[i] ? null : Arrays.copyOfRange(c.vector[i], c.start[i], c.start[i] + c.length[i]);
       }
+      dictionaryToken = c.dictionaryToken;
+      dictionarySize = c.dictionarySize;
+      dictionaryIds = c.dictionaryToken == 0 ? null : Arrays.copyOf(c.dictionaryIds, n);
     } else if (cv instanceof TimestampColumnVector c) {
       // time[] apart: a java.sql.Timestamp takes its millisecond from the nanos.
       longs = Arrays.copyOf(c.time, n);
@@ -1922,7 +1936,8 @@ public class VectorizedColumnReaderTestBase {
         decimals[i] = isNull[i] ? null : c.vector[i].getHiveDecimal();
       }
     }
-    return new Batch(cv.noNulls, cv.isRepeating, isNull, longs, doubles, decimals, bytes, timestamps);
+    return new Batch(cv.noNulls, cv.isRepeating, isNull, longs, doubles, decimals, bytes, timestamps, dictionaryToken,
+        dictionarySize, dictionaryIds);
   }
 
   /**
@@ -2143,6 +2158,144 @@ public class VectorizedColumnReaderTestBase {
         assertEquals(FLAT_ROWS, row);
       }
     }
+  }
+
+  /**
+   * Dictionary ids on string batches: a batch whose rows all came from dictionary pages carries its chunk's token and
+   * size, and each non-NULL row the id of its entry, also where CHAR(5) truncates two entries to the same value; a
+   * batch with a row from a PLAIN page carries none (the flat file's s falls back to PLAIN within its chunk); every
+   * row group has its own token.
+   */
+  protected void dictionaryIdsRead(boolean dictionaryEncoding) throws IOException {
+    for (WriterVersion version : WriterVersion.values()) {
+      for (TypeInfo hiveType : List.of(TypeInfoFactory.stringTypeInfo, TypeInfoFactory.getCharTypeInfo(5))) {
+        for (int batchSize : FLAT_BATCH_SIZES) {
+          assertDictionaryIds(flatFile(version, dictionaryEncoding), "s", hiveType, batchSize, dictionaryEncoding);
+        }
+      }
+      // INT32 read as STRING converts per value, and its dictionary entries likewise.
+      assertDictionaryIds(flatFile(version, dictionaryEncoding), "i32", TypeInfoFactory.stringTypeInfo, 1024,
+          dictionaryEncoding);
+    }
+    Path path = writeIdsFile(dictionaryEncoding);
+    Path plain = writeIdsFile(false);
+    try {
+      List<Long> tokens = assertDictionaryIds(path, "s", TypeInfoFactory.stringTypeInfo, 1024, dictionaryEncoding);
+      assertEquals(tokens.toString(), dictionaryEncoding, tokens.size() > 1);
+      assertEquals(tokens.toString(), tokens.size(), Set.copyOf(tokens).size());
+      // A vector the decoder left with ids, reset and refilled by another reader carries none: one of a PLAIN chunk,
+      // and the reader of a column the file lacks, which writes no value at all.
+      BytesColumnVector reused = (BytesColumnVector) newVector(TypeInfoFactory.stringTypeInfo, false, 1024);
+      readFirstBatch(path, reused);
+      assertEquals(dictionaryEncoding, reused.dictionaryToken != 0);
+      reused.reset();
+      readFirstBatch(plain, reused);
+      assertEquals(0, reused.dictionaryToken);
+      readFirstBatch(path, reused);
+      reused.reset();
+      new VectorizedDummyColumnReader(null).readBatch(1024, reused, TypeInfoFactory.stringTypeInfo);
+      assertEquals(0, reused.dictionaryToken);
+    } finally {
+      path.getFileSystem(conf).delete(path, false);
+      plain.getFileSystem(conf).delete(plain, false);
+    }
+  }
+
+  /** Several row groups of a low-cardinality optional string s. */
+  private static Path writeIdsFile(boolean dictionaryEncoding) throws IOException {
+    MessageType writeSchema = parseMessageType("message m { optional binary s (UTF8); }");
+    Path path = new Path(System.getProperty("java.io.tmpdir"),
+        "testDictionaryIds" + (dictionaryEncoding ? "-dictionary" : "-plain") + ".parquet");
+    path.getFileSystem(conf).delete(path, false);
+    try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(path).withConf(conf).withType(writeSchema)
+        .withDictionaryEncoding(dictionaryEncoding).withRowGroupSize(4096).withPageSize(1024).build()) {
+      SimpleGroupFactory f = new SimpleGroupFactory(writeSchema);
+      for (int r = 0; r < 20_000; r++) {
+        Group g = f.newGroup();
+        if (r % 9 != 0) {
+          g.append("s", "v" + r % 37);
+        }
+        writer.write(g);
+      }
+    }
+    return path;
+  }
+
+  private static void readFirstBatch(Path path, BytesColumnVector column) throws IOException {
+    try (ParquetFileReader reader = ParquetFileReader.open(HadoopInputFile.fromPath(path, conf))) {
+      MessageType fileSchema = reader.getFooter().getFileMetaData().getSchema();
+      ColumnDescriptor descriptor = fileSchema.getColumnDescription(new String[] { "s" });
+      PageReadStore rowGroup = reader.readNextRowGroup();
+      new VectorizedPrimitiveColumnReader(descriptor, rowGroup.getPageReader(descriptor), false, null, false, true,
+          fileSchema.getType("s"), TypeInfoFactory.stringTypeInfo)
+          .readBatch((int) Math.min(1024, rowGroup.getRowCount()), column, TypeInfoFactory.stringTypeInfo);
+    }
+  }
+
+  /** Checks the ids of a column's batches against its dictionary pages; returns each row group's token. */
+  private static List<Long> assertDictionaryIds(Path path, String column, TypeInfo hiveType, int batchSize,
+      boolean dictionaryEncoding) throws IOException {
+    int max = hiveType instanceof BaseCharTypeInfo c ? c.getLength() : -1;
+    List<Long> tokens = new ArrayList<>();
+    try (ParquetFileReader pages = ParquetFileReader.open(HadoopInputFile.fromPath(path, conf));
+        ParquetFileReader data = ParquetFileReader.open(HadoopInputFile.fromPath(path, conf))) {
+      MessageType fileSchema = data.getFooter().getFileMetaData().getSchema();
+      ColumnDescriptor descriptor = fileSchema.getColumnDescription(new String[] { column });
+      PageReadStore rowGroup;
+      while ((rowGroup = data.readNextRowGroup()) != null) {
+        // The rows the chunk's dictionary pages hold, which come before any PLAIN page.
+        PageReader pageReader = pages.readNextRowGroup().getPageReader(descriptor);
+        DictionaryPage dictionaryPage = pageReader.readDictionaryPage();
+        Dictionary dictionary = dictionaryPage == null ? null
+            : dictionaryPage.getEncoding().initDictionary(descriptor, dictionaryPage);
+        long dictionaryRows = 0;
+        boolean plain = false;
+        for (DataPage page; (page = pageReader.readPage()) != null; ) {
+          Encoding encoding = page instanceof DataPageV1 v1 ? v1.getValueEncoding()
+              : ((DataPageV2) page).getDataEncoding();
+          if (encoding.usesDictionary()) {
+            assertFalse(column + " dictionary page after a PLAIN one", plain);
+            dictionaryRows += page.getValueCount();
+          } else {
+            plain = true;
+          }
+        }
+        assertEquals(column, dictionaryEncoding, dictionaryRows > 0);
+        VectorizedPrimitiveColumnReader columnReader = new VectorizedPrimitiveColumnReader(descriptor,
+            rowGroup.getPageReader(descriptor), false, null, false, true, fileSchema.getType(column), hiveType);
+        long token = 0;
+        for (long row = 0; row < rowGroup.getRowCount(); ) {
+          int n = (int) Math.min(batchSize, rowGroup.getRowCount() - row);
+          ColumnVector cv = newVector(hiveType, false, batchSize);
+          cv.reset();
+          columnReader.readBatch(n, cv, hiveType);
+          Batch b = snapshot(cv, n);
+          String label = path.getName() + " " + column + " as " + hiveType + " batch " + batchSize + " at " + row;
+          assertEquals(label, row + n <= dictionaryRows, b.dictionaryToken() != 0);
+          if (b.dictionaryToken() != 0) {
+            assertTrue(label, token == 0 || token == b.dictionaryToken());
+            token = b.dictionaryToken();
+            assertEquals(label, dictionary.getMaxId() + 1, b.dictionarySize());
+            for (int i = 0; i < n; i++) {
+              if (!b.isNull()[i]) {
+                int id = b.dictionaryIds()[i];
+                String value = descriptor.getPrimitiveType().getPrimitiveTypeName() == PrimitiveTypeName.INT32
+                    ? Integer.toString(dictionary.decodeToInt(id))
+                    : new String(dictionary.decodeToBinary(id).getBytes(), StandardCharsets.UTF_8);
+                int[] points = value.codePoints().toArray();
+                String kept = max > 0 && points.length > max ? new String(points, 0, max) : value;
+                assertArrayEquals(label + " row " + i, kept.getBytes(StandardCharsets.UTF_8), b.bytes()[i]);
+              }
+            }
+          }
+          row += n;
+        }
+        if (token != 0) {
+          tokens.add(token);
+        }
+      }
+    }
+    return tokens;
   }
 
   private static Path writeSmallFile(String name, MessageType writeSchema, boolean dictionaryEncoding, int rows,
