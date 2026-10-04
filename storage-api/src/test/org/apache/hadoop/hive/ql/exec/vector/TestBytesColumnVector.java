@@ -33,6 +33,39 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 public class TestBytesColumnVector {
+  /** reset() drops the dictionary ids of the rows it discards. */
+  @Test
+  public void testResetDropsDictionaryIds() {
+    BytesColumnVector v = filled(4);
+    v.dictionaryIds = new int[] { 3, 1, 3, 0 };
+    v.dictionaryToken = 7;
+    v.reset();
+    assertEquals(0, v.dictionaryToken);
+  }
+
+  /** A shallow copy shares the rows, and so their dictionary ids. */
+  @Test
+  public void testShallowCopyKeepsDictionaryIds() {
+    BytesColumnVector v = filled(4);
+    v.dictionaryIds = new int[] { 3, 1, 3, 0 };
+    v.dictionaryToken = 7;
+    v.dictionarySize = 4;
+    BytesColumnVector copy = new BytesColumnVector(4);
+    v.shallowCopyTo(copy);
+    assertSame(v.dictionaryIds, copy.dictionaryIds);
+    assertEquals(7, copy.dictionaryToken);
+    assertEquals(4, copy.dictionarySize);
+  }
+
+  private static BytesColumnVector filled(int size) {
+    BytesColumnVector v = new BytesColumnVector(size);
+    v.init();
+    for (int i = 0; i < size; i++) {
+      v.setVal(i, ("v" + i).getBytes(StandardCharsets.UTF_8));
+    }
+    return v;
+  }
+
   @Test
   public void testSmallBufferReuse() {
     BytesColumnVector col = new BytesColumnVector();

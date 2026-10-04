@@ -50,6 +50,13 @@ public class BytesColumnVector extends ColumnVector {
    */
   public int[] length;
 
+  /** The dictionary id of each row's value when {@link #dictionaryToken} is not 0; meaningless for NULL rows. */
+  public int[] dictionaryIds;
+  /** Identifies the dictionary the ids index, unique in the process; 0 when the rows carry no ids. */
+  public long dictionaryToken;
+  /** The number of entries of that dictionary. */
+  public int dictionarySize;
+
   // Calls to ensureValPreallocated() ensure that currentValue and currentOffset
   // are set to enough space for the value.
   private byte[] currentValue;   // bytes for the next value
@@ -101,6 +108,7 @@ public class BytesColumnVector extends ColumnVector {
   public void reset() {
     super.reset();
     initBuffer(0);
+    dictionaryToken = 0;
   }
 
   /**
@@ -577,5 +585,8 @@ public class BytesColumnVector extends ColumnVector {
     other.currentValue = currentValue;
     other.sharedBuffer = sharedBuffer;
     other.sharedBufferOffset = sharedBufferOffset;
+    other.dictionaryIds = dictionaryIds;
+    other.dictionaryToken = dictionaryToken;
+    other.dictionarySize = dictionarySize;
   }
 }

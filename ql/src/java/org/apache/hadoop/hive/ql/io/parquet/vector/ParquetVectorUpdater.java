@@ -31,6 +31,9 @@ interface ParquetVectorUpdater {
   /** Sets up the vector for a batch. */
   void beginBatch(ColumnVector column);
 
+  /** Ends a batch; {@code dictionaryOnly} says every row came from a dictionary page. */
+  void endBatch(ColumnVector column, boolean dictionaryOnly);
+
   /** Whether PLAIN pages read in bulk from {@link VectorizedPlainValuesReader}; other pages read per value. */
   default boolean readsPlainInBulk() {
     return true;
