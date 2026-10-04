@@ -3795,6 +3795,107 @@ public class TestVectorGroupByOperator {
     }
   }
 
+  /**
+   * A single string key whose rows carry dictionary ids, as the Parquet reader decodes them: an id names its value only
+   * within its dictionary, a dictionary may hold one value under two ids (as CHAR truncation makes it), the ids of NULL
+   * rows are never read, a bigger dictionary replaces a smaller one, and rows without ids mix in.
+   */
+  @Test
+  public void testSingleBytesKeyDictionaryIds() throws HiveException {
+    String[] small = {"a", "b", "c", "b"};
+    String[] big = new String[300];
+    for (int i = 0; i < big.length; i++) {
+      big[i] = i == 7 ? "c" : "k" + i;
+    }
+    int[] cycle = new int[1000];
+    for (int i = 0; i < cycle.length; i++) {
+      cycle[i] = i % 11 == 0 ? -1 : (i * 7) % big.length;
+    }
+    for (boolean aggregationBuffers : new boolean[] {false, true}) {
+      Map<String, List<Long>> expected = new HashMap<>();
+      BytesKeyGroupBy gby = new BytesKeyGroupBy(TypeInfoFactory.stringTypeInfo, aggregationBuffers);
+      gby.process(dictionaryKeyBatch(small, new int[] {0, 1, 2, 3, -1, 0, 3}, 11, null, expected));
+      gby.process(dictionaryKeyBatch(small, new int[] {3, 3, -1, 2, 1, 0}, 11, new int[] {0, 2, 3, 5}, expected));
+      gby.process(dictionaryKeyBatch(big, cycle, 12, null, expected));
+      gby.process(bytesKeyBatch(keys("a", "k5", null, "c"), false, null, expected));
+      gby.process(dictionaryKeyBatch(small, new int[] {2, 1, 0, -1}, 11, new int[] {1, 2, 3}, expected));
+      assertEquals(4 + 299, gby.mode().keyTable.size());
+      assertEquals(expected, gby.close());
+    }
+  }
+
+  /** A repeating key column keeps its single lookup, whatever ids the other rows carry. */
+  @Test
+  public void testSingleBytesKeyDictionaryIdsRepeating() throws HiveException {
+    String[] dictionary = {"a", "b", "c"};
+    for (boolean aggregationBuffers : new boolean[] {false, true}) {
+      for (int[] selected : new int[][] {null, {1, 3}}) {
+        Map<String, List<Long>> expected = new HashMap<>();
+        BytesKeyGroupBy gby = new BytesKeyGroupBy(TypeInfoFactory.stringTypeInfo, aggregationBuffers);
+        gby.process(dictionaryKeyBatch(dictionary, new int[] {0, 1, 2}, 41, null, expected));
+        VectorizedRowBatch batch = dictionaryKeyBatch(dictionary, new int[] {1, 2, 0, 2}, 41, selected, null);
+        batch.cols[0].isRepeating = true;
+        for (int i = 0; i < batch.size; i++) {
+          addCountSum(expected, "b", 1, batch.selectedInUse ? batch.selected[i] : i);
+        }
+        gby.process(batch);
+        assertEquals(expected, gby.close());
+      }
+    }
+  }
+
+  /**
+   * An id's entry does not outlive a flush: a partial flush removes and renumbers entries and recycles their buffers,
+   * while the next batches still read the same dictionary.
+   */
+  @Test
+  public void testSingleBytesKeyDictionaryIdsAcrossFlush() throws HiveException {
+    String[] dictionary = new String[100];
+    int[] ids = new int[dictionary.length];
+    for (int i = 0; i < dictionary.length; i++) {
+      dictionary[i] = "k" + i;
+      ids[i] = i;
+    }
+    for (boolean aggregationBuffers : new boolean[] {false, true}) {
+      Map<String, List<Long>> expected = new HashMap<>();
+      BytesKeyGroupBy gby = new BytesKeyGroupBy(TypeInfoFactory.stringTypeInfo, aggregationBuffers);
+      gby.process(dictionaryKeyBatch(dictionary, ids, 51, null, expected));
+      // The partial flush after this batch emits the 10 oldest entries, k0 to k9.
+      gby.mode().gcCanary.clear();
+      gby.process(dictionaryKeyBatch(dictionary, new int[] {50}, 51, null, expected));
+      assertEquals(90, gby.mode().keyTable.size());
+      gby.process(dictionaryKeyBatch(dictionary, ids, 51, null, expected));
+      gby.process(dictionaryKeyBatch(dictionary, ids, 51, new int[] {0, 5, 99}, expected));
+      assertEquals(100, gby.mode().keyTable.size());
+      assertEquals(expected, gby.close());
+    }
+  }
+
+  /** Under the hash mode's low reduction the operator switches to streaming and its results stay the same. */
+  @Test
+  public void testSingleBytesKeyDictionaryIdsSwitchToStreaming() throws HiveException {
+    String[] dictionary = new String[5 * VectorizedRowBatch.DEFAULT_SIZE / 2];
+    for (int i = 0; i < dictionary.length; i++) {
+      dictionary[i] = "key-" + i;
+    }
+    for (boolean aggregationBuffers : new boolean[] {false, true}) {
+      hconf.set("hive.groupby.mapaggr.checkinterval", "1000");
+      hconf.set("hive.vectorized.groupby.maxentries", "100");
+      BytesKeyGroupBy gby = new BytesKeyGroupBy(TypeInfoFactory.stringTypeInfo, aggregationBuffers,
+          desc -> desc.setMinReductionHashAggr(0.4f));
+      Map<String, List<Long>> expected = new HashMap<>();
+      for (int batch = 0; batch < 5; batch++) {
+        int[] ids = new int[VectorizedRowBatch.DEFAULT_SIZE];
+        for (int i = 0; i < ids.length; i++) {
+          ids[i] = (batch * ids.length + i) / 2;
+        }
+        gby.process(dictionaryKeyBatch(dictionary, ids, 61, null, expected));
+      }
+      assertTrue(gby.vgo.processingMode instanceof VectorGroupByOperator.ProcessingModeStreaming);
+      assertEquals(expected, gby.close());
+    }
+  }
+
   @Test
   public void testSerializedKeyNullsAndLengths() throws HiveException {
     for (boolean aggregationBuffers : new boolean[] {false, true}) {
@@ -4663,6 +4764,48 @@ public class TestVectorGroupByOperator {
     setSelection(batch, size, selected);
     for (int i = 0; i < batch.size; i++) {
       addCountSum(expected, keyString(key), 1, batch.selectedInUse ? batch.selected[i] : i);
+    }
+    return batch;
+  }
+
+  /**
+   * Returns a batch whose keys are the entries of the dictionary, NULL for a negative id, set by reference into one
+   * flattened array with their ids and the token, as the Parquet reader decodes them; value i at row i. Adds its
+   * selected rows to expected when not null. A NULL row's id is out of the dictionary's range.
+   */
+  private static VectorizedRowBatch dictionaryKeyBatch(String[] dictionary, int[] ids, long token, int[] selected,
+      Map<String, List<Long>> expected) {
+    int[] offsets = new int[dictionary.length + 1];
+    for (int id = 0; id < dictionary.length; id++) {
+      offsets[id + 1] = offsets[id] + dictionary[id].length();
+    }
+    byte[] values = new byte[offsets[dictionary.length]];
+    for (int id = 0; id < dictionary.length; id++) {
+      System.arraycopy(bytes(dictionary[id]), 0, values, offsets[id], dictionary[id].length());
+    }
+    VectorizedRowBatch batch = new VectorizedRowBatch(2);
+    BytesColumnVector keyColumn = new BytesColumnVector();
+    LongColumnVector valueColumn = new LongColumnVector();
+    keyColumn.dictionaryIds = new int[keyColumn.vector.length];
+    for (int i = 0; i < ids.length; i++) {
+      if (ids[i] < 0) {
+        keyColumn.noNulls = false;
+        keyColumn.isNull[i] = true;
+        keyColumn.dictionaryIds[i] = Integer.MAX_VALUE;
+      } else {
+        keyColumn.setRef(i, values, offsets[ids[i]], offsets[ids[i] + 1] - offsets[ids[i]]);
+        keyColumn.dictionaryIds[i] = ids[i];
+      }
+      valueColumn.vector[i] = i;
+    }
+    keyColumn.dictionaryToken = token;
+    keyColumn.dictionarySize = dictionary.length;
+    batch.cols[0] = keyColumn;
+    batch.cols[1] = valueColumn;
+    setSelection(batch, ids.length, selected);
+    for (int i = 0; expected != null && i < batch.size; i++) {
+      int row = batch.selectedInUse ? batch.selected[i] : i;
+      addCountSum(expected, ids[row] < 0 ? null : dictionary[ids[row]], 1, row);
     }
     return batch;
   }

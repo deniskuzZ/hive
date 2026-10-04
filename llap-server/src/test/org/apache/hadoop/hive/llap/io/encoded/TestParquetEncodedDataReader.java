@@ -31,6 +31,7 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
@@ -292,6 +293,68 @@ public class TestParquetEncodedDataReader {
     assertEquals(ROWS, all.size());
     for (int i = 0; i < ROWS; ++i) {
       assertArrayEquals("row " + i, expectedRow(i), all.get(i));
+    }
+  }
+
+  /**
+   * The decode thread hands a dictionary-encoded string column over with its dictionary ids: every batch of a row
+   * group carries that chunk's token and size, an id names one value, and each row group has its own token. A file of
+   * its own, since the fixture's strings are all distinct and parquet-mr writes those PLAIN.
+   */
+  @Test
+  public void testDictionaryIdsReachTheConsumer() throws Exception {
+    MessageType schema = Types.buildMessage()
+        .optional(PrimitiveTypeName.BINARY).as(LogicalTypeAnnotation.stringType()).named("s")
+        .named("hive_schema");
+    Path dictionaryFile = new Path(tmpDir.toString(), "dictionary-strings.parquet");
+    try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(dictionaryFile).withConf(daemonConf)
+        .withType(schema).withRowGroupSize(1024L).withMinRowCountForPageSizeCheck(ROWS_PER_GROUP)
+        .withMaxRowCountForPageSizeCheck(ROWS_PER_GROUP).build()) {
+      SimpleGroupFactory factory = new SimpleGroupFactory(schema);
+      for (int i = 0; i < ROWS; ++i) {
+        Group g = factory.newGroup();
+        if (i % 7 != 0) {
+          g.append("s", "v" + (i % 41) + "-" + i / ROWS_PER_GROUP);
+        }
+        writer.write(g);
+      }
+    }
+    ParquetMetadata dictionaryFooter = ParquetFileReader.readFooter(
+        HadoopInputFile.fromPath(dictionaryFile, daemonConf), ParquetMetadataConverter.NO_FILTER);
+    assertEquals(ROW_GROUPS, dictionaryFooter.getBlocks().size());
+    for (BlockMetaData block : dictionaryFooter.getBlocks()) {
+      assertTrue(block.getColumns().getFirst().getEncodingStats().hasDictionaryEncodedPages());
+      assertFalse(block.getColumns().getFirst().getEncodingStats().hasNonDictionaryEncodedPages());
+    }
+    // Not the fixture, so expectedRow(i) does not describe these rows; the stock reader's parity does.
+    skipExpectedRows = true;
+    long length = dictionaryFile.getFileSystem(daemonConf).getFileStatus(dictionaryFile).getLen();
+
+    Run run = read(jobConf("s", "string", 0), new FileSplit(dictionaryFile, 0, length, (String[]) null));
+
+    assertEquals(ROWS, run.rows.size());
+    Map<Integer, Long> tokens = new HashMap<>();
+    Map<Long, Map<Integer, Object>> values = new HashMap<>();
+    int row = 0;
+    for (int b = 0; b < run.batchSizes.size(); b++) {
+      int rowGroup = (int) (run.startRows.get(b) / ROWS_PER_GROUP);
+      long token = run.dictionaryTokens.get(b);
+      assertTrue("batch " + b, token != 0);
+      assertEquals("batch " + b, token, (long) tokens.computeIfAbsent(rowGroup, g -> token));
+      assertEquals("batch " + b, 41, run.dictionarySizes.get(b).intValue());
+      int[] ids = run.dictionaryIds.get(b);
+      for (int i = 0; i < run.batchSizes.get(b); i++, row++) {
+        Object value = run.rows.get(row)[0];
+        if (value != null) {
+          assertEquals("row " + row, value, values.computeIfAbsent(token, t -> new HashMap<>())
+              .computeIfAbsent(ids[i], id -> value));
+        }
+      }
+    }
+    assertEquals(ROW_GROUPS, Set.copyOf(tokens.values()).size());
+    for (Map<Integer, Object> perToken : values.values()) {
+      assertEquals(41, perToken.size());
+      assertEquals(41, Set.copyOf(perToken.values()).size());
     }
   }
 
@@ -1380,6 +1443,9 @@ public class TestParquetEncodedDataReader {
     final List<Object[]> rows;
     final List<Integer> batchSizes;
     final List<Long> startRows;
+    final List<Long> dictionaryTokens;
+    final List<Integer> dictionarySizes;
+    final List<int[]> dictionaryIds;
     final ColumnVector[] firstBatchCols;
     final boolean done;
     final Throwable error;
@@ -1394,6 +1460,9 @@ public class TestParquetEncodedDataReader {
       this.rows = c.rows;
       this.batchSizes = c.batchSizes;
       this.startRows = c.startRows;
+      this.dictionaryTokens = c.dictionaryTokens;
+      this.dictionarySizes = c.dictionarySizes;
+      this.dictionaryIds = c.dictionaryIds;
       this.firstBatchCols = c.firstBatchCols;
       this.done = c.done;
       this.error = c.error;
@@ -1422,6 +1491,10 @@ public class TestParquetEncodedDataReader {
     final List<Object[]> rows = new ArrayList<>();
     final List<Integer> batchSizes = new ArrayList<>();
     final List<Long> startRows = new ArrayList<>();
+    /** The first column's dictionary token, size and ids per batch, when it is a bytes vector. */
+    final List<Long> dictionaryTokens = new ArrayList<>();
+    final List<Integer> dictionarySizes = new ArrayList<>();
+    final List<int[]> dictionaryIds = new ArrayList<>();
     ColumnVector[] firstBatchCols;
     boolean done;
     Throwable error;
@@ -1433,6 +1506,11 @@ public class TestParquetEncodedDataReader {
       }
       batchSizes.add(cvb.size);
       startRows.add(cvb.startRowInFile);
+      if (cvb.cols.length > 0 && cvb.cols[0] instanceof BytesColumnVector b) {
+        dictionaryTokens.add(b.dictionaryToken);
+        dictionarySizes.add(b.dictionarySize);
+        dictionaryIds.add(b.dictionaryToken == 0 ? null : Arrays.copyOf(b.dictionaryIds, cvb.size));
+      }
       for (int r = 0; r < cvb.size; ++r) {
         Object[] row = new Object[cvb.cols.length];
         for (int c = 0; c < cvb.cols.length; ++c) {
