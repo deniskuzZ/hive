@@ -31,11 +31,15 @@ import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.schema.LogicalTypeAnnotation.DecimalLogicalTypeAnnotation;
 import org.apache.parquet.schema.LogicalTypeAnnotation.StringLogicalTypeAnnotation;
+import org.apache.parquet.schema.LogicalTypeAnnotation.TimestampLogicalTypeAnnotation;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 
 import java.io.IOException;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.util.Objects;
+import java.util.TimeZone;
 
 /**
  * Picks the updater of a column chunk from its Parquet type, its Hive type and the column vector it fills.
@@ -88,10 +92,13 @@ final class ParquetVectorUpdaterFactory {
   /**
    * The pairings whose values need no conversion, which read PLAIN pages in bulk: signed integers into the integer
    * types and DATE, BOOLEAN, FLOAT and DOUBLE into their own types, decimals into decimal64 at their own scale, and
-   * BINARY into the string types. Null for the rest, which read per value.
+   * BINARY into the string types; and timestamps, converted in arithmetic. Null for the rest, which read per value.
    */
   private ParquetVectorUpdater bulkUpdater(ColumnVector column) {
     PrimitiveCategory category = ((PrimitiveTypeInfo) hiveType).getPrimitiveCategory();
+    if (category == PrimitiveCategory.TIMESTAMP) {
+      return timestampUpdater();
+    }
     boolean integer = !(type.getLogicalTypeAnnotation() instanceof DecimalLogicalTypeAnnotation)
         && !ETypeConverter.isUnsignedInteger(type);
     boolean bulk = switch (type.getPrimitiveTypeName()) {
@@ -122,6 +129,26 @@ final class ParquetVectorUpdaterFactory {
     return category == PrimitiveCategory.FLOAT || category == PrimitiveCategory.DOUBLE
         ? new ParquetVectorUpdaters.DoubleUpdater(dictionary, type, hiveType)
         : new ParquetVectorUpdaters.LongUpdater(dictionary, type, hiveType, skipProlepticConversion);
+  }
+
+  /**
+   * INT64 timestamps, and INT96 unless its legacy conversion shifts into a zone other than UTC, which formats through
+   * java.util calendars.
+   */
+  private ParquetVectorUpdater timestampUpdater() {
+    switch (type.getPrimitiveTypeName()) {
+    case INT64:
+      return type.getLogicalTypeAnnotation() instanceof TimestampLogicalTypeAnnotation
+          ? new ParquetVectorUpdaters.Int64TimestampUpdater(dictionary, type, hiveType) : null;
+    case INT96:
+      // The zone ParquetDataColumnReaderFactory converts INT96 into.
+      ZoneId zone = skipTimestampConversion ? ZoneOffset.UTC
+          : Objects.requireNonNullElse(writerTimezone, TimeZone.getDefault().toZoneId());
+      return legacyConversionEnabled && !zone.normalized().equals(ZoneOffset.UTC) ? null
+          : new ParquetVectorUpdaters.Int96TimestampUpdater(dictionary, type, hiveType, zone, legacyConversionEnabled);
+    default:
+      return null;
+    }
   }
 
   /**

@@ -45,6 +45,7 @@ import org.apache.hadoop.hive.ql.io.parquet.read.DataWritableReadSupport;
 import org.apache.hadoop.hive.ql.io.parquet.serde.ArrayWritableObjectInspector;
 import org.apache.hadoop.hive.ql.io.parquet.timestamp.NanoTime;
 import org.apache.hadoop.hive.ql.io.parquet.timestamp.NanoTimeUtils;
+import org.apache.hadoop.hive.ql.io.parquet.timestamp.ParquetTimestampUtils;
 import org.apache.hadoop.hive.ql.io.parquet.vector.VectorizedParquetRecordReader;
 import org.apache.hadoop.hive.ql.io.parquet.vector.VectorizedPrimitiveColumnReader;
 import org.apache.hadoop.hive.ql.metadata.HiveException;
@@ -79,6 +80,8 @@ import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
+import org.apache.parquet.schema.LogicalTypeAnnotation.TimeUnit;
+import org.apache.parquet.schema.LogicalTypeAnnotation.TimestampLogicalTypeAnnotation;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Type;
@@ -96,6 +99,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Random;
 import java.util.Set;
 import java.util.TimeZone;
@@ -1853,9 +1857,15 @@ public class VectorizedColumnReaderTestBase {
     return readColumn(path, column, hiveType, decimal64, batchSize, skipProleptic, null, true);
   }
 
-  /** Every row group of a column, in batches of {@code batchSize}, through the reader's public constructor. */
   protected static List<Batch> readColumn(Path path, String column, TypeInfo hiveType, boolean decimal64,
       int batchSize, boolean skipProleptic, ZoneId writerZone, boolean legacyConversion) throws IOException {
+    return readColumn(path, column, hiveType, decimal64, batchSize, skipProleptic, false, writerZone, legacyConversion);
+  }
+
+  /** Every row group of a column, in batches of {@code batchSize}, through the reader's public constructor. */
+  protected static List<Batch> readColumn(Path path, String column, TypeInfo hiveType, boolean decimal64,
+      int batchSize, boolean skipProleptic, boolean skipTimestampConversion, ZoneId writerZone,
+      boolean legacyConversion) throws IOException {
     List<Batch> batches = new ArrayList<>();
     try (ParquetFileReader reader = ParquetFileReader.open(HadoopInputFile.fromPath(path, conf))) {
       MessageType fileSchema = reader.getFooter().getFileMetaData().getSchema();
@@ -1863,7 +1873,7 @@ public class VectorizedColumnReaderTestBase {
       PageReadStore pages;
       while ((pages = reader.readNextRowGroup()) != null) {
         VectorizedPrimitiveColumnReader columnReader = new VectorizedPrimitiveColumnReader(descriptor,
-            pages.getPageReader(descriptor), false, writerZone, skipProleptic, legacyConversion,
+            pages.getPageReader(descriptor), skipTimestampConversion, writerZone, skipProleptic, legacyConversion,
             fileSchema.getType(column), hiveType);
         for (long left = pages.getRowCount(); left > 0; ) {
           int n = (int) Math.min(batchSize, left);
@@ -1896,6 +1906,8 @@ public class VectorizedColumnReaderTestBase {
         bytes[i] = isNull[i] ? null : Arrays.copyOfRange(c.vector[i], c.start[i], c.start[i] + c.length[i]);
       }
     } else if (cv instanceof TimestampColumnVector c) {
+      // time[] apart: a java.sql.Timestamp takes its millisecond from the nanos.
+      longs = Arrays.copyOf(c.time, n);
       timestamps = new java.sql.Timestamp[n];
       for (int i = 0; i < n; i++) {
         if (!isNull[i]) {
@@ -2229,8 +2241,8 @@ public class VectorizedColumnReaderTestBase {
                 assertEquals(label + " isNull at " + row, row % 11 == 0, b.isNull[i]);
                 if (row % 11 != 0) {
                   NanoTime written = int96NanoTime(INT96_INSTANTS[row % INT96_INSTANTS.length]);
-                  assertEquals(label + " at " + row,
-                      NanoTimeUtils.getTimestamp(written, zone, legacy).toSqlTimestamp(), b.timestamps[i]);
+                  assertTimestamp(label + " at " + row,
+                      NanoTimeUtils.getTimestamp(written, zone, legacy).toSqlTimestamp(), b, i);
                 }
               }
             }
@@ -2244,41 +2256,257 @@ public class VectorizedColumnReaderTestBase {
   }
 
   /**
-   * An INT96 value the conversion rejects, a Julian 1500-02-29 that java.time has no day for, fails only the batch
-   * that reads it, as the per-value conversion does.
+   * Values the per-value conversion rejects fail only the batch that reads them, with its exception: an INT96 Julian
+   * 1500-02-29, which java.time has no day for, an INT96 day far past year 9999, and Long.MAX_VALUE milliseconds
+   * adjusted to UTC, which overflow in a zone east of UTC.
    */
   protected void rejectedTimestampRead(boolean dictionaryEncoding) throws IOException {
-    MessageType writeSchema = parseMessageType("message m { required int96 ts; }");
-    NanoTime bad = new NanoTime(2_268_992, 0);
-    Path path = writeSmallFile("testRejectedTimestamp", writeSchema, dictionaryEncoding, 2000, (r, g) ->
-        g.append("ts", r == 1500 ? bad.toBinary() : new NanoTime(2_459_000 + r % 10, 0).toBinary()));
-    String expected = null;
-    try {
-      NanoTimeUtils.getTimestamp(bad, ZoneOffset.UTC, false);
-    } catch (RuntimeException e) {
-      expected = e.toString();
-    }
-    assertTrue("the conversion rejects " + bad, expected != null);
+    MessageType writeSchema = parseMessageType("message m { required int96 leap96; required int96 far96; "
+        + "required int64 maxms (TIMESTAMP(MILLIS,true)); }");
+    NanoTime leap = new NanoTime(2_268_992, 0);
+    NanoTime far = new NanoTime(Integer.MAX_VALUE, 0);
+    Path path = writeSmallFile("testRejectedTimestamp", writeSchema, dictionaryEncoding, 2000, (r, g) -> g
+        .append("leap96", (r == 1500 ? leap : new NanoTime(2_459_000 + r % 10, 0)).toBinary())
+        .append("far96", (r == 1500 ? far : new NanoTime(2_459_000 + r % 10, 0)).toBinary())
+        .append("maxms", r == 1500 ? Long.MAX_VALUE : 1_600_000_000_000L + r % 10));
     TypeInfo timestamp = TypeInfoFactory.timestampTypeInfo;
+    TimeZone systemZone = TimeZone.getDefault();
+    TimeZone.setDefault(TimeZone.getTimeZone("Asia/Kolkata"));
     try (ParquetFileReader reader = ParquetFileReader.open(HadoopInputFile.fromPath(path, conf))) {
-      ColumnDescriptor descriptor = writeSchema.getColumnDescription(new String[] { "ts" });
       PageReadStore pages = reader.readNextRowGroup();
-      VectorizedPrimitiveColumnReader columnReader = new VectorizedPrimitiveColumnReader(descriptor,
-          pages.getPageReader(descriptor), false, ZoneOffset.UTC, false, false, writeSchema.getType("ts"), timestamp);
-      TimestampColumnVector cv = new TimestampColumnVector(1000);
-      cv.reset();
-      columnReader.readBatch(1000, cv, timestamp);
-      assertEquals(NanoTimeUtils.getTimestamp(new NanoTime(2_459_009, 0), ZoneOffset.UTC, false).toEpochMilli(),
-          cv.getTime(999));
-      cv.reset();
-      String actual = null;
-      try {
+      for (String column : List.of("leap96", "far96", "maxms")) {
+        boolean int96 = column.endsWith("96");
+        java.util.function.Function<Object, java.sql.Timestamp> perValue = v -> (int96
+            ? NanoTimeUtils.getTimestamp((NanoTime) v, ZoneOffset.UTC, false)
+            : ParquetTimestampUtils.getTimestamp((Long) v, TimeUnit.MILLIS, true)).toSqlTimestamp();
+        String expected = null;
+        try {
+          perValue.apply(int96 ? (column.equals("leap96") ? leap : far) : Long.MAX_VALUE);
+        } catch (RuntimeException e) {
+          expected = e.toString();
+        }
+        assertTrue("the conversion rejects " + column, expected != null);
+        ColumnDescriptor descriptor = writeSchema.getColumnDescription(new String[] { column });
+        VectorizedPrimitiveColumnReader columnReader = new VectorizedPrimitiveColumnReader(descriptor,
+            pages.getPageReader(descriptor), false, ZoneOffset.UTC, false, false, writeSchema.getType(column),
+            timestamp);
+        TimestampColumnVector cv = new TimestampColumnVector(1000);
+        cv.reset();
         columnReader.readBatch(1000, cv, timestamp);
-      } catch (RuntimeException e) {
-        actual = e.toString();
+        assertTimestamp(column, perValue.apply(int96 ? new NanoTime(2_459_009, 0) : 1_600_000_000_009L),
+            snapshot(cv, 1000), 999);
+        cv.reset();
+        String actual = null;
+        try {
+          columnReader.readBatch(1000, cv, timestamp);
+        } catch (RuntimeException e) {
+          actual = e.toString();
+        }
+        assertEquals(column, expected, actual);
       }
-      assertEquals(expected, actual);
     } finally {
+      TimeZone.setDefault(systemZone);
+      path.getFileSystem(conf).delete(path, false);
+    }
+  }
+
+  /**
+   * INT96, and INT64 in each unit adjusted to UTC or not (the {@code _utc} columns are adjusted); tsconst holds one
+   * value and tssubms two that share their millisecond, neither dictionary encoded.
+   */
+  private static final MessageType TS_SCHEMA = Types.buildMessage()
+      .optional(PrimitiveTypeName.INT96).named("ts96")
+      .required(PrimitiveTypeName.INT96).named("ts96r")
+      .optional(PrimitiveTypeName.INT64).as(LogicalTypeAnnotation.timestampType(true, TimeUnit.MILLIS))
+          .named("tsms_utc")
+      .optional(PrimitiveTypeName.INT64).as(LogicalTypeAnnotation.timestampType(false, TimeUnit.MILLIS))
+          .named("tsms")
+      .optional(PrimitiveTypeName.INT64).as(LogicalTypeAnnotation.timestampType(true, TimeUnit.MICROS))
+          .named("tsus_utc")
+      .required(PrimitiveTypeName.INT64).as(LogicalTypeAnnotation.timestampType(false, TimeUnit.MICROS))
+          .named("tsus")
+      .optional(PrimitiveTypeName.INT64).as(LogicalTypeAnnotation.timestampType(true, TimeUnit.NANOS))
+          .named("tsns_utc")
+      .optional(PrimitiveTypeName.INT64).as(LogicalTypeAnnotation.timestampType(false, TimeUnit.NANOS))
+          .named("tsns")
+      .required(PrimitiveTypeName.INT64).as(LogicalTypeAnnotation.timestampType(false, TimeUnit.MICROS))
+          .named("tsconst")
+      .required(PrimitiveTypeName.INT64).as(LogicalTypeAnnotation.timestampType(false, TimeUnit.MICROS))
+          .named("tssubms")
+      .named("t");
+
+  private static final int TS_ROWS = 6000;
+
+  /**
+   * Instants either side of the Julian/Gregorian switchover, before standard time zones, just below the epoch, across
+   * both daylight saving transitions of Los Angeles, past the last transition in the zone rules, and at the end of year
+   * 9999 and beyond, where INT96 leaves the arithmetic.
+   */
+  private static final long[][] TS_EDGES = {
+      instant("0001-01-01T00:00:00", 0), instant("1000-06-15T12:34:56", 123_456_789),
+      instant("1582-10-04T23:59:59", 999_999_999), instant("1582-10-14T23:00:00", 1),
+      instant("1582-10-15T00:00:00", 0), instant("1883-11-18T12:00:00", 500_000_000),
+      instant("1900-01-01T00:00:00", 0), instant("1969-12-31T23:59:59", 999_999_999),
+      instant("1969-12-31T23:59:59", 1_000), instant("1970-01-01T00:00:00", 0),
+      instant("2021-03-14T09:59:59", 999_000_000), instant("2021-03-14T10:00:00", 0),
+      instant("2021-03-14T10:30:00", 123_000), instant("2021-11-07T08:30:00", 0),
+      instant("2021-11-07T09:00:00", 1_000_000), instant("2021-11-07T09:30:00", 999),
+      instant("2038-06-01T12:00:00", 42), instant("2262-04-11T23:47:16", 854_775_807),
+      instant("9999-12-31T23:59:59", 999_999_999), instant("+10000-01-01T00:00:00", 0),
+  };
+
+  /** Row r's instant: the edges, dictionary encoded first, then random instants in 1900..2100, an edge every 101st. */
+  private static long[] tsInstant(int r) {
+    if (r < 2000 || r % 101 == 0) {
+      return TS_EDGES[r % TS_EDGES.length];
+    }
+    Random rnd = new Random(r);
+    long from = LocalDateTime.parse("1900-01-01T00:00:00").toEpochSecond(ZoneOffset.UTC);
+    long to = LocalDateTime.parse("2100-01-01T00:00:00").toEpochSecond(ZoneOffset.UTC);
+    return new long[] { from + (long) (rnd.nextDouble() * (to - from)), rnd.nextInt(1_000_000_000) };
+  }
+
+  private static boolean tsNull(int column, int r) {
+    return TS_SCHEMA.getType(column).isRepetition(Type.Repetition.OPTIONAL)
+        && (r % 1000 == 0 || r % 1000 == 999 || (r * 7 + column) % 20 == 0);
+  }
+
+  /**
+   * Julian day and nanos of the day; every 97th value a day early with more than a day of nanos and every 89th a day
+   * late with negative nanos, which the conversion normalizes.
+   */
+  private static NanoTime tsInt96(int r) {
+    long[] instant = tsInstant(r);
+    long day = Math.floorDiv(instant[0], 86_400L) + 2_440_588;
+    long nanosOfDay = Math.floorMod(instant[0], 86_400L) * 1_000_000_000L + instant[1];
+    long nanosPerDay = 86_400L * 1_000_000_000L;
+    int shift = r % 97 == 0 ? -1 : r % 89 == 0 ? 1 : 0;
+    return new NanoTime((int) (day + shift), nanosOfDay - shift * nanosPerDay);
+  }
+
+  private static long tsInt64(String column, int r) {
+    long[] instant = tsInstant(r);
+    return switch (column) {
+    case "tsconst" -> 1_600_000_000_123_456L;
+    case "tssubms" -> 1_600_000_000_123_000L + r % 2;
+    default -> switch (((TimestampLogicalTypeAnnotation) TS_SCHEMA.getType(column).getLogicalTypeAnnotation())
+        .getUnit()) {
+      case MILLIS -> instant[0] * 1000 + instant[1] / 1_000_000;
+      case MICROS -> instant[0] * 1_000_000 + instant[1] / 1000;
+      case NANOS -> {
+        try {
+          yield Math.addExact(Math.multiplyExact(instant[0], 1_000_000_000L), instant[1]);
+        } catch (ArithmeticException e) {
+          // Outside 1677..2262 nanoseconds since the epoch overflow a long: keep the nanos of the second.
+          yield instant[1];
+        }
+      }
+    };
+    };
+  }
+
+  /** Row {@code i} of a timestamp batch holds {@code expected}: its millisecond in time[] and its nanos. */
+  private static void assertTimestamp(String label, java.sql.Timestamp expected, Batch b, int i) {
+    assertEquals(label, expected.getTime(), b.longs[i]);
+    assertEquals(label, expected, b.timestamps[i]);
+  }
+
+  /** The reader's INT96 settings. */
+  private record TimestampSetting(boolean skip, ZoneId writerZone, boolean legacy) {
+  }
+
+  /** A row as master's per-value readers convert it. */
+  private static java.sql.Timestamp tsExpected(String column, int r, TimestampSetting setting) {
+    if (column.startsWith("ts96")) {
+      ZoneId zone = setting.skip() ? ZoneOffset.UTC
+          : Objects.requireNonNullElse(setting.writerZone(), TimeZone.getDefault().toZoneId());
+      return NanoTimeUtils.getTimestamp(tsInt96(r), zone, setting.legacy()).toSqlTimestamp();
+    }
+    TimestampLogicalTypeAnnotation t =
+        (TimestampLogicalTypeAnnotation) TS_SCHEMA.getType(column).getLogicalTypeAnnotation();
+    return ParquetTimestampUtils.getTimestamp(tsInt64(column, r), t.getUnit(), t.isAdjustedToUTC()).toSqlTimestamp();
+  }
+
+  /**
+   * TIMESTAMP from INT96 and from INT64 in each unit, against master's per-value conversion of each row, under every
+   * INT96 setting (skip, writer zone, legacy) and with system zones with and without daylight saving; small pages, so
+   * batches span pages and, with dictionary encoding, a dictionary falls back to PLAIN within the chunk.
+   */
+  protected void timestampConversionsRead(WriterVersion version, boolean dictionaryEncoding) throws IOException {
+    Path path = new Path(System.getProperty("java.io.tmpdir"),
+        "testTimestampConversions-" + version + (dictionaryEncoding ? "-dictionary" : "-plain") + ".parquet");
+    path.getFileSystem(conf).delete(path, false);
+    try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(path).withConf(conf).withType(TS_SCHEMA)
+        .withWriterVersion(version).withCompressionCodec(CompressionCodecName.UNCOMPRESSED)
+        .withDictionaryEncoding(dictionaryEncoding).withDictionaryEncoding("tsconst", false)
+        .withDictionaryEncoding("tssubms", false).withDictionaryPageSize(2048).withPageSize(4096).build()) {
+      SimpleGroupFactory f = new SimpleGroupFactory(TS_SCHEMA);
+      for (int r = 0; r < TS_ROWS; r++) {
+        Group g = f.newGroup();
+        for (int c = 0; c < TS_SCHEMA.getFieldCount(); c++) {
+          String column = TS_SCHEMA.getFieldName(c);
+          if (!tsNull(c, r)) {
+            if (column.startsWith("ts96")) {
+              g.append(column, tsInt96(r).toBinary());
+            } else {
+              g.append(column, tsInt64(column, r));
+            }
+          }
+        }
+        writer.write(g);
+      }
+    }
+    // Every chunk has PLAIN pages, and dictionary pages too when dictionary encoded.
+    if (version == WriterVersion.PARQUET_1_0) {
+      try (ParquetFileReader reader = ParquetFileReader.open(HadoopInputFile.fromPath(path, conf))) {
+        for (var chunk : reader.getFooter().getBlocks().get(0).getColumns()) {
+          String column = chunk.getPath().toDotString();
+          assertTrue(column, chunk.getEncodingStats().getDataEncodings().contains(Encoding.PLAIN));
+          assertEquals(column, dictionaryEncoding && !Set.of("tsconst", "tssubms").contains(column),
+              chunk.getEncodingStats().hasDictionaryEncodedPages());
+        }
+      }
+    }
+    List<TimestampSetting> int96Settings = new ArrayList<>();
+    for (boolean legacy : List.of(false, true)) {
+      int96Settings.add(new TimestampSetting(true, null, legacy));
+      for (ZoneId writerZone : Arrays.asList(null, ZoneId.of("Europe/Amsterdam"), ZoneId.of("UTC"))) {
+        int96Settings.add(new TimestampSetting(false, writerZone, legacy));
+      }
+    }
+    // INT64 ignores the three settings.
+    List<TimestampSetting> int64Settings = List.of(new TimestampSetting(false, null, true));
+    TimeZone systemZone = TimeZone.getDefault();
+    try {
+      for (String zone : List.of("America/Los_Angeles", "UTC")) {
+        TimeZone.setDefault(TimeZone.getTimeZone(zone));
+        for (int batchSize : new int[] { 1024, 333 }) {
+          for (int c = 0; c < TS_SCHEMA.getFieldCount(); c++) {
+            String column = TS_SCHEMA.getFieldName(c);
+            for (TimestampSetting setting : column.startsWith("ts96") ? int96Settings : int64Settings) {
+              String label = path.getName() + " " + column + " system " + zone + " " + setting + " batch " + batchSize;
+              int row = 0;
+              for (Batch b : readColumn(path, column, TypeInfoFactory.timestampTypeInfo, false, batchSize, false,
+                  setting.skip(), setting.writerZone(), setting.legacy())) {
+                boolean sawNull = false;
+                for (int i = 0; i < b.isNull.length; i++, row++) {
+                  boolean isNull = tsNull(c, row);
+                  sawNull |= isNull;
+                  assertEquals(label + " isNull at " + row, isNull, b.isNull[i]);
+                  if (!isNull) {
+                    assertTimestamp(label + " at " + row, tsExpected(column, row, setting), b, i);
+                  }
+                }
+                assertEquals(label + " noNulls", !sawNull, b.noNulls);
+                assertEquals(label + " isRepeating", column.equals("tsconst"), b.isRepeating);
+              }
+              assertEquals(label, TS_ROWS, row);
+            }
+          }
+        }
+      }
+    } finally {
+      TimeZone.setDefault(systemZone);
       path.getFileSystem(conf).delete(path, false);
     }
   }
