@@ -28,15 +28,17 @@ import org.apache.hadoop.hive.ql.util.JavaDataModel;
 import com.google.common.annotations.VisibleForTesting;
 
 /**
- * Hash table from a single bytes key (STRING, CHAR, VARCHAR, BINARY) to the aggregation buffers of
- * its group, used by the vectorized hash GROUP BY.
+ * Hash table from a GROUP BY key to the aggregation buffers of its group, used by the vectorized
+ * hash GROUP BY. A table holds either bytes keys, a single STRING, CHAR, VARCHAR or BINARY value or
+ * the key columns serialized by {@link VectorGroupByKeySerializer}, or single LONG values.
  * <p>
  * Open addressing with linear probing over a power-of-two slot array that is at most half full.
  * Entries are numbered in insertion order. Each entry keeps the first 16 key bytes as two
  * zero-padded little-endian words next to the key hash and length, so a probe decides equality of
  * keys up to 16 bytes long from one record; longer keys also compare the remaining bytes. That
  * measured 1.5-1.7x faster than comparing the key bytes on 412 short keys. The key bytes are
- * copied once, when the entry is added. The NULL key has an entry outside the slot array.
+ * copied once, when the entry is added. A LONG key is kept in its record only, as its low word. The
+ * NULL key has an entry outside the slot array.
  * <p>
  * A removed entry keeps its number until {@link #compactIfSparse} drops it, and its slot, as a
  * tombstone that matches no key, until the table grows or compacts.
@@ -62,6 +64,9 @@ final class VectorGroupByBytesKeyTable {
   private static final int ENTRY_WORDS = 3;
 
   private static final int WORDS_LENGTH = 2 * Long.BYTES;
+
+  // The key bytes of the entries of LONG keys.
+  private static final byte[] LONG_KEY = new byte[0];
 
   // Entry + 1, 0 when empty.
   private int[] slots = new int[2 * INITIAL_CAPACITY];
@@ -133,6 +138,41 @@ final class VectorGroupByBytesKeyTable {
   }
 
   /**
+   * Returns the entry of the LONG key, adding one when absent. A new entry has no aggregation
+   * buffers until {@link #setRow}.
+   */
+  int findOrAdd(long key) {
+    final int hash = hash(key, 0, null, 0, Long.BYTES);
+    final long hashAndLength = ((long) hash << 32) | Long.BYTES;
+    final int mask = slots.length - 1;
+    int slot = hash & mask;
+    for (int entry; (entry = slots[slot] - 1) >= 0; slot = (slot + 1) & mask) {
+      final int record = ENTRY_WORDS * entry;
+      if (entryWords[record + 2] == hashAndLength && entryWords[record] == key) {
+        return entry;
+      }
+    }
+    final int entry = end++;
+    final int record = ENTRY_WORDS * entry;
+    entryWords[record] = key;
+    entryWords[record + 2] = hashAndLength;
+    keys[entry] = LONG_KEY;
+    slots[slot] = entry + 1;
+    size++;
+    if (end == rows.length) {
+      resize(2 * rows.length);
+    }
+    return entry;
+  }
+
+  /**
+   * Returns the key bytes of the entry, which are never modified.
+   */
+  byte[] getKey(int entry) {
+    return keys[entry];
+  }
+
+  /**
    * Returns the entry of the NULL key, adding one when absent.
    */
   int findOrAddNull() {
@@ -176,6 +216,19 @@ final class VectorGroupByBytesKeyTable {
   }
 
   /**
+   * Sets the LONG key of the entry at the given row of the column.
+   */
+  void writeKey(int entry, LongColumnVector column, int row) {
+    if (entry == nullEntry) {
+      column.noNulls = false;
+      column.isNull[row] = true;
+    } else {
+      column.isNull[row] = false;
+      column.vector[row] = entryWords[ENTRY_WORDS * entry];
+    }
+  }
+
+  /**
    * Removes the entry. Its key record gets a length no key has, so its slot is a tombstone that
    * lookups probe past.
    */
@@ -183,7 +236,9 @@ final class VectorGroupByBytesKeyTable {
     if (entry == nullEntry) {
       nullEntry = -1;
     } else {
-      keysMemorySize -= JavaDataModel.get().lengthForByteArrayOfSize(keys[entry].length);
+      if (keys[entry] != LONG_KEY) {
+        keysMemorySize -= JavaDataModel.get().lengthForByteArrayOfSize(keys[entry].length);
+      }
       keys[entry] = null;
       entryWords[ENTRY_WORDS * entry + 2] = -1;
     }
