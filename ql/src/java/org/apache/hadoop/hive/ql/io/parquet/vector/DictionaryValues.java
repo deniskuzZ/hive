@@ -32,6 +32,8 @@ import org.apache.hadoop.hive.serde2.typeinfo.PrimitiveTypeInfo;
 import org.apache.hadoop.hive.serde2.typeinfo.TypeInfo;
 import org.apache.parquet.schema.PrimitiveType;
 
+import java.util.concurrent.atomic.AtomicLong;
+
 import static org.apache.hadoop.hive.ql.io.parquet.vector.PerValueUpdater.setNullValue;
 
 /**
@@ -60,6 +62,10 @@ abstract class DictionaryValues {
 
   /** Sets up the vector for a batch. */
   public void beginBatch(ColumnVector column) {
+  }
+
+  /** Ends a batch; {@code dictionaryOnly} says every row came from a dictionary page. */
+  public void endBatch(ColumnVector column, boolean dictionaryOnly) {
   }
 
   /** Fills the non-NULL rows of {@code [offset, offset + total)} from dictionary ids {@code ids[0 .. nonNull)}. */
@@ -434,11 +440,14 @@ abstract class DictionaryValues {
   /**
    * Bytes vectors: STRING, CHAR, VARCHAR and BINARY. The entries are copied into one array this reader owns, and a
    * row references its entry rather than copying it: the page buffers the entries were decoded from are cache buffers
-   * the consumer releases once the chunk is decoded.
+   * the consumer releases once the chunk is decoded. Each row also gets its entry's id, and a batch whose rows all
+   * came from the dictionary carries the dictionary's token, so a consumer can key on the ids.
    */
   static class Bytes extends DictionaryValues {
+    private static final AtomicLong TOKENS = new AtomicLong();
     private byte[] values;
     private int[] offsets;
+    private long token;
 
     Bytes(ParquetDataColumnReader dictionary, PrimitiveType type, TypeInfo hiveType) {
       super(dictionary, type, hiveType, false);
@@ -458,14 +467,26 @@ abstract class DictionaryValues {
         copyEntries(e);
       }
       BytesColumnVector c = (BytesColumnVector) column;
+      if (c.dictionaryIds == null || c.dictionaryIds.length < c.vector.length) {
+        c.dictionaryIds = new int[c.vector.length];
+      }
       byte[] bytes = values;
       int[] starts = offsets;
+      int[] rowIds = c.dictionaryIds;
       for (int i = offset, j = 0; i < offset + total; i++) {
         if (!c.isNull[i]) {
           int id = ids[j++];
           c.setRef(i, bytes, starts[id], starts[id + 1] - starts[id]);
+          rowIds[i] = id;
         }
       }
+    }
+
+    @Override
+    public void endBatch(ColumnVector column, boolean dictionaryOnly) {
+      BytesColumnVector c = (BytesColumnVector) column;
+      c.dictionaryToken = dictionaryOnly ? token : 0;
+      c.dictionarySize = dictionaryOnly ? offsets.length - 1 : 0;
     }
 
     private void copyEntries(BytesColumnVector e) {
@@ -477,6 +498,7 @@ abstract class DictionaryValues {
       for (int id = 0; id < e.vector.length; id++) {
         System.arraycopy(e.vector[id], e.start[id], values, offsets[id], e.length[id]);
       }
+      token = TOKENS.incrementAndGet();
     }
 
     /** As on PLAIN pages, a string batch is never flagged repeating. */
