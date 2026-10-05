@@ -444,6 +444,277 @@
         "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveTableScan",
         "table": [
           "default",
+          "customer_demographics"
+        ],
+        "table:alias": "customer_demographics",
+        "inputs": [],
+        "rowCount": 1920800,
+        "avgRowSize": 217,
+        "rowType": {
+          "fields": [
+            {
+              "type": "BIGINT",
+              "nullable": false,
+              "name": "cd_demo_sk"
+            },
+            {
+              "type": "CHAR",
+              "nullable": true,
+              "precision": 1,
+              "name": "cd_gender"
+            },
+            {
+              "type": "CHAR",
+              "nullable": true,
+              "precision": 1,
+              "name": "cd_marital_status"
+            },
+            {
+              "type": "CHAR",
+              "nullable": true,
+              "precision": 20,
+              "name": "cd_education_status"
+            },
+            {
+              "type": "INTEGER",
+              "nullable": true,
+              "name": "cd_purchase_estimate"
+            },
+            {
+              "type": "CHAR",
+              "nullable": true,
+              "precision": 10,
+              "name": "cd_credit_rating"
+            },
+            {
+              "type": "INTEGER",
+              "nullable": true,
+              "name": "cd_dep_count"
+            },
+            {
+              "type": "INTEGER",
+              "nullable": true,
+              "name": "cd_dep_employed_count"
+            },
+            {
+              "type": "INTEGER",
+              "nullable": true,
+              "name": "cd_dep_college_count"
+            },
+            {
+              "type": "BIGINT",
+              "nullable": true,
+              "name": "BLOCK__OFFSET__INSIDE__FILE"
+            },
+            {
+              "type": "VARCHAR",
+              "nullable": true,
+              "precision": 2147483647,
+              "name": "INPUT__FILE__NAME"
+            },
+            {
+              "fields": [
+                {
+                  "type": "BIGINT",
+                  "nullable": true,
+                  "name": "writeid"
+                },
+                {
+                  "type": "INTEGER",
+                  "nullable": true,
+                  "name": "bucketid"
+                },
+                {
+                  "type": "BIGINT",
+                  "nullable": true,
+                  "name": "rowid"
+                }
+              ],
+              "nullable": true,
+              "name": "ROW__ID"
+            },
+            {
+              "type": "BOOLEAN",
+              "nullable": true,
+              "name": "ROW__IS__DELETED"
+            }
+          ],
+          "nullable": false
+        },
+        "colStats": [
+          {
+            "name": "cd_demo_sk",
+            "ndv": 1993369,
+            "minValue": 1,
+            "maxValue": 1920800
+          },
+          {
+            "name": "cd_gender",
+            "ndv": 2
+          },
+          {
+            "name": "cd_marital_status",
+            "ndv": 5
+          },
+          {
+            "name": "cd_education_status",
+            "ndv": 7
+          },
+          {
+            "name": "cd_purchase_estimate",
+            "ndv": 20,
+            "minValue": 500,
+            "maxValue": 10000
+          },
+          {
+            "name": "cd_credit_rating",
+            "ndv": 4
+          },
+          {
+            "name": "cd_dep_count",
+            "ndv": 7,
+            "minValue": 0,
+            "maxValue": 6
+          },
+          {
+            "name": "cd_dep_employed_count",
+            "ndv": 7,
+            "minValue": 0,
+            "maxValue": 6
+          },
+          {
+            "name": "cd_dep_college_count",
+            "ndv": 7,
+            "minValue": 0,
+            "maxValue": 6
+          }
+        ]
+      },
+      {
+        "id": "4",
+        "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveFilter",
+        "condition": {
+          "op": {
+            "name": "AND",
+            "kind": "AND",
+            "syntax": "BINARY"
+          },
+          "operands": [
+            {
+              "op": {
+                "name": "=",
+                "kind": "EQUALS",
+                "syntax": "BINARY"
+              },
+              "operands": [
+                {
+                  "input": 2,
+                  "name": "$2"
+                },
+                {
+                  "literal": "W",
+                  "type": {
+                    "type": "CHAR",
+                    "nullable": false,
+                    "precision": 1
+                  }
+                }
+              ]
+            },
+            {
+              "op": {
+                "name": "=",
+                "kind": "EQUALS",
+                "syntax": "BINARY"
+              },
+              "operands": [
+                {
+                  "input": 1,
+                  "name": "$1"
+                },
+                {
+                  "literal": "F",
+                  "type": {
+                    "type": "CHAR",
+                    "nullable": false,
+                    "precision": 1
+                  }
+                }
+              ]
+            },
+            {
+              "op": {
+                "name": "=",
+                "kind": "EQUALS",
+                "syntax": "BINARY"
+              },
+              "operands": [
+                {
+                  "input": 3,
+                  "name": "$3"
+                },
+                {
+                  "literal": "Primary             ",
+                  "type": {
+                    "type": "CHAR",
+                    "nullable": false,
+                    "precision": 20
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "rowCount": 6482.7
+      },
+      {
+        "id": "5",
+        "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveProject",
+        "fields": [
+          "cd_demo_sk"
+        ],
+        "exprs": [
+          {
+            "input": 0,
+            "name": "$0"
+          }
+        ],
+        "rowCount": 6482.7
+      },
+      {
+        "id": "6",
+        "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveJoin",
+        "condition": {
+          "op": {
+            "name": "=",
+            "kind": "EQUALS",
+            "syntax": "BINARY"
+          },
+          "operands": [
+            {
+              "input": 1,
+              "name": "$1"
+            },
+            {
+              "input": 8,
+              "name": "$8"
+            }
+          ]
+        },
+        "joinType": "inner",
+        "algorithm": "none",
+        "cost": "not available",
+        "inputs": [
+          "2",
+          "5"
+        ],
+        "rowCount": 5.849058031896372E13
+      },
+      {
+        "id": "7",
+        "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveTableScan",
+        "table": [
+          "default",
           "date_dim"
         ],
         "table:alias": "date_dim",
@@ -793,7 +1064,7 @@
         ]
       },
       {
-        "id": "4",
+        "id": "8",
         "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveFilter",
         "condition": {
           "op": {
@@ -818,7 +1089,7 @@
         "rowCount": 10957.35
       },
       {
-        "id": "5",
+        "id": "9",
         "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveProject",
         "fields": [
           "d_date_sk"
@@ -832,7 +1103,7 @@
         "rowCount": 10957.35
       },
       {
-        "id": "6",
+        "id": "10",
         "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveJoin",
         "condition": {
           "op": {
@@ -844,277 +1115,6 @@
             {
               "input": 7,
               "name": "$7"
-            },
-            {
-              "input": 8,
-              "name": "$8"
-            }
-          ]
-        },
-        "joinType": "inner",
-        "algorithm": "none",
-        "cost": "not available",
-        "inputs": [
-          "2",
-          "5"
-        ],
-        "rowCount": 9.886339954926145E13
-      },
-      {
-        "id": "7",
-        "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveTableScan",
-        "table": [
-          "default",
-          "customer_demographics"
-        ],
-        "table:alias": "customer_demographics",
-        "inputs": [],
-        "rowCount": 1920800,
-        "avgRowSize": 217,
-        "rowType": {
-          "fields": [
-            {
-              "type": "BIGINT",
-              "nullable": false,
-              "name": "cd_demo_sk"
-            },
-            {
-              "type": "CHAR",
-              "nullable": true,
-              "precision": 1,
-              "name": "cd_gender"
-            },
-            {
-              "type": "CHAR",
-              "nullable": true,
-              "precision": 1,
-              "name": "cd_marital_status"
-            },
-            {
-              "type": "CHAR",
-              "nullable": true,
-              "precision": 20,
-              "name": "cd_education_status"
-            },
-            {
-              "type": "INTEGER",
-              "nullable": true,
-              "name": "cd_purchase_estimate"
-            },
-            {
-              "type": "CHAR",
-              "nullable": true,
-              "precision": 10,
-              "name": "cd_credit_rating"
-            },
-            {
-              "type": "INTEGER",
-              "nullable": true,
-              "name": "cd_dep_count"
-            },
-            {
-              "type": "INTEGER",
-              "nullable": true,
-              "name": "cd_dep_employed_count"
-            },
-            {
-              "type": "INTEGER",
-              "nullable": true,
-              "name": "cd_dep_college_count"
-            },
-            {
-              "type": "BIGINT",
-              "nullable": true,
-              "name": "BLOCK__OFFSET__INSIDE__FILE"
-            },
-            {
-              "type": "VARCHAR",
-              "nullable": true,
-              "precision": 2147483647,
-              "name": "INPUT__FILE__NAME"
-            },
-            {
-              "fields": [
-                {
-                  "type": "BIGINT",
-                  "nullable": true,
-                  "name": "writeid"
-                },
-                {
-                  "type": "INTEGER",
-                  "nullable": true,
-                  "name": "bucketid"
-                },
-                {
-                  "type": "BIGINT",
-                  "nullable": true,
-                  "name": "rowid"
-                }
-              ],
-              "nullable": true,
-              "name": "ROW__ID"
-            },
-            {
-              "type": "BOOLEAN",
-              "nullable": true,
-              "name": "ROW__IS__DELETED"
-            }
-          ],
-          "nullable": false
-        },
-        "colStats": [
-          {
-            "name": "cd_demo_sk",
-            "ndv": 1993369,
-            "minValue": 1,
-            "maxValue": 1920800
-          },
-          {
-            "name": "cd_gender",
-            "ndv": 2
-          },
-          {
-            "name": "cd_marital_status",
-            "ndv": 5
-          },
-          {
-            "name": "cd_education_status",
-            "ndv": 7
-          },
-          {
-            "name": "cd_purchase_estimate",
-            "ndv": 20,
-            "minValue": 500,
-            "maxValue": 10000
-          },
-          {
-            "name": "cd_credit_rating",
-            "ndv": 4
-          },
-          {
-            "name": "cd_dep_count",
-            "ndv": 7,
-            "minValue": 0,
-            "maxValue": 6
-          },
-          {
-            "name": "cd_dep_employed_count",
-            "ndv": 7,
-            "minValue": 0,
-            "maxValue": 6
-          },
-          {
-            "name": "cd_dep_college_count",
-            "ndv": 7,
-            "minValue": 0,
-            "maxValue": 6
-          }
-        ]
-      },
-      {
-        "id": "8",
-        "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveFilter",
-        "condition": {
-          "op": {
-            "name": "AND",
-            "kind": "AND",
-            "syntax": "BINARY"
-          },
-          "operands": [
-            {
-              "op": {
-                "name": "=",
-                "kind": "EQUALS",
-                "syntax": "BINARY"
-              },
-              "operands": [
-                {
-                  "input": 2,
-                  "name": "$2"
-                },
-                {
-                  "literal": "W",
-                  "type": {
-                    "type": "CHAR",
-                    "nullable": false,
-                    "precision": 1
-                  }
-                }
-              ]
-            },
-            {
-              "op": {
-                "name": "=",
-                "kind": "EQUALS",
-                "syntax": "BINARY"
-              },
-              "operands": [
-                {
-                  "input": 1,
-                  "name": "$1"
-                },
-                {
-                  "literal": "F",
-                  "type": {
-                    "type": "CHAR",
-                    "nullable": false,
-                    "precision": 1
-                  }
-                }
-              ]
-            },
-            {
-              "op": {
-                "name": "=",
-                "kind": "EQUALS",
-                "syntax": "BINARY"
-              },
-              "operands": [
-                {
-                  "input": 3,
-                  "name": "$3"
-                },
-                {
-                  "literal": "Primary             ",
-                  "type": {
-                    "type": "CHAR",
-                    "nullable": false,
-                    "precision": 20
-                  }
-                }
-              ]
-            }
-          ]
-        },
-        "rowCount": 6482.7
-      },
-      {
-        "id": "9",
-        "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveProject",
-        "fields": [
-          "cd_demo_sk"
-        ],
-        "exprs": [
-          {
-            "input": 0,
-            "name": "$0"
-          }
-        ],
-        "rowCount": 6482.7
-      },
-      {
-        "id": "10",
-        "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveJoin",
-        "condition": {
-          "op": {
-            "name": "=",
-            "kind": "EQUALS",
-            "syntax": "BINARY"
-          },
-          "operands": [
-            {
-              "input": 1,
-              "name": "$1"
             },
             {
               "input": 9,

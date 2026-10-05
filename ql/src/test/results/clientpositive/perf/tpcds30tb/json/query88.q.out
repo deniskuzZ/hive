@@ -426,264 +426,6 @@ Warning: Map Join MAPJOIN[599][bigTable=?] in task 'Reducer 5' is a cross produc
         "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveTableScan",
         "table": [
           "default",
-          "time_dim"
-        ],
-        "table:alias": "time_dim",
-        "inputs": [],
-        "rowCount": 86400,
-        "avgRowSize": 377,
-        "rowType": {
-          "fields": [
-            {
-              "type": "BIGINT",
-              "nullable": false,
-              "name": "t_time_sk"
-            },
-            {
-              "type": "VARCHAR",
-              "nullable": false,
-              "precision": 2147483647,
-              "name": "t_time_id"
-            },
-            {
-              "type": "INTEGER",
-              "nullable": true,
-              "name": "t_time"
-            },
-            {
-              "type": "INTEGER",
-              "nullable": true,
-              "name": "t_hour"
-            },
-            {
-              "type": "INTEGER",
-              "nullable": true,
-              "name": "t_minute"
-            },
-            {
-              "type": "INTEGER",
-              "nullable": true,
-              "name": "t_second"
-            },
-            {
-              "type": "CHAR",
-              "nullable": true,
-              "precision": 2,
-              "name": "t_am_pm"
-            },
-            {
-              "type": "CHAR",
-              "nullable": true,
-              "precision": 20,
-              "name": "t_shift"
-            },
-            {
-              "type": "CHAR",
-              "nullable": true,
-              "precision": 20,
-              "name": "t_sub_shift"
-            },
-            {
-              "type": "CHAR",
-              "nullable": true,
-              "precision": 20,
-              "name": "t_meal_time"
-            },
-            {
-              "type": "BIGINT",
-              "nullable": true,
-              "name": "BLOCK__OFFSET__INSIDE__FILE"
-            },
-            {
-              "type": "VARCHAR",
-              "nullable": true,
-              "precision": 2147483647,
-              "name": "INPUT__FILE__NAME"
-            },
-            {
-              "fields": [
-                {
-                  "type": "BIGINT",
-                  "nullable": true,
-                  "name": "writeid"
-                },
-                {
-                  "type": "INTEGER",
-                  "nullable": true,
-                  "name": "bucketid"
-                },
-                {
-                  "type": "BIGINT",
-                  "nullable": true,
-                  "name": "rowid"
-                }
-              ],
-              "nullable": true,
-              "name": "ROW__ID"
-            },
-            {
-              "type": "BOOLEAN",
-              "nullable": true,
-              "name": "ROW__IS__DELETED"
-            }
-          ],
-          "nullable": false
-        },
-        "colStats": [
-          {
-            "name": "t_time_sk",
-            "ndv": 85503,
-            "minValue": 0,
-            "maxValue": 86399
-          },
-          {
-            "name": "t_hour",
-            "ndv": 24,
-            "minValue": 0,
-            "maxValue": 23
-          },
-          {
-            "name": "t_minute",
-            "ndv": 62,
-            "minValue": 0,
-            "maxValue": 59
-          },
-          {
-            "name": "t_time_id",
-            "ndv": 87002
-          },
-          {
-            "name": "t_time",
-            "ndv": 85503,
-            "minValue": 0,
-            "maxValue": 86399
-          },
-          {
-            "name": "t_second",
-            "ndv": 62,
-            "minValue": 0,
-            "maxValue": 59
-          },
-          {
-            "name": "t_am_pm",
-            "ndv": 2
-          },
-          {
-            "name": "t_shift",
-            "ndv": 3
-          },
-          {
-            "name": "t_sub_shift",
-            "ndv": 4
-          },
-          {
-            "name": "t_meal_time",
-            "ndv": 4
-          }
-        ]
-      },
-      {
-        "id": "4",
-        "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveFilter",
-        "condition": {
-          "op": {
-            "name": "AND",
-            "kind": "AND",
-            "syntax": "BINARY"
-          },
-          "operands": [
-            {
-              "op": {
-                "name": "=",
-                "kind": "EQUALS",
-                "syntax": "BINARY"
-              },
-              "operands": [
-                {
-                  "input": 3,
-                  "name": "$3"
-                },
-                {
-                  "literal": 8,
-                  "type": {
-                    "type": "INTEGER",
-                    "nullable": false
-                  }
-                }
-              ]
-            },
-            {
-              "op": {
-                "name": ">=",
-                "kind": "GREATER_THAN_OR_EQUAL",
-                "syntax": "BINARY"
-              },
-              "operands": [
-                {
-                  "input": 4,
-                  "name": "$4"
-                },
-                {
-                  "literal": 30,
-                  "type": {
-                    "type": "INTEGER",
-                    "nullable": false
-                  }
-                }
-              ]
-            }
-          ]
-        },
-        "rowCount": 6480
-      },
-      {
-        "id": "5",
-        "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveProject",
-        "fields": [
-          "t_time_sk"
-        ],
-        "exprs": [
-          {
-            "input": 0,
-            "name": "$0"
-          }
-        ],
-        "rowCount": 6480
-      },
-      {
-        "id": "6",
-        "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveJoin",
-        "condition": {
-          "op": {
-            "name": "=",
-            "kind": "EQUALS",
-            "syntax": "BINARY"
-          },
-          "operands": [
-            {
-              "input": 0,
-              "name": "$0"
-            },
-            {
-              "input": 3,
-              "name": "$3"
-            }
-          ]
-        },
-        "joinType": "inner",
-        "algorithm": "none",
-        "cost": "not available",
-        "inputs": [
-          "2",
-          "5"
-        ],
-        "rowCount": 6.122546917104568E13
-      },
-      {
-        "id": "7",
-        "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveTableScan",
-        "table": [
-          "default",
           "household_demographics"
         ],
         "table:alias": "household_demographics",
@@ -790,7 +532,7 @@ Warning: Map Join MAPJOIN[599][bigTable=?] in task 'Reducer 5' is a cross produc
         ]
       },
       {
-        "id": "8",
+        "id": "4",
         "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveFilter",
         "condition": {
           "op": {
@@ -1007,7 +749,7 @@ Warning: Map Join MAPJOIN[599][bigTable=?] in task 'Reducer 5' is a cross produc
         "rowCount": 225
       },
       {
-        "id": "9",
+        "id": "5",
         "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveProject",
         "fields": [
           "hd_demo_sk"
@@ -1021,7 +763,7 @@ Warning: Map Join MAPJOIN[599][bigTable=?] in task 'Reducer 5' is a cross produc
         "rowCount": 225
       },
       {
-        "id": "10",
+        "id": "6",
         "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveJoin",
         "condition": {
           "op": {
@@ -1033,6 +775,264 @@ Warning: Map Join MAPJOIN[599][bigTable=?] in task 'Reducer 5' is a cross produc
             {
               "input": 1,
               "name": "$1"
+            },
+            {
+              "input": 3,
+              "name": "$3"
+            }
+          ]
+        },
+        "joinType": "inner",
+        "algorithm": "none",
+        "cost": "not available",
+        "inputs": [
+          "2",
+          "5"
+        ],
+        "rowCount": 2.1258843462168638E12
+      },
+      {
+        "id": "7",
+        "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveTableScan",
+        "table": [
+          "default",
+          "time_dim"
+        ],
+        "table:alias": "time_dim",
+        "inputs": [],
+        "rowCount": 86400,
+        "avgRowSize": 377,
+        "rowType": {
+          "fields": [
+            {
+              "type": "BIGINT",
+              "nullable": false,
+              "name": "t_time_sk"
+            },
+            {
+              "type": "VARCHAR",
+              "nullable": false,
+              "precision": 2147483647,
+              "name": "t_time_id"
+            },
+            {
+              "type": "INTEGER",
+              "nullable": true,
+              "name": "t_time"
+            },
+            {
+              "type": "INTEGER",
+              "nullable": true,
+              "name": "t_hour"
+            },
+            {
+              "type": "INTEGER",
+              "nullable": true,
+              "name": "t_minute"
+            },
+            {
+              "type": "INTEGER",
+              "nullable": true,
+              "name": "t_second"
+            },
+            {
+              "type": "CHAR",
+              "nullable": true,
+              "precision": 2,
+              "name": "t_am_pm"
+            },
+            {
+              "type": "CHAR",
+              "nullable": true,
+              "precision": 20,
+              "name": "t_shift"
+            },
+            {
+              "type": "CHAR",
+              "nullable": true,
+              "precision": 20,
+              "name": "t_sub_shift"
+            },
+            {
+              "type": "CHAR",
+              "nullable": true,
+              "precision": 20,
+              "name": "t_meal_time"
+            },
+            {
+              "type": "BIGINT",
+              "nullable": true,
+              "name": "BLOCK__OFFSET__INSIDE__FILE"
+            },
+            {
+              "type": "VARCHAR",
+              "nullable": true,
+              "precision": 2147483647,
+              "name": "INPUT__FILE__NAME"
+            },
+            {
+              "fields": [
+                {
+                  "type": "BIGINT",
+                  "nullable": true,
+                  "name": "writeid"
+                },
+                {
+                  "type": "INTEGER",
+                  "nullable": true,
+                  "name": "bucketid"
+                },
+                {
+                  "type": "BIGINT",
+                  "nullable": true,
+                  "name": "rowid"
+                }
+              ],
+              "nullable": true,
+              "name": "ROW__ID"
+            },
+            {
+              "type": "BOOLEAN",
+              "nullable": true,
+              "name": "ROW__IS__DELETED"
+            }
+          ],
+          "nullable": false
+        },
+        "colStats": [
+          {
+            "name": "t_time_sk",
+            "ndv": 85503,
+            "minValue": 0,
+            "maxValue": 86399
+          },
+          {
+            "name": "t_hour",
+            "ndv": 24,
+            "minValue": 0,
+            "maxValue": 23
+          },
+          {
+            "name": "t_minute",
+            "ndv": 62,
+            "minValue": 0,
+            "maxValue": 59
+          },
+          {
+            "name": "t_time_id",
+            "ndv": 87002
+          },
+          {
+            "name": "t_time",
+            "ndv": 85503,
+            "minValue": 0,
+            "maxValue": 86399
+          },
+          {
+            "name": "t_second",
+            "ndv": 62,
+            "minValue": 0,
+            "maxValue": 59
+          },
+          {
+            "name": "t_am_pm",
+            "ndv": 2
+          },
+          {
+            "name": "t_shift",
+            "ndv": 3
+          },
+          {
+            "name": "t_sub_shift",
+            "ndv": 4
+          },
+          {
+            "name": "t_meal_time",
+            "ndv": 4
+          }
+        ]
+      },
+      {
+        "id": "8",
+        "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveFilter",
+        "condition": {
+          "op": {
+            "name": "AND",
+            "kind": "AND",
+            "syntax": "BINARY"
+          },
+          "operands": [
+            {
+              "op": {
+                "name": "=",
+                "kind": "EQUALS",
+                "syntax": "BINARY"
+              },
+              "operands": [
+                {
+                  "input": 3,
+                  "name": "$3"
+                },
+                {
+                  "literal": 8,
+                  "type": {
+                    "type": "INTEGER",
+                    "nullable": false
+                  }
+                }
+              ]
+            },
+            {
+              "op": {
+                "name": ">=",
+                "kind": "GREATER_THAN_OR_EQUAL",
+                "syntax": "BINARY"
+              },
+              "operands": [
+                {
+                  "input": 4,
+                  "name": "$4"
+                },
+                {
+                  "literal": 30,
+                  "type": {
+                    "type": "INTEGER",
+                    "nullable": false
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "rowCount": 6480
+      },
+      {
+        "id": "9",
+        "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveProject",
+        "fields": [
+          "t_time_sk"
+        ],
+        "exprs": [
+          {
+            "input": 0,
+            "name": "$0"
+          }
+        ],
+        "rowCount": 6480
+      },
+      {
+        "id": "10",
+        "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveJoin",
+        "condition": {
+          "op": {
+            "name": "=",
+            "kind": "EQUALS",
+            "syntax": "BINARY"
+          },
+          "operands": [
+            {
+              "input": 0,
+              "name": "$0"
             },
             {
               "input": 4,
@@ -1607,106 +1607,6 @@ Warning: Map Join MAPJOIN[599][bigTable=?] in task 'Reducer 5' is a cross produc
           "operands": [
             {
               "op": {
-                "name": "=",
-                "kind": "EQUALS",
-                "syntax": "BINARY"
-              },
-              "operands": [
-                {
-                  "input": 3,
-                  "name": "$3"
-                },
-                {
-                  "literal": 12,
-                  "type": {
-                    "type": "INTEGER",
-                    "nullable": false
-                  }
-                }
-              ]
-            },
-            {
-              "op": {
-                "name": "<",
-                "kind": "LESS_THAN",
-                "syntax": "BINARY"
-              },
-              "operands": [
-                {
-                  "input": 4,
-                  "name": "$4"
-                },
-                {
-                  "literal": 30,
-                  "type": {
-                    "type": "INTEGER",
-                    "nullable": false
-                  }
-                }
-              ]
-            }
-          ]
-        },
-        "inputs": [
-          "3"
-        ],
-        "rowCount": 6480
-      },
-      {
-        "id": "20",
-        "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveProject",
-        "fields": [
-          "t_time_sk"
-        ],
-        "exprs": [
-          {
-            "input": 0,
-            "name": "$0"
-          }
-        ],
-        "rowCount": 6480
-      },
-      {
-        "id": "21",
-        "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveJoin",
-        "condition": {
-          "op": {
-            "name": "=",
-            "kind": "EQUALS",
-            "syntax": "BINARY"
-          },
-          "operands": [
-            {
-              "input": 0,
-              "name": "$0"
-            },
-            {
-              "input": 3,
-              "name": "$3"
-            }
-          ]
-        },
-        "joinType": "inner",
-        "algorithm": "none",
-        "cost": "not available",
-        "inputs": [
-          "18",
-          "20"
-        ],
-        "rowCount": 6.122546917104568E13
-      },
-      {
-        "id": "22",
-        "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveFilter",
-        "condition": {
-          "op": {
-            "name": "AND",
-            "kind": "AND",
-            "syntax": "BINARY"
-          },
-          "operands": [
-            {
-              "op": {
                 "name": "<=",
                 "kind": "LESS_THAN_OR_EQUAL",
                 "syntax": "BINARY"
@@ -1911,12 +1811,12 @@ Warning: Map Join MAPJOIN[599][bigTable=?] in task 'Reducer 5' is a cross produc
           ]
         },
         "inputs": [
-          "7"
+          "3"
         ],
         "rowCount": 225
       },
       {
-        "id": "23",
+        "id": "20",
         "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveProject",
         "fields": [
           "hd_demo_sk"
@@ -1930,7 +1830,7 @@ Warning: Map Join MAPJOIN[599][bigTable=?] in task 'Reducer 5' is a cross produc
         "rowCount": 225
       },
       {
-        "id": "24",
+        "id": "21",
         "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveJoin",
         "condition": {
           "op": {
@@ -1942,6 +1842,106 @@ Warning: Map Join MAPJOIN[599][bigTable=?] in task 'Reducer 5' is a cross produc
             {
               "input": 1,
               "name": "$1"
+            },
+            {
+              "input": 3,
+              "name": "$3"
+            }
+          ]
+        },
+        "joinType": "inner",
+        "algorithm": "none",
+        "cost": "not available",
+        "inputs": [
+          "18",
+          "20"
+        ],
+        "rowCount": 2.1258843462168638E12
+      },
+      {
+        "id": "22",
+        "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveFilter",
+        "condition": {
+          "op": {
+            "name": "AND",
+            "kind": "AND",
+            "syntax": "BINARY"
+          },
+          "operands": [
+            {
+              "op": {
+                "name": "=",
+                "kind": "EQUALS",
+                "syntax": "BINARY"
+              },
+              "operands": [
+                {
+                  "input": 3,
+                  "name": "$3"
+                },
+                {
+                  "literal": 12,
+                  "type": {
+                    "type": "INTEGER",
+                    "nullable": false
+                  }
+                }
+              ]
+            },
+            {
+              "op": {
+                "name": "<",
+                "kind": "LESS_THAN",
+                "syntax": "BINARY"
+              },
+              "operands": [
+                {
+                  "input": 4,
+                  "name": "$4"
+                },
+                {
+                  "literal": 30,
+                  "type": {
+                    "type": "INTEGER",
+                    "nullable": false
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "inputs": [
+          "7"
+        ],
+        "rowCount": 6480
+      },
+      {
+        "id": "23",
+        "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveProject",
+        "fields": [
+          "t_time_sk"
+        ],
+        "exprs": [
+          {
+            "input": 0,
+            "name": "$0"
+          }
+        ],
+        "rowCount": 6480
+      },
+      {
+        "id": "24",
+        "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveJoin",
+        "condition": {
+          "op": {
+            "name": "=",
+            "kind": "EQUALS",
+            "syntax": "BINARY"
+          },
+          "operands": [
+            {
+              "input": 0,
+              "name": "$0"
             },
             {
               "input": 4,
@@ -2177,106 +2177,6 @@ Warning: Map Join MAPJOIN[599][bigTable=?] in task 'Reducer 5' is a cross produc
           "operands": [
             {
               "op": {
-                "name": "=",
-                "kind": "EQUALS",
-                "syntax": "BINARY"
-              },
-              "operands": [
-                {
-                  "input": 3,
-                  "name": "$3"
-                },
-                {
-                  "literal": 11,
-                  "type": {
-                    "type": "INTEGER",
-                    "nullable": false
-                  }
-                }
-              ]
-            },
-            {
-              "op": {
-                "name": ">=",
-                "kind": "GREATER_THAN_OR_EQUAL",
-                "syntax": "BINARY"
-              },
-              "operands": [
-                {
-                  "input": 4,
-                  "name": "$4"
-                },
-                {
-                  "literal": 30,
-                  "type": {
-                    "type": "INTEGER",
-                    "nullable": false
-                  }
-                }
-              ]
-            }
-          ]
-        },
-        "inputs": [
-          "3"
-        ],
-        "rowCount": 6480
-      },
-      {
-        "id": "34",
-        "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveProject",
-        "fields": [
-          "t_time_sk"
-        ],
-        "exprs": [
-          {
-            "input": 0,
-            "name": "$0"
-          }
-        ],
-        "rowCount": 6480
-      },
-      {
-        "id": "35",
-        "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveJoin",
-        "condition": {
-          "op": {
-            "name": "=",
-            "kind": "EQUALS",
-            "syntax": "BINARY"
-          },
-          "operands": [
-            {
-              "input": 0,
-              "name": "$0"
-            },
-            {
-              "input": 3,
-              "name": "$3"
-            }
-          ]
-        },
-        "joinType": "inner",
-        "algorithm": "none",
-        "cost": "not available",
-        "inputs": [
-          "32",
-          "34"
-        ],
-        "rowCount": 6.122546917104568E13
-      },
-      {
-        "id": "36",
-        "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveFilter",
-        "condition": {
-          "op": {
-            "name": "AND",
-            "kind": "AND",
-            "syntax": "BINARY"
-          },
-          "operands": [
-            {
-              "op": {
                 "name": "<=",
                 "kind": "LESS_THAN_OR_EQUAL",
                 "syntax": "BINARY"
@@ -2481,12 +2381,12 @@ Warning: Map Join MAPJOIN[599][bigTable=?] in task 'Reducer 5' is a cross produc
           ]
         },
         "inputs": [
-          "7"
+          "3"
         ],
         "rowCount": 225
       },
       {
-        "id": "37",
+        "id": "34",
         "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveProject",
         "fields": [
           "hd_demo_sk"
@@ -2500,7 +2400,7 @@ Warning: Map Join MAPJOIN[599][bigTable=?] in task 'Reducer 5' is a cross produc
         "rowCount": 225
       },
       {
-        "id": "38",
+        "id": "35",
         "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveJoin",
         "condition": {
           "op": {
@@ -2512,6 +2412,106 @@ Warning: Map Join MAPJOIN[599][bigTable=?] in task 'Reducer 5' is a cross produc
             {
               "input": 1,
               "name": "$1"
+            },
+            {
+              "input": 3,
+              "name": "$3"
+            }
+          ]
+        },
+        "joinType": "inner",
+        "algorithm": "none",
+        "cost": "not available",
+        "inputs": [
+          "32",
+          "34"
+        ],
+        "rowCount": 2.1258843462168638E12
+      },
+      {
+        "id": "36",
+        "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveFilter",
+        "condition": {
+          "op": {
+            "name": "AND",
+            "kind": "AND",
+            "syntax": "BINARY"
+          },
+          "operands": [
+            {
+              "op": {
+                "name": "=",
+                "kind": "EQUALS",
+                "syntax": "BINARY"
+              },
+              "operands": [
+                {
+                  "input": 3,
+                  "name": "$3"
+                },
+                {
+                  "literal": 11,
+                  "type": {
+                    "type": "INTEGER",
+                    "nullable": false
+                  }
+                }
+              ]
+            },
+            {
+              "op": {
+                "name": ">=",
+                "kind": "GREATER_THAN_OR_EQUAL",
+                "syntax": "BINARY"
+              },
+              "operands": [
+                {
+                  "input": 4,
+                  "name": "$4"
+                },
+                {
+                  "literal": 30,
+                  "type": {
+                    "type": "INTEGER",
+                    "nullable": false
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "inputs": [
+          "7"
+        ],
+        "rowCount": 6480
+      },
+      {
+        "id": "37",
+        "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveProject",
+        "fields": [
+          "t_time_sk"
+        ],
+        "exprs": [
+          {
+            "input": 0,
+            "name": "$0"
+          }
+        ],
+        "rowCount": 6480
+      },
+      {
+        "id": "38",
+        "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveJoin",
+        "condition": {
+          "op": {
+            "name": "=",
+            "kind": "EQUALS",
+            "syntax": "BINARY"
+          },
+          "operands": [
+            {
+              "input": 0,
+              "name": "$0"
             },
             {
               "input": 4,
@@ -2747,106 +2747,6 @@ Warning: Map Join MAPJOIN[599][bigTable=?] in task 'Reducer 5' is a cross produc
           "operands": [
             {
               "op": {
-                "name": "=",
-                "kind": "EQUALS",
-                "syntax": "BINARY"
-              },
-              "operands": [
-                {
-                  "input": 3,
-                  "name": "$3"
-                },
-                {
-                  "literal": 11,
-                  "type": {
-                    "type": "INTEGER",
-                    "nullable": false
-                  }
-                }
-              ]
-            },
-            {
-              "op": {
-                "name": "<",
-                "kind": "LESS_THAN",
-                "syntax": "BINARY"
-              },
-              "operands": [
-                {
-                  "input": 4,
-                  "name": "$4"
-                },
-                {
-                  "literal": 30,
-                  "type": {
-                    "type": "INTEGER",
-                    "nullable": false
-                  }
-                }
-              ]
-            }
-          ]
-        },
-        "inputs": [
-          "3"
-        ],
-        "rowCount": 6480
-      },
-      {
-        "id": "48",
-        "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveProject",
-        "fields": [
-          "t_time_sk"
-        ],
-        "exprs": [
-          {
-            "input": 0,
-            "name": "$0"
-          }
-        ],
-        "rowCount": 6480
-      },
-      {
-        "id": "49",
-        "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveJoin",
-        "condition": {
-          "op": {
-            "name": "=",
-            "kind": "EQUALS",
-            "syntax": "BINARY"
-          },
-          "operands": [
-            {
-              "input": 0,
-              "name": "$0"
-            },
-            {
-              "input": 3,
-              "name": "$3"
-            }
-          ]
-        },
-        "joinType": "inner",
-        "algorithm": "none",
-        "cost": "not available",
-        "inputs": [
-          "46",
-          "48"
-        ],
-        "rowCount": 6.122546917104568E13
-      },
-      {
-        "id": "50",
-        "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveFilter",
-        "condition": {
-          "op": {
-            "name": "AND",
-            "kind": "AND",
-            "syntax": "BINARY"
-          },
-          "operands": [
-            {
-              "op": {
                 "name": "<=",
                 "kind": "LESS_THAN_OR_EQUAL",
                 "syntax": "BINARY"
@@ -3051,12 +2951,12 @@ Warning: Map Join MAPJOIN[599][bigTable=?] in task 'Reducer 5' is a cross produc
           ]
         },
         "inputs": [
-          "7"
+          "3"
         ],
         "rowCount": 225
       },
       {
-        "id": "51",
+        "id": "48",
         "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveProject",
         "fields": [
           "hd_demo_sk"
@@ -3070,7 +2970,7 @@ Warning: Map Join MAPJOIN[599][bigTable=?] in task 'Reducer 5' is a cross produc
         "rowCount": 225
       },
       {
-        "id": "52",
+        "id": "49",
         "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveJoin",
         "condition": {
           "op": {
@@ -3082,6 +2982,106 @@ Warning: Map Join MAPJOIN[599][bigTable=?] in task 'Reducer 5' is a cross produc
             {
               "input": 1,
               "name": "$1"
+            },
+            {
+              "input": 3,
+              "name": "$3"
+            }
+          ]
+        },
+        "joinType": "inner",
+        "algorithm": "none",
+        "cost": "not available",
+        "inputs": [
+          "46",
+          "48"
+        ],
+        "rowCount": 2.1258843462168638E12
+      },
+      {
+        "id": "50",
+        "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveFilter",
+        "condition": {
+          "op": {
+            "name": "AND",
+            "kind": "AND",
+            "syntax": "BINARY"
+          },
+          "operands": [
+            {
+              "op": {
+                "name": "=",
+                "kind": "EQUALS",
+                "syntax": "BINARY"
+              },
+              "operands": [
+                {
+                  "input": 3,
+                  "name": "$3"
+                },
+                {
+                  "literal": 11,
+                  "type": {
+                    "type": "INTEGER",
+                    "nullable": false
+                  }
+                }
+              ]
+            },
+            {
+              "op": {
+                "name": "<",
+                "kind": "LESS_THAN",
+                "syntax": "BINARY"
+              },
+              "operands": [
+                {
+                  "input": 4,
+                  "name": "$4"
+                },
+                {
+                  "literal": 30,
+                  "type": {
+                    "type": "INTEGER",
+                    "nullable": false
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "inputs": [
+          "7"
+        ],
+        "rowCount": 6480
+      },
+      {
+        "id": "51",
+        "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveProject",
+        "fields": [
+          "t_time_sk"
+        ],
+        "exprs": [
+          {
+            "input": 0,
+            "name": "$0"
+          }
+        ],
+        "rowCount": 6480
+      },
+      {
+        "id": "52",
+        "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveJoin",
+        "condition": {
+          "op": {
+            "name": "=",
+            "kind": "EQUALS",
+            "syntax": "BINARY"
+          },
+          "operands": [
+            {
+              "input": 0,
+              "name": "$0"
             },
             {
               "input": 4,
@@ -3317,106 +3317,6 @@ Warning: Map Join MAPJOIN[599][bigTable=?] in task 'Reducer 5' is a cross produc
           "operands": [
             {
               "op": {
-                "name": "=",
-                "kind": "EQUALS",
-                "syntax": "BINARY"
-              },
-              "operands": [
-                {
-                  "input": 3,
-                  "name": "$3"
-                },
-                {
-                  "literal": 10,
-                  "type": {
-                    "type": "INTEGER",
-                    "nullable": false
-                  }
-                }
-              ]
-            },
-            {
-              "op": {
-                "name": ">=",
-                "kind": "GREATER_THAN_OR_EQUAL",
-                "syntax": "BINARY"
-              },
-              "operands": [
-                {
-                  "input": 4,
-                  "name": "$4"
-                },
-                {
-                  "literal": 30,
-                  "type": {
-                    "type": "INTEGER",
-                    "nullable": false
-                  }
-                }
-              ]
-            }
-          ]
-        },
-        "inputs": [
-          "3"
-        ],
-        "rowCount": 6480
-      },
-      {
-        "id": "62",
-        "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveProject",
-        "fields": [
-          "t_time_sk"
-        ],
-        "exprs": [
-          {
-            "input": 0,
-            "name": "$0"
-          }
-        ],
-        "rowCount": 6480
-      },
-      {
-        "id": "63",
-        "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveJoin",
-        "condition": {
-          "op": {
-            "name": "=",
-            "kind": "EQUALS",
-            "syntax": "BINARY"
-          },
-          "operands": [
-            {
-              "input": 0,
-              "name": "$0"
-            },
-            {
-              "input": 3,
-              "name": "$3"
-            }
-          ]
-        },
-        "joinType": "inner",
-        "algorithm": "none",
-        "cost": "not available",
-        "inputs": [
-          "60",
-          "62"
-        ],
-        "rowCount": 6.122546917104568E13
-      },
-      {
-        "id": "64",
-        "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveFilter",
-        "condition": {
-          "op": {
-            "name": "AND",
-            "kind": "AND",
-            "syntax": "BINARY"
-          },
-          "operands": [
-            {
-              "op": {
                 "name": "<=",
                 "kind": "LESS_THAN_OR_EQUAL",
                 "syntax": "BINARY"
@@ -3621,12 +3521,12 @@ Warning: Map Join MAPJOIN[599][bigTable=?] in task 'Reducer 5' is a cross produc
           ]
         },
         "inputs": [
-          "7"
+          "3"
         ],
         "rowCount": 225
       },
       {
-        "id": "65",
+        "id": "62",
         "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveProject",
         "fields": [
           "hd_demo_sk"
@@ -3640,7 +3540,7 @@ Warning: Map Join MAPJOIN[599][bigTable=?] in task 'Reducer 5' is a cross produc
         "rowCount": 225
       },
       {
-        "id": "66",
+        "id": "63",
         "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveJoin",
         "condition": {
           "op": {
@@ -3652,6 +3552,106 @@ Warning: Map Join MAPJOIN[599][bigTable=?] in task 'Reducer 5' is a cross produc
             {
               "input": 1,
               "name": "$1"
+            },
+            {
+              "input": 3,
+              "name": "$3"
+            }
+          ]
+        },
+        "joinType": "inner",
+        "algorithm": "none",
+        "cost": "not available",
+        "inputs": [
+          "60",
+          "62"
+        ],
+        "rowCount": 2.1258843462168638E12
+      },
+      {
+        "id": "64",
+        "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveFilter",
+        "condition": {
+          "op": {
+            "name": "AND",
+            "kind": "AND",
+            "syntax": "BINARY"
+          },
+          "operands": [
+            {
+              "op": {
+                "name": "=",
+                "kind": "EQUALS",
+                "syntax": "BINARY"
+              },
+              "operands": [
+                {
+                  "input": 3,
+                  "name": "$3"
+                },
+                {
+                  "literal": 10,
+                  "type": {
+                    "type": "INTEGER",
+                    "nullable": false
+                  }
+                }
+              ]
+            },
+            {
+              "op": {
+                "name": ">=",
+                "kind": "GREATER_THAN_OR_EQUAL",
+                "syntax": "BINARY"
+              },
+              "operands": [
+                {
+                  "input": 4,
+                  "name": "$4"
+                },
+                {
+                  "literal": 30,
+                  "type": {
+                    "type": "INTEGER",
+                    "nullable": false
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "inputs": [
+          "7"
+        ],
+        "rowCount": 6480
+      },
+      {
+        "id": "65",
+        "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveProject",
+        "fields": [
+          "t_time_sk"
+        ],
+        "exprs": [
+          {
+            "input": 0,
+            "name": "$0"
+          }
+        ],
+        "rowCount": 6480
+      },
+      {
+        "id": "66",
+        "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveJoin",
+        "condition": {
+          "op": {
+            "name": "=",
+            "kind": "EQUALS",
+            "syntax": "BINARY"
+          },
+          "operands": [
+            {
+              "input": 0,
+              "name": "$0"
             },
             {
               "input": 4,
@@ -3887,106 +3887,6 @@ Warning: Map Join MAPJOIN[599][bigTable=?] in task 'Reducer 5' is a cross produc
           "operands": [
             {
               "op": {
-                "name": "=",
-                "kind": "EQUALS",
-                "syntax": "BINARY"
-              },
-              "operands": [
-                {
-                  "input": 3,
-                  "name": "$3"
-                },
-                {
-                  "literal": 10,
-                  "type": {
-                    "type": "INTEGER",
-                    "nullable": false
-                  }
-                }
-              ]
-            },
-            {
-              "op": {
-                "name": "<",
-                "kind": "LESS_THAN",
-                "syntax": "BINARY"
-              },
-              "operands": [
-                {
-                  "input": 4,
-                  "name": "$4"
-                },
-                {
-                  "literal": 30,
-                  "type": {
-                    "type": "INTEGER",
-                    "nullable": false
-                  }
-                }
-              ]
-            }
-          ]
-        },
-        "inputs": [
-          "3"
-        ],
-        "rowCount": 6480
-      },
-      {
-        "id": "76",
-        "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveProject",
-        "fields": [
-          "t_time_sk"
-        ],
-        "exprs": [
-          {
-            "input": 0,
-            "name": "$0"
-          }
-        ],
-        "rowCount": 6480
-      },
-      {
-        "id": "77",
-        "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveJoin",
-        "condition": {
-          "op": {
-            "name": "=",
-            "kind": "EQUALS",
-            "syntax": "BINARY"
-          },
-          "operands": [
-            {
-              "input": 0,
-              "name": "$0"
-            },
-            {
-              "input": 3,
-              "name": "$3"
-            }
-          ]
-        },
-        "joinType": "inner",
-        "algorithm": "none",
-        "cost": "not available",
-        "inputs": [
-          "74",
-          "76"
-        ],
-        "rowCount": 6.122546917104568E13
-      },
-      {
-        "id": "78",
-        "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveFilter",
-        "condition": {
-          "op": {
-            "name": "AND",
-            "kind": "AND",
-            "syntax": "BINARY"
-          },
-          "operands": [
-            {
-              "op": {
                 "name": "<=",
                 "kind": "LESS_THAN_OR_EQUAL",
                 "syntax": "BINARY"
@@ -4191,12 +4091,12 @@ Warning: Map Join MAPJOIN[599][bigTable=?] in task 'Reducer 5' is a cross produc
           ]
         },
         "inputs": [
-          "7"
+          "3"
         ],
         "rowCount": 225
       },
       {
-        "id": "79",
+        "id": "76",
         "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveProject",
         "fields": [
           "hd_demo_sk"
@@ -4210,7 +4110,7 @@ Warning: Map Join MAPJOIN[599][bigTable=?] in task 'Reducer 5' is a cross produc
         "rowCount": 225
       },
       {
-        "id": "80",
+        "id": "77",
         "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveJoin",
         "condition": {
           "op": {
@@ -4222,6 +4122,106 @@ Warning: Map Join MAPJOIN[599][bigTable=?] in task 'Reducer 5' is a cross produc
             {
               "input": 1,
               "name": "$1"
+            },
+            {
+              "input": 3,
+              "name": "$3"
+            }
+          ]
+        },
+        "joinType": "inner",
+        "algorithm": "none",
+        "cost": "not available",
+        "inputs": [
+          "74",
+          "76"
+        ],
+        "rowCount": 2.1258843462168638E12
+      },
+      {
+        "id": "78",
+        "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveFilter",
+        "condition": {
+          "op": {
+            "name": "AND",
+            "kind": "AND",
+            "syntax": "BINARY"
+          },
+          "operands": [
+            {
+              "op": {
+                "name": "=",
+                "kind": "EQUALS",
+                "syntax": "BINARY"
+              },
+              "operands": [
+                {
+                  "input": 3,
+                  "name": "$3"
+                },
+                {
+                  "literal": 10,
+                  "type": {
+                    "type": "INTEGER",
+                    "nullable": false
+                  }
+                }
+              ]
+            },
+            {
+              "op": {
+                "name": "<",
+                "kind": "LESS_THAN",
+                "syntax": "BINARY"
+              },
+              "operands": [
+                {
+                  "input": 4,
+                  "name": "$4"
+                },
+                {
+                  "literal": 30,
+                  "type": {
+                    "type": "INTEGER",
+                    "nullable": false
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "inputs": [
+          "7"
+        ],
+        "rowCount": 6480
+      },
+      {
+        "id": "79",
+        "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveProject",
+        "fields": [
+          "t_time_sk"
+        ],
+        "exprs": [
+          {
+            "input": 0,
+            "name": "$0"
+          }
+        ],
+        "rowCount": 6480
+      },
+      {
+        "id": "80",
+        "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveJoin",
+        "condition": {
+          "op": {
+            "name": "=",
+            "kind": "EQUALS",
+            "syntax": "BINARY"
+          },
+          "operands": [
+            {
+              "input": 0,
+              "name": "$0"
             },
             {
               "input": 4,
@@ -4457,106 +4457,6 @@ Warning: Map Join MAPJOIN[599][bigTable=?] in task 'Reducer 5' is a cross produc
           "operands": [
             {
               "op": {
-                "name": "=",
-                "kind": "EQUALS",
-                "syntax": "BINARY"
-              },
-              "operands": [
-                {
-                  "input": 3,
-                  "name": "$3"
-                },
-                {
-                  "literal": 9,
-                  "type": {
-                    "type": "INTEGER",
-                    "nullable": false
-                  }
-                }
-              ]
-            },
-            {
-              "op": {
-                "name": ">=",
-                "kind": "GREATER_THAN_OR_EQUAL",
-                "syntax": "BINARY"
-              },
-              "operands": [
-                {
-                  "input": 4,
-                  "name": "$4"
-                },
-                {
-                  "literal": 30,
-                  "type": {
-                    "type": "INTEGER",
-                    "nullable": false
-                  }
-                }
-              ]
-            }
-          ]
-        },
-        "inputs": [
-          "3"
-        ],
-        "rowCount": 6480
-      },
-      {
-        "id": "90",
-        "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveProject",
-        "fields": [
-          "t_time_sk"
-        ],
-        "exprs": [
-          {
-            "input": 0,
-            "name": "$0"
-          }
-        ],
-        "rowCount": 6480
-      },
-      {
-        "id": "91",
-        "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveJoin",
-        "condition": {
-          "op": {
-            "name": "=",
-            "kind": "EQUALS",
-            "syntax": "BINARY"
-          },
-          "operands": [
-            {
-              "input": 0,
-              "name": "$0"
-            },
-            {
-              "input": 3,
-              "name": "$3"
-            }
-          ]
-        },
-        "joinType": "inner",
-        "algorithm": "none",
-        "cost": "not available",
-        "inputs": [
-          "88",
-          "90"
-        ],
-        "rowCount": 6.122546917104568E13
-      },
-      {
-        "id": "92",
-        "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveFilter",
-        "condition": {
-          "op": {
-            "name": "AND",
-            "kind": "AND",
-            "syntax": "BINARY"
-          },
-          "operands": [
-            {
-              "op": {
                 "name": "<=",
                 "kind": "LESS_THAN_OR_EQUAL",
                 "syntax": "BINARY"
@@ -4761,12 +4661,12 @@ Warning: Map Join MAPJOIN[599][bigTable=?] in task 'Reducer 5' is a cross produc
           ]
         },
         "inputs": [
-          "7"
+          "3"
         ],
         "rowCount": 225
       },
       {
-        "id": "93",
+        "id": "90",
         "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveProject",
         "fields": [
           "hd_demo_sk"
@@ -4780,7 +4680,7 @@ Warning: Map Join MAPJOIN[599][bigTable=?] in task 'Reducer 5' is a cross produc
         "rowCount": 225
       },
       {
-        "id": "94",
+        "id": "91",
         "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveJoin",
         "condition": {
           "op": {
@@ -4792,6 +4692,106 @@ Warning: Map Join MAPJOIN[599][bigTable=?] in task 'Reducer 5' is a cross produc
             {
               "input": 1,
               "name": "$1"
+            },
+            {
+              "input": 3,
+              "name": "$3"
+            }
+          ]
+        },
+        "joinType": "inner",
+        "algorithm": "none",
+        "cost": "not available",
+        "inputs": [
+          "88",
+          "90"
+        ],
+        "rowCount": 2.1258843462168638E12
+      },
+      {
+        "id": "92",
+        "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveFilter",
+        "condition": {
+          "op": {
+            "name": "AND",
+            "kind": "AND",
+            "syntax": "BINARY"
+          },
+          "operands": [
+            {
+              "op": {
+                "name": "=",
+                "kind": "EQUALS",
+                "syntax": "BINARY"
+              },
+              "operands": [
+                {
+                  "input": 3,
+                  "name": "$3"
+                },
+                {
+                  "literal": 9,
+                  "type": {
+                    "type": "INTEGER",
+                    "nullable": false
+                  }
+                }
+              ]
+            },
+            {
+              "op": {
+                "name": ">=",
+                "kind": "GREATER_THAN_OR_EQUAL",
+                "syntax": "BINARY"
+              },
+              "operands": [
+                {
+                  "input": 4,
+                  "name": "$4"
+                },
+                {
+                  "literal": 30,
+                  "type": {
+                    "type": "INTEGER",
+                    "nullable": false
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "inputs": [
+          "7"
+        ],
+        "rowCount": 6480
+      },
+      {
+        "id": "93",
+        "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveProject",
+        "fields": [
+          "t_time_sk"
+        ],
+        "exprs": [
+          {
+            "input": 0,
+            "name": "$0"
+          }
+        ],
+        "rowCount": 6480
+      },
+      {
+        "id": "94",
+        "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveJoin",
+        "condition": {
+          "op": {
+            "name": "=",
+            "kind": "EQUALS",
+            "syntax": "BINARY"
+          },
+          "operands": [
+            {
+              "input": 0,
+              "name": "$0"
             },
             {
               "input": 4,
@@ -5027,106 +5027,6 @@ Warning: Map Join MAPJOIN[599][bigTable=?] in task 'Reducer 5' is a cross produc
           "operands": [
             {
               "op": {
-                "name": "=",
-                "kind": "EQUALS",
-                "syntax": "BINARY"
-              },
-              "operands": [
-                {
-                  "input": 3,
-                  "name": "$3"
-                },
-                {
-                  "literal": 9,
-                  "type": {
-                    "type": "INTEGER",
-                    "nullable": false
-                  }
-                }
-              ]
-            },
-            {
-              "op": {
-                "name": "<",
-                "kind": "LESS_THAN",
-                "syntax": "BINARY"
-              },
-              "operands": [
-                {
-                  "input": 4,
-                  "name": "$4"
-                },
-                {
-                  "literal": 30,
-                  "type": {
-                    "type": "INTEGER",
-                    "nullable": false
-                  }
-                }
-              ]
-            }
-          ]
-        },
-        "inputs": [
-          "3"
-        ],
-        "rowCount": 6480
-      },
-      {
-        "id": "104",
-        "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveProject",
-        "fields": [
-          "t_time_sk"
-        ],
-        "exprs": [
-          {
-            "input": 0,
-            "name": "$0"
-          }
-        ],
-        "rowCount": 6480
-      },
-      {
-        "id": "105",
-        "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveJoin",
-        "condition": {
-          "op": {
-            "name": "=",
-            "kind": "EQUALS",
-            "syntax": "BINARY"
-          },
-          "operands": [
-            {
-              "input": 0,
-              "name": "$0"
-            },
-            {
-              "input": 3,
-              "name": "$3"
-            }
-          ]
-        },
-        "joinType": "inner",
-        "algorithm": "none",
-        "cost": "not available",
-        "inputs": [
-          "102",
-          "104"
-        ],
-        "rowCount": 6.122546917104568E13
-      },
-      {
-        "id": "106",
-        "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveFilter",
-        "condition": {
-          "op": {
-            "name": "AND",
-            "kind": "AND",
-            "syntax": "BINARY"
-          },
-          "operands": [
-            {
-              "op": {
                 "name": "<=",
                 "kind": "LESS_THAN_OR_EQUAL",
                 "syntax": "BINARY"
@@ -5331,12 +5231,12 @@ Warning: Map Join MAPJOIN[599][bigTable=?] in task 'Reducer 5' is a cross produc
           ]
         },
         "inputs": [
-          "7"
+          "3"
         ],
         "rowCount": 225
       },
       {
-        "id": "107",
+        "id": "104",
         "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveProject",
         "fields": [
           "hd_demo_sk"
@@ -5350,7 +5250,7 @@ Warning: Map Join MAPJOIN[599][bigTable=?] in task 'Reducer 5' is a cross produc
         "rowCount": 225
       },
       {
-        "id": "108",
+        "id": "105",
         "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveJoin",
         "condition": {
           "op": {
@@ -5362,6 +5262,106 @@ Warning: Map Join MAPJOIN[599][bigTable=?] in task 'Reducer 5' is a cross produc
             {
               "input": 1,
               "name": "$1"
+            },
+            {
+              "input": 3,
+              "name": "$3"
+            }
+          ]
+        },
+        "joinType": "inner",
+        "algorithm": "none",
+        "cost": "not available",
+        "inputs": [
+          "102",
+          "104"
+        ],
+        "rowCount": 2.1258843462168638E12
+      },
+      {
+        "id": "106",
+        "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveFilter",
+        "condition": {
+          "op": {
+            "name": "AND",
+            "kind": "AND",
+            "syntax": "BINARY"
+          },
+          "operands": [
+            {
+              "op": {
+                "name": "=",
+                "kind": "EQUALS",
+                "syntax": "BINARY"
+              },
+              "operands": [
+                {
+                  "input": 3,
+                  "name": "$3"
+                },
+                {
+                  "literal": 9,
+                  "type": {
+                    "type": "INTEGER",
+                    "nullable": false
+                  }
+                }
+              ]
+            },
+            {
+              "op": {
+                "name": "<",
+                "kind": "LESS_THAN",
+                "syntax": "BINARY"
+              },
+              "operands": [
+                {
+                  "input": 4,
+                  "name": "$4"
+                },
+                {
+                  "literal": 30,
+                  "type": {
+                    "type": "INTEGER",
+                    "nullable": false
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "inputs": [
+          "7"
+        ],
+        "rowCount": 6480
+      },
+      {
+        "id": "107",
+        "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveProject",
+        "fields": [
+          "t_time_sk"
+        ],
+        "exprs": [
+          {
+            "input": 0,
+            "name": "$0"
+          }
+        ],
+        "rowCount": 6480
+      },
+      {
+        "id": "108",
+        "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveJoin",
+        "condition": {
+          "op": {
+            "name": "=",
+            "kind": "EQUALS",
+            "syntax": "BINARY"
+          },
+          "operands": [
+            {
+              "input": 0,
+              "name": "$0"
             },
             {
               "input": 4,
