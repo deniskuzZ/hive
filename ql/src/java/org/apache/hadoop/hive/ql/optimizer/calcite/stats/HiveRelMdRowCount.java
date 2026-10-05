@@ -58,6 +58,7 @@ import org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveAntiJoin;
 import org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveJoin;
 import org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveSemiJoin;
 import org.apache.hadoop.hive.ql.plan.ColStatistics;
+import org.apache.hadoop.hive.ql.stats.StatsUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveFilter.StatEnhancedHiveFilter;
@@ -357,6 +358,9 @@ public class HiveRelMdRowCount extends RelMdRowCount {
           leftNDV,
           joinRel.getJoinType().generatesNullsOnRight() ? 1.0 :
             pkSelectivity);
+      if (!isPKSideSimpleTree) {
+        ndvScalingFactor = rangeScalingFactor(left, leftColIdx, right, rightColIdx, pkInfo.selectivity, mq);
+      }
 
       return new PKFKRelationInfo(1, fkInfo, pkInfo, ndvScalingFactor, isPKSideSimpleTree);
     } else { // pkSide == 1
@@ -367,6 +371,9 @@ public class HiveRelMdRowCount extends RelMdRowCount {
           rightNDV,
           joinRel.getJoinType().generatesNullsOnLeft() ? 1.0 :
             pkSelectivity);
+      if (!isPKSideSimpleTree) {
+        ndvScalingFactor = rangeScalingFactor(right, rightColIdx, left, leftColIdx, pkInfo.selectivity, mq);
+      }
 
       return new PKFKRelationInfo(0, fkInfo, pkInfo, ndvScalingFactor, isPKSideSimpleTree);
     }
@@ -460,7 +467,8 @@ public class HiveRelMdRowCount extends RelMdRowCount {
           leftNDV,
           join.getJoinType().generatesNullsOnRight() ? 1.0 :
               pkSelectivity);
-      double ndvScalingFactor = isPKSideSimpleTree ? leftNDV/rightNDV : 1.0;
+      double ndvScalingFactor = isPKSideSimpleTree ? leftNDV/rightNDV
+          : rangeScalingFactor(left, lBitSet, right, rBitSet, pkInfo.selectivity, mq);
       return Pair.of(new PKFKRelationInfo(1, fkInfo, pkInfo, ndvScalingFactor, isNoFilteringPKSideTree),
           residualCond);
     } else { // pkSide == 1
@@ -471,10 +479,65 @@ public class HiveRelMdRowCount extends RelMdRowCount {
           rightNDV,
           join.getJoinType().generatesNullsOnLeft() ? 1.0 :
               pkSelectivity);
-      double ndvScalingFactor = isPKSideSimpleTree ? rightNDV/leftNDV : 1.0;
+      double ndvScalingFactor = isPKSideSimpleTree ? rightNDV/leftNDV
+          : rangeScalingFactor(right, rBitSet, left, lBitSet, pkInfo.selectivity, mq);
       return Pair.of(new PKFKRelationInfo(0, fkInfo, pkInfo, ndvScalingFactor, isNoFilteringPKSideTree),
           residualCond);
     }
+  }
+
+  /**
+   * Scaling factor for the selectivity of a PK side filtered on non-key columns, ported from the physical stats
+   * annotator (HIVE-10812, {@link StatsUtils#getScaledSelectivity}). The PK side selectivity assumes the FK side
+   * references the whole PK key range; when the FK key range is narrower (a fact table covering part of a date
+   * dimension), the join keeps pkRange/fkRange times more rows. Unlike the NDV scaling of a simple PK side tree,
+   * this applies to filters on any column. Returns 1 for multi-column keys, without range statistics,
+   * when the FK range is not strictly inside the PK range, or when the scaled selectivity would exceed 1.
+   */
+  private static double rangeScalingFactor(RelNode pkInput, ImmutableBitSet pkCols, RelNode fkInput,
+      ImmutableBitSet fkCols, double pkSelectivity, RelMetadataQuery mq) {
+    if (pkCols.cardinality() != 1 || fkCols.cardinality() != 1) {
+      return 1.0;
+    }
+    return rangeScalingFactor(pkInput, pkCols.nextSetBit(0), fkInput, fkCols.nextSetBit(0), pkSelectivity, mq);
+  }
+
+  private static double rangeScalingFactor(RelNode pkInput, int pkCol, RelNode fkInput, int fkCol,
+      double pkSelectivity, RelMetadataQuery mq) {
+    ColStatistics.Range pkRange = originRange(pkInput, pkCol, mq);
+    ColStatistics.Range fkRange = originRange(fkInput, fkCol, mq);
+    if (pkRange == null || fkRange == null
+        || fkRange.minValue.longValue() < pkRange.minValue.longValue()
+        || fkRange.maxValue.longValue() > pkRange.maxValue.longValue()) {
+      return 1.0;
+    }
+    long pkDelta = StatsUtils.getRangeDelta(pkRange);
+    long fkDelta = StatsUtils.getRangeDelta(fkRange);
+    if (fkDelta <= 0 || fkDelta >= pkDelta) {
+      return 1.0;
+    }
+    double scale = (double) pkDelta / fkDelta;
+    double factor = pkSelectivity * scale > 1 ? 1.0 : scale;
+    LOG.debug("PK-FK range scaling: pkRange={} fkRange={} pkSelectivity={} scale={} factor={}",
+        pkRange, fkRange, pkSelectivity, scale, factor);
+    return factor;
+  }
+
+  private static ColStatistics.Range originRange(RelNode rel, int col, RelMetadataQuery mq) {
+    RelColumnOrigin co = mq.getColumnOrigin(rel, col);
+    if (co == null || co.isDerived() || !(co.getOriginTable() instanceof RelOptHiveTable)) {
+      return null;
+    }
+    List<ColStatistics> colStats = ((RelOptHiveTable) co.getOriginTable())
+        .getColStat(ImmutableList.of(co.getOriginColumnOrdinal()), true);
+    if (colStats == null || colStats.isEmpty() || colStats.get(0) == null) {
+      return null;
+    }
+    ColStatistics.Range range = colStats.get(0).getRange();
+    if (range == null || range.minValue == null || range.maxValue == null) {
+      return null;
+    }
+    return range;
   }
 
   private static double pkSelectivity(Join joinRel, RelMetadataQuery mq, boolean leftChild,
