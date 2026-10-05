@@ -20,6 +20,7 @@
 package org.apache.hadoop.hive.ql.exec.vector;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
@@ -3571,6 +3572,104 @@ public class TestVectorGroupByOperator {
     assertEquals(keyCount, gby.mode().keyTable.size());
     assertEquals(keyCount, expected.size());
     assertEquals(expected, gby.close());
+  }
+
+  @Test
+  public void testBytesKeyTableTaggedSlots() {
+    // The capacity that tags the slots, keys of equal hash, growth while tagged, then removals and
+    // a compaction while tagged.
+    VectorGroupByBytesKeyTable table = new VectorGroupByBytesKeyTable();
+    final int tagged = 1 << 15;
+    byte[][] keys = new byte[3 * tagged][];
+    for (int i = 0; i < keys.length; i++) {
+      keys[i] = bytes((i % 2 == 0 ? "k-" : "a-key-longer-than-16-bytes-") + i);
+    }
+    assertFalse(table.startBatch());
+    for (int i = 0; i < tagged; i++) {
+      assertEquals(i, table.findOrAdd(keys[i], 0, keys[i].length));
+    }
+    assertTrue(table.startBatch());
+    for (int i = 0; i < tagged; i++) {
+      assertEquals(i, table.findOrAddTagged(keys[i], 0, keys[i].length));
+    }
+    byte[][] colliding = collidingKeys("tagged-%08d");
+    assertEquals(tagged, table.findOrAddTagged(colliding[0], 0, colliding[0].length));
+    assertEquals(tagged + 1, table.findOrAddTagged(colliding[1], 0, colliding[1].length));
+    assertEquals(tagged, table.findOrAddTagged(colliding[0], 0, colliding[0].length));
+    for (int i = tagged; i < keys.length; i++) {
+      assertEquals(i + 2, table.findOrAddTagged(keys[i], 0, keys[i].length));
+    }
+    for (int i = 0; i < keys.length; i++) {
+      assertEquals(i < tagged ? i : i + 2, table.findOrAddTagged(keys[i], 0, keys[i].length));
+    }
+    for (int i = 0; i < keys.length; i++) {
+      if (i % 3 != 0) {
+        table.remove(i < tagged ? i : i + 2);
+      }
+    }
+    table.compactIfSparse(null);
+    assertTrue(table.startBatch());
+    final int size = table.size();
+    assertEquals(table.end(), size);
+    Set<Integer> entries = new HashSet<>();
+    for (int i = 0; i < keys.length; i += 3) {
+      int entry = table.findOrAddTagged(keys[i], 0, keys[i].length);
+      assertTrue(entry < size);
+      assertTrue(entries.add(entry));
+    }
+    assertEquals(size, table.findOrAddTagged(keys[1], 0, keys[1].length));
+    assertEquals(size + 1, table.size());
+  }
+
+  @Test
+  public void testSingleBytesKeyTaggedSlots() throws HiveException {
+    for (boolean aggregationBuffers : new boolean[] {false, true}) {
+      // 40000 keys tag the slots of the table, then the same keys again, a repeating key, NULLs
+      // and a partial flush while tagged.
+      Map<String, List<Long>> expected = new HashMap<>();
+      BytesKeyGroupBy gby = new BytesKeyGroupBy(TypeInfoFactory.stringTypeInfo, aggregationBuffers);
+      final int keyCount = 40_000;
+      for (int pass = 0; pass < 2; pass++) {
+        for (int first = 0; first < keyCount; first += VectorizedRowBatch.DEFAULT_SIZE) {
+          byte[][] keys = new byte[Math.min(VectorizedRowBatch.DEFAULT_SIZE, keyCount - first)][];
+          for (int i = 0; i < keys.length; i++) {
+            int key = first + i;
+            keys[i] = key % 1000 == 7 ? null
+                : bytes(key % 2 == 0 ? "key-" + key : "a-longer-key-than-16-bytes-" + key);
+          }
+          gby.process(bytesKeyBatch(keys, false, null, expected));
+        }
+        gby.process(repeatingBytesKeyBatch(bytes("key-2"), 100, null, expected));
+        gby.mode().gcCanary.clear();
+      }
+      assertTrue(gby.mode().keyTable.startBatch());
+      assertEquals(expected, gby.close());
+    }
+  }
+
+  @Test
+  public void testSerializedKeyTaggedSlots() throws HiveException {
+    for (boolean aggregationBuffers : new boolean[] {false, true}) {
+      Map<List<Object>, List<Long>> expected = new HashMap<>();
+      KeyTableGroupBy gby = new KeyTableGroupBy(new TypeInfo[] {
+          TypeInfoFactory.longTypeInfo, TypeInfoFactory.stringTypeInfo}, aggregationBuffers);
+      final int keyCount = 40_000;
+      for (int pass = 0; pass < 2; pass++) {
+        for (int first = 0; first < keyCount; first += VectorizedRowBatch.DEFAULT_SIZE) {
+          Object[][] columns = new Object[2][Math.min(VectorizedRowBatch.DEFAULT_SIZE,
+              keyCount - first)];
+          for (int i = 0; i < columns[0].length; i++) {
+            int key = first + i;
+            columns[0][i] = key % 1000 == 7 ? null : (long) (key / 3);
+            columns[1][i] = "s" + key % 3;
+          }
+          gby.process(multiKeyBatch(columns, null, expected));
+        }
+        gby.mode().gcCanary.clear();
+      }
+      assertTrue(gby.mode().keyTable.startBatch());
+      assertEquals(expected, gby.close());
+    }
   }
 
   @Test

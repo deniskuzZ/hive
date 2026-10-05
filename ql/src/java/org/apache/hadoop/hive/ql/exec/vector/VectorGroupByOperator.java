@@ -1087,9 +1087,13 @@ public class VectorGroupByOperator extends Operator<GroupByDesc>
       final BytesColumnVector keyColumn = (BytesColumnVector) batch.cols[keyColumnNum];
       final int size = batch.size;
       final int[] entries = batchEntries;
+      final boolean tagged = keyTable.startBatch();
       if (keyColumn.isRepeating) {
         Arrays.fill(entries, 0, size, keyColumn.noNulls || !keyColumn.isNull[0]
-            ? keyTable.findOrAdd(keyColumn.vector[0], keyColumn.start[0], keyColumn.length[0])
+            ? tagged
+                ? keyTable.findOrAddTagged(keyColumn.vector[0], keyColumn.start[0],
+                    keyColumn.length[0])
+                : keyTable.findOrAdd(keyColumn.vector[0], keyColumn.start[0], keyColumn.length[0])
             : keyTable.findOrAddNull());
         return true;
       }
@@ -1105,6 +1109,15 @@ public class VectorGroupByOperator extends Operator<GroupByDesc>
       final byte[][] vector = keyColumn.vector;
       final int[] start = keyColumn.start;
       final int[] length = keyColumn.length;
+      if (tagged) {
+        for (int i = 0; i < size; i++) {
+          final int row = selectedInUse ? selected[i] : i;
+          entries[i] = noNulls || !isNull[row]
+              ? keyTable.findOrAddTagged(vector[row], start[row], length[row])
+              : keyTable.findOrAddNull();
+        }
+        return false;
+      }
       for (int i = 0; i < size; i++) {
         final int row = selectedInUse ? selected[i] : i;
         entries[i] = noNulls || !isNull[row]
@@ -1222,6 +1235,12 @@ public class VectorGroupByOperator extends Operator<GroupByDesc>
       final int[] lengths = keySerializer.getLengths();
       final int size = batch.size;
       final int[] entries = batchEntries;
+      if (keyTable.startBatch()) {
+        for (int i = 0; i < size; i++) {
+          entries[i] = keyTable.findOrAddTagged(bytes, starts[i], lengths[i]);
+        }
+        return false;
+      }
       for (int i = 0; i < size; i++) {
         entries[i] = keyTable.findOrAdd(bytes, starts[i], lengths[i]);
       }
