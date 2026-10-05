@@ -1087,14 +1087,18 @@ public class VectorGroupByOperator extends Operator<GroupByDesc>
       final BytesColumnVector keyColumn = (BytesColumnVector) batch.cols[keyColumnNum];
       final int size = batch.size;
       final int[] entries = batchEntries;
+      final boolean tagged = keyTable.startBatch();
       if (keyColumn.isRepeating) {
         Arrays.fill(entries, 0, size, keyColumn.noNulls || !keyColumn.isNull[0]
-            ? keyTable.findOrAdd(keyColumn.vector[0], keyColumn.start[0], keyColumn.length[0])
+            ? tagged
+                ? keyTable.findOrAddTagged(keyColumn.vector[0], keyColumn.start[0],
+                    keyColumn.length[0])
+                : keyTable.findOrAdd(keyColumn.vector[0], keyColumn.start[0], keyColumn.length[0])
             : keyTable.findOrAddNull());
         return true;
       }
       if (keyColumn.dictionaryToken != 0) {
-        findOrAddDictionaryEntries(keyColumn, size, batch.selectedInUse, batch.selected);
+        findOrAddDictionaryEntries(keyColumn, size, batch.selectedInUse, batch.selected, tagged);
         return false;
       }
       // Looking up all keys before mapping the rows measured up to 18% faster than one loop.
@@ -1105,6 +1109,15 @@ public class VectorGroupByOperator extends Operator<GroupByDesc>
       final byte[][] vector = keyColumn.vector;
       final int[] start = keyColumn.start;
       final int[] length = keyColumn.length;
+      if (tagged) {
+        for (int i = 0; i < size; i++) {
+          final int row = selectedInUse ? selected[i] : i;
+          entries[i] = noNulls || !isNull[row]
+              ? keyTable.findOrAddTagged(vector[row], start[row], length[row])
+              : keyTable.findOrAddNull();
+        }
+        return false;
+      }
       for (int i = 0; i < size; i++) {
         final int row = selectedInUse ? selected[i] : i;
         entries[i] = noNulls || !isNull[row]
@@ -1119,7 +1132,7 @@ public class VectorGroupByOperator extends Operator<GroupByDesc>
      * since the dictionary or the table last changed, and kept in the memo.
      */
     private void findOrAddDictionaryEntries(BytesColumnVector keyColumn, int size, boolean selectedInUse,
-        int[] selected) {
+        int[] selected, boolean tagged) {
       if (keyColumn.dictionaryToken != memoToken) {
         if (memo.length < keyColumn.dictionarySize) {
           memo = new int[keyColumn.dictionarySize];
@@ -1137,7 +1150,9 @@ public class VectorGroupByOperator extends Operator<GroupByDesc>
         if (noNulls || !isNull[row]) {
           int entry = memo[ids[row]];
           if (entry < 0) {
-            entry = keyTable.findOrAdd(keyColumn.vector[row], keyColumn.start[row], keyColumn.length[row]);
+            entry = tagged
+                ? keyTable.findOrAddTagged(keyColumn.vector[row], keyColumn.start[row], keyColumn.length[row])
+                : keyTable.findOrAdd(keyColumn.vector[row], keyColumn.start[row], keyColumn.length[row]);
             memo[ids[row]] = entry;
           }
           entries[i] = entry;
@@ -1222,6 +1237,12 @@ public class VectorGroupByOperator extends Operator<GroupByDesc>
       final int[] lengths = keySerializer.getLengths();
       final int size = batch.size;
       final int[] entries = batchEntries;
+      if (keyTable.startBatch()) {
+        for (int i = 0; i < size; i++) {
+          entries[i] = keyTable.findOrAddTagged(bytes, starts[i], lengths[i]);
+        }
+        return false;
+      }
       for (int i = 0; i < size; i++) {
         entries[i] = keyTable.findOrAdd(bytes, starts[i], lengths[i]);
       }
