@@ -29,6 +29,7 @@ import org.apache.calcite.rel.metadata.RelMetadataQuery;
 import org.apache.calcite.util.BuiltInMethod;
 import org.apache.calcite.util.ImmutableBitSet;
 import org.apache.hadoop.hive.ql.optimizer.calcite.RelOptHiveTable;
+import org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HivePartialAggregate;
 import org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveTableScan;
 
 /**
@@ -58,6 +59,11 @@ public final class HiveRelMdColumnUniqueness
       RelOptHiveTable tbl = (RelOptHiveTable)rel.getTable();
       return tbl.isNonNullableKey(columns);
     }
+  }
+
+  public Boolean areColumnsUnique(HivePartialAggregate rel, RelMetadataQuery mq, ImmutableBitSet columns,
+                                  boolean ignoreNulls) {
+    return false;
   }
 
   public Boolean areColumnsUnique(Spool rel, RelMetadataQuery mq, ImmutableBitSet columns, boolean ignoreNulls) {

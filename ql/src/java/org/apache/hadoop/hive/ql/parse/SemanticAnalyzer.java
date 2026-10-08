@@ -1955,6 +1955,7 @@ public class SemanticAnalyzer extends BaseSemanticAnalyzer {
         break;
 
       case HiveParser.TOK_GROUPBY:
+      case HiveParser.TOK_PARTIAL_GROUPBY:
       case HiveParser.TOK_ROLLUP_GROUPBY:
       case HiveParser.TOK_CUBE_GROUPBY:
       case HiveParser.TOK_GROUPING_SETS:
@@ -4626,7 +4627,8 @@ public class SemanticAnalyzer extends BaseSemanticAnalyzer {
     boolean isGroupBy = false;
     if (selectExpr.getParent() != null && selectExpr.getParent() instanceof Node) {
       for (Node sibling : ((Node)selectExpr.getParent()).getChildren()) {
-        isGroupBy |= sibling instanceof ASTNode && ((ASTNode)sibling).getType() == HiveParser.TOK_GROUPBY;
+        isGroupBy |= sibling instanceof ASTNode && (((ASTNode) sibling).getType() == HiveParser.TOK_GROUPBY
+            || ((ASTNode) sibling).getType() == HiveParser.TOK_PARTIAL_GROUPBY);
       }
     }
 
@@ -6909,6 +6911,20 @@ public class SemanticAnalyzer extends BaseSemanticAnalyzer {
    * Group by Operator:
    * grouping keys: group by expressions + grouping id.
    */
+  /**
+   * Generate a map-side hash Group By with no shuffle and no merge: a partial aggregation whose results
+   * are merged by an aggregation further up the plan.
+   */
+  private Operator genGroupByPlanPartialOnly(String dest, QB qb, Operator input) throws SemanticException {
+    Pair<List<ASTNode>, List<Long>> grpByExprsGroupingSets =
+        getGroupByGroupingSetsForClause(qb.getParseInfo(), dest);
+    GroupByOperator groupByOperator = (GroupByOperator) genGroupByPlanMapGroupByOperator(qb, dest,
+        grpByExprsGroupingSets.getLeft(), input, null, grpByExprsGroupingSets.getRight(), false);
+    groupByOperator.getConf().setPartialOnly(true);
+    groupOpToInputTables.put(groupByOperator, opParseCtx.get(input).getRowResolver().getTableNames());
+    return groupByOperator;
+  }
+
   @SuppressWarnings("nls")
   private Operator genGroupByPlanMapAggrNoSkew(String dest, QB qb,
                                                Operator inputOperatorInfo) throws SemanticException {
@@ -11624,7 +11640,9 @@ public class SemanticAnalyzer extends BaseSemanticAnalyzer {
                   qbp.setSelExprForClause(dest, genSelectDIAST(rr));
                 }
               }
-              if (conf.getBoolVar(HiveConf.ConfVars.HIVE_MAPSIDE_AGGREGATE)) {
+              if (qbp.isPartialGroupByForClause(dest)) {
+                curr = genGroupByPlanPartialOnly(dest, qb, curr);
+              } else if (conf.getBoolVar(HiveConf.ConfVars.HIVE_MAPSIDE_AGGREGATE)) {
                 if (!conf.getBoolVar(HiveConf.ConfVars.HIVE_GROUPBY_SKEW)) {
                   curr = genGroupByPlanMapAggrNoSkew(dest, qb, curr);
                 } else {

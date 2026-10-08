@@ -56,6 +56,7 @@ import org.apache.hadoop.hive.ql.optimizer.calcite.HiveRelOptUtil.PKFKJoinInfo;
 import org.apache.hadoop.hive.ql.optimizer.calcite.RelOptHiveTable;
 import org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveAntiJoin;
 import org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveJoin;
+import org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HivePartialAggregate;
 import org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveSemiJoin;
 import org.apache.hadoop.hive.ql.plan.ColStatistics;
 import org.apache.hadoop.hive.ql.stats.StatsUtils;
@@ -75,6 +76,11 @@ public class HiveRelMdRowCount extends RelMdRowCount {
 
   protected HiveRelMdRowCount() {
     super();
+  }
+
+  public Double getRowCount(HivePartialAggregate rel, RelMetadataQuery mq) {
+    // A partial aggregate is not assumed to reduce its input
+    return mq.getRowCount(rel.getInput());
   }
 
   public Double getRowCount(HiveJoin join, RelMetadataQuery mq) {

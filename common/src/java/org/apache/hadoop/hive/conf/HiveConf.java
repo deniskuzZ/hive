@@ -1818,6 +1818,10 @@ public class HiveConf extends Configuration {
     AGGR_JOIN_TRANSPOSE("hive.transpose.aggr.join", false, "push aggregates through join"),
     AGGR_JOIN_TRANSPOSE_UNIQUE("hive.transpose.aggr.join.unique", true, "push aggregates through join(s) in "
         + "case data is regrouped on a previously unique column"),
+    PARTIAL_AGGR_JOIN_TRANSPOSE("hive.optimize.partial.aggr.join.transpose", false,
+        "Whether to push a map-side partial aggregate below an inner join, to the join input that holds all\n"
+        + "aggregate arguments. The original aggregate stays above the join and merges the partial results.\n"
+        + "The pushed aggregate runs in the vertex of the join input, before its existing shuffle."),
     SEMIJOIN_CONVERSION("hive.optimize.semijoin.conversion", true, "convert group by followed by inner equi join into semijoin"),
     HIVE_COLUMN_ALIGNMENT("hive.order.columnalignment", true, "Flag to control whether we want to try to align" +
         "columns in operators such as Aggregate or Join so that we try to reduce the number of shuffling stages"),
@@ -6715,6 +6719,7 @@ public class HiveConf extends Configuration {
    */
   private static final String[] SQL_STD_AUTH_SAFE_VAR_NAMES = new String[] {
       ConfVars.AGGR_JOIN_TRANSPOSE.varname,
+      ConfVars.PARTIAL_AGGR_JOIN_TRANSPOSE.varname,
       ConfVars.BYTES_PER_REDUCER.varname,
       ConfVars.CLIENT_STATS_COUNTERS.varname,
       ConfVars.CREATE_TABLES_AS_ACID.varname,

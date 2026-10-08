@@ -75,6 +75,7 @@ import org.apache.hadoop.hive.ql.metadata.VirtualColumn;
 import org.apache.hadoop.hive.ql.optimizer.calcite.CalciteSemanticException;
 import org.apache.hadoop.hive.ql.optimizer.calcite.HiveRelOptUtil;
 import org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveAggregate;
+import org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HivePartialAggregate;
 import org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveComponentAccess;
 import org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveGroupingID;
 import org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveSortExchange;
@@ -295,7 +296,9 @@ public class ASTConverter {
       Group aggregateType = groupBy.getGroupType();
       switch (aggregateType) {
         case SIMPLE:
-          b = ASTBuilder.construct(HiveParser.TOK_GROUPBY, "TOK_GROUPBY");
+          b = groupBy instanceof HivePartialAggregate
+              ? ASTBuilder.construct(HiveParser.TOK_PARTIAL_GROUPBY, "TOK_PARTIAL_GROUPBY")
+              : ASTBuilder.construct(HiveParser.TOK_GROUPBY, "TOK_GROUPBY");
           break;
         case ROLLUP:
         case CUBE:

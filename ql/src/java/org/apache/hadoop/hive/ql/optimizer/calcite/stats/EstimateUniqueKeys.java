@@ -42,6 +42,7 @@ import org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveJoin;
 import org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveProject;
 import org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveSemiJoin;
 import org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveSortLimit;
+import org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HivePartialAggregate;
 import org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveTableScan;
 import org.apache.hadoop.hive.ql.plan.ColStatistics;
 
@@ -307,6 +308,8 @@ public final class EstimateUniqueKeys {
       return getUniqueKeys((HiveSemiJoin) rel);
     } else if (rel instanceof HiveAntiJoin) {
       return getUniqueKeys((HiveAntiJoin) rel);
+    } else if (rel instanceof HivePartialAggregate) {
+      return ImmutableSet.of();
     } else if (rel instanceof HiveAggregate) {
       return getUniqueKeys((HiveAggregate) rel);
     } else if (rel instanceof SetOp) {
