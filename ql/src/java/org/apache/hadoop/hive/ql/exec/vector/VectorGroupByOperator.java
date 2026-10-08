@@ -64,6 +64,7 @@ import org.apache.hadoop.hive.ql.util.JavaDataModel;
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspectorFactory;
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveObjectInspectorUtils;
+import org.apache.hadoop.hive.serde2.typeinfo.DecimalTypeInfo;
 import org.apache.hadoop.hive.serde2.typeinfo.TypeInfo;
 import org.apache.hadoop.hive.serde2.typeinfo.TypeInfoUtils;
 import org.apache.hadoop.io.DataOutputBuffer;
@@ -163,6 +164,9 @@ public class VectorGroupByOperator extends Operator<GroupByDesc>
   // tracks overall access count in map agg buffer any given time.
   private long totalAccessCount;
   private boolean batchNeedsClone;
+
+  // set for a partial aggregate pushed below a join when every aggregate can pass a row through
+  private transient PassThroughAggregate[] passThroughAggregates;
 
   /**
    * Interface for processing mode: global, hash, unsorted streaming, or group batch
@@ -832,7 +836,11 @@ public class VectorGroupByOperator extends Operator<GroupByDesc>
         if (ratio > minReductionHashAggr) {
           if (inputRecords > maxHtEntries) { // Don't bail out too soon.
             flush(true);
-            changeToStreamingMode();
+            if (passThroughAggregates != null) {
+              changeToPassThroughMode();
+            } else {
+              changeToStreamingMode();
+            }
           }
         }
       }
@@ -1645,6 +1653,7 @@ public class VectorGroupByOperator extends Operator<GroupByDesc>
     forwardCache = new Object[outputKeyLength + aggregators.length];
 
     setupGroupingSets();
+    passThroughAggregates = conf.isPartialOnly() && !groupingSetsPresent ? createPassThroughAggregates() : null;
 
     switch (vectorDesc.getProcessingMode()) {
     case GLOBAL:
@@ -1770,6 +1779,170 @@ public class VectorGroupByOperator extends Operator<GroupByDesc>
     processingMode = this.new ProcessingModeStreaming();
     processingMode.initialize(null);
     LOG.info("switched to streaming mode");
+  }
+
+  private PassThroughAggregate[] createPassThroughAggregates() {
+    PassThroughAggregate[] result = new PassThroughAggregate[aggregators.length];
+    for (int i = 0; i < aggregators.length; i++) {
+      result[i] = PassThroughAggregate.of(vecAggrDescs[i], aggregators[i]);
+      if (result[i] == null) {
+        return null;
+      }
+    }
+    return result;
+  }
+
+  private void changeToPassThroughMode() throws HiveException {
+    processingMode = this.new ProcessingModePassThrough();
+    processingMode.initialize(null);
+    LOG.info("switched to pass-through mode");
+  }
+
+  /**
+   * Pass-through mode of a partial aggregate pushed below a join ({@link GroupByDesc#isPartialOnly()}) whose hash
+   * mode stopped reducing its input: every row is forwarded as its own partial result, as Trino's adaptive partial
+   * aggregation does. The aggregate above the join merges the partial results.
+   */
+  final class ProcessingModePassThrough extends ProcessingModeBase {
+
+    @Override
+    public void initialize(Configuration hconf) {
+    }
+
+    @Override
+    protected void doProcessBatch(VectorizedRowBatch batch, boolean isFirstGroupingSet,
+        boolean[] currentGroupingSetsOverrideIsNulls) throws HiveException {
+      // the hash mode flush may have left a partial output batch
+      if (outputBatch.size > 0) {
+        flushOutput();
+      }
+      if (batch.size == 0) {
+        return;
+      }
+      for (VectorExpression keyExpression : keyExpressions) {
+        keyExpression.evaluate(batch);
+      }
+      for (VectorAggregateExpression aggregator : aggregators) {
+        if (aggregator.getInputExpression() != null) {
+          aggregator.getInputExpression().evaluate(batch);
+        }
+      }
+      final int[] selected = batch.selectedInUse ? batch.selected : null;
+      for (int i = 0; i < outputKeyLength; i++) {
+        copyColumn(batch.cols[keyExpressions[i].getOutputColumnNum()], selected, batch.size, outputBatch.cols[i]);
+      }
+      for (int i = 0; i < aggregators.length; i++) {
+        passThroughAggregates[i].write(batch, selected, batch.size, outputBatch.cols[outputKeyLength + i]);
+      }
+      outputBatch.size = batch.size;
+      flushOutput();
+    }
+  }
+
+  private static void copyColumn(ColumnVector in, int[] selected, int size, ColumnVector out) {
+    for (int j = 0; j < size; j++) {
+      out.setElement(j, selected != null ? selected[j] : j, in);
+    }
+  }
+
+  /** The single row partial result of a pushed SUM, $SUM0, COUNT, MIN or MAX, written by the pass-through mode. */
+  private static final class PassThroughAggregate {
+
+    private enum Kind { VALUE, SUM0, COUNT, COUNT_STAR }
+
+    private final Kind kind;
+    private final int inputColumnNum;
+    private final int decimal64Scale;
+
+    private PassThroughAggregate(Kind kind, int inputColumnNum, int decimal64Scale) {
+      this.kind = kind;
+      this.inputColumnNum = inputColumnNum;
+      this.decimal64Scale = decimal64Scale;
+    }
+
+    /**
+     * Returns the pass-through form of an aggregate, or null when its partial result is not the input value
+     * (other functions, or an input column type the output cannot take as is).
+     */
+    static PassThroughAggregate of(VectorAggregationDesc desc, VectorAggregateExpression aggregator) {
+      String name = desc.getAggregationName().toLowerCase();
+      VectorExpression input = aggregator.getInputExpression();
+      if (name.equals("count")) {
+        return input == null ? new PassThroughAggregate(Kind.COUNT_STAR, -1, -1)
+            : new PassThroughAggregate(Kind.COUNT, input.getOutputColumnNum(), -1);
+      }
+      if (input == null || !(name.equals("sum") || name.equals("$sum0") || name.equals("min")
+          || name.equals("max"))) {
+        return null;
+      }
+      Kind kind = name.equals("$sum0") ? Kind.SUM0 : Kind.VALUE;
+      ColumnVector.Type in = desc.getInputColVectorType();
+      ColumnVector.Type out = desc.getOutputColVectorType();
+      if (in == ColumnVector.Type.DECIMAL_64 && out == ColumnVector.Type.DECIMAL) {
+        return new PassThroughAggregate(kind, input.getOutputColumnNum(),
+            ((DecimalTypeInfo) desc.getInputTypeInfo()).getScale());
+      }
+      if (in != out || in == ColumnVector.Type.DECIMAL_64
+          && ((DecimalTypeInfo) desc.getInputTypeInfo()).getScale()
+              != ((DecimalTypeInfo) desc.getOutputTypeInfo()).getScale()) {
+        return null;
+      }
+      return new PassThroughAggregate(kind, input.getOutputColumnNum(), -1);
+    }
+
+    void write(VectorizedRowBatch batch, int[] selected, int size, ColumnVector out) {
+      switch (kind) {
+      case COUNT_STAR -> Arrays.fill(((LongColumnVector) out).vector, 0, size, 1L);
+      case COUNT -> {
+        ColumnVector in = batch.cols[inputColumnNum];
+        long[] counts = ((LongColumnVector) out).vector;
+        for (int j = 0; j < size; j++) {
+          int row = in.isRepeating ? 0 : selected != null ? selected[j] : j;
+          counts[j] = in.noNulls || !in.isNull[row] ? 1 : 0;
+        }
+      }
+      case VALUE, SUM0 -> {
+        ColumnVector in = batch.cols[inputColumnNum];
+        if (decimal64Scale >= 0) {
+          writeDecimal64AsDecimal((Decimal64ColumnVector) in, selected, size, (DecimalColumnVector) out);
+        } else {
+          copyColumn(in, selected, size, out);
+        }
+        if (kind == Kind.SUM0 && !out.noNulls) {
+          zeroNulls(out, size);
+        }
+      }
+      }
+    }
+
+    private void writeDecimal64AsDecimal(Decimal64ColumnVector in, int[] selected, int size,
+        DecimalColumnVector out) {
+      for (int j = 0; j < size; j++) {
+        int row = in.isRepeating ? 0 : selected != null ? selected[j] : j;
+        if (in.noNulls || !in.isNull[row]) {
+          out.vector[j].deserialize64(in.vector[row], decimal64Scale);
+        } else {
+          out.isNull[j] = true;
+          out.noNulls = false;
+        }
+      }
+    }
+
+    /** $SUM0 of a single NULL is 0: the merge above sums the partial results as NOT NULL. */
+    private static void zeroNulls(ColumnVector out, int size) {
+      for (int j = 0; j < size; j++) {
+        if (out.isNull[j]) {
+          out.isNull[j] = false;
+          if (out instanceof LongColumnVector l) {
+            l.vector[j] = 0;
+          } else if (out instanceof DoubleColumnVector d) {
+            d.vector[j] = 0;
+          } else {
+            ((DecimalColumnVector) out).vector[j].setFromLong(0);
+          }
+        }
+      }
+    }
   }
 
   @Override
