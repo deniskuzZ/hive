@@ -2327,8 +2327,10 @@ public class CalcitePlanner extends SemanticAnalyzer {
           && conf.getBoolVar(ConfVars.HIVE_MAPSIDE_AGGREGATE)
           && !conf.getBoolVar(ConfVars.HIVE_GROUPBY_SKEW)
           && !conf.getBoolVar(ConfVars.HIVE_CBO_RETPATH_HIVEOP)) {
+        double maxJoinReduction = conf.getFloatVar(ConfVars.PARTIAL_AGGR_JOIN_TRANSPOSE_MAX_JOIN_REDUCTION);
         generatePartialProgram(program, true, HepMatchOrder.DEPTH_FIRST,
-            HivePartialAggregateJoinTransposeRule.INSTANCE, HivePartialAggregateJoinTransposeRule.PROJECT);
+            HivePartialAggregateJoinTransposeRule.overJoin(maxJoinReduction),
+            HivePartialAggregateJoinTransposeRule.overProject(maxJoinReduction));
       }
 
       // Expand SEARCH since JDBC (and potentially other federation rules) do not know how to handle it.

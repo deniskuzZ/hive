@@ -64,7 +64,10 @@ import org.apache.hadoop.hive.ql.optimizer.calcite.translator.SqlFunctionConvert
  *   condition;</li>
  *   <li>the push is skipped when the join expands its input (more than 1.1x), when the pushed keys
  *   outnumber the original keys or are empty, or when a pushed key has NDV x 2 &gt; input rows; missing
- *   statistics also skip it.</li>
+ *   statistics also skip it;</li>
+ *   <li>unlike Trino, the push is also skipped when the join reduces the pushed input by more than
+ *   {@code maxJoinReduction}: Trino filters the probe side at the source with dynamic filters, Hive has none
+ *   for a map join, so the pushed aggregate would process every row the join discards.</li>
  * </ul>
  *
  * <p>The pushed aggregate is translated to a map-side hash GROUP BY with no shuffle, so the join's existing
@@ -76,20 +79,28 @@ import org.apache.hadoop.hive.ql.optimizer.calcite.translator.SqlFunctionConvert
  */
 public final class HivePartialAggregateJoinTransposeRule extends RelOptRule {
 
-  public static final HivePartialAggregateJoinTransposeRule INSTANCE =
-      new HivePartialAggregateJoinTransposeRule(
-          operand(HiveAggregate.class, operand(HiveJoin.class, any())),
-          "HivePartialAggregateJoinTransposeRule");
-
-  public static final HivePartialAggregateJoinTransposeRule PROJECT =
-      new HivePartialAggregateJoinTransposeRule(
-          operand(HiveAggregate.class, operand(HiveProject.class, operand(HiveJoin.class, any()))),
-          "HivePartialAggregateJoinTransposeRule(Project)");
-
   private static final double MAX_JOIN_EXPANSION = 1.1;
 
-  private HivePartialAggregateJoinTransposeRule(RelOptRuleOperand operand, String description) {
+  private final double maxJoinReduction;
+
+  /** Matches an aggregate directly over a join. */
+  public static HivePartialAggregateJoinTransposeRule overJoin(double maxJoinReduction) {
+    return new HivePartialAggregateJoinTransposeRule(
+        operand(HiveAggregate.class, operand(HiveJoin.class, any())),
+        "HivePartialAggregateJoinTransposeRule", maxJoinReduction);
+  }
+
+  /** Matches an aggregate over a project over a join. */
+  public static HivePartialAggregateJoinTransposeRule overProject(double maxJoinReduction) {
+    return new HivePartialAggregateJoinTransposeRule(
+        operand(HiveAggregate.class, operand(HiveProject.class, operand(HiveJoin.class, any()))),
+        "HivePartialAggregateJoinTransposeRule(Project)", maxJoinReduction);
+  }
+
+  private HivePartialAggregateJoinTransposeRule(RelOptRuleOperand operand, String description,
+      double maxJoinReduction) {
     super(operand, HiveRelFactories.HIVE_BUILDER, description);
+    this.maxJoinReduction = maxJoinReduction;
   }
 
   @Override
@@ -256,12 +267,15 @@ public final class HivePartialAggregateJoinTransposeRule extends RelOptRule {
     return rel instanceof HiveJoin j && (isPushed(j.getLeft()) || isPushed(j.getRight()));
   }
 
-  /** Trino's statistics gates; missing statistics skip the push. */
-  private static boolean isWorthPushing(RelMetadataQuery mq, HiveJoin join, RelNode sideInput, RelNode below,
+  /** Trino's statistics gates plus the join reduction gate; missing statistics skip the push. */
+  private boolean isWorthPushing(RelMetadataQuery mq, HiveJoin join, RelNode sideInput, RelNode below,
       int keyCount) {
     Double sideRows = mq.getRowCount(sideInput);
     Double joinRows = mq.getRowCount(join);
     if (!isKnown(sideRows) || !isKnown(joinRows) || joinRows > MAX_JOIN_EXPANSION * sideRows) {
+      return false;
+    }
+    if (maxJoinReduction > 0 && joinRows * maxJoinReduction < sideRows) {
       return false;
     }
     for (int i = 0; i < keyCount; i++) {

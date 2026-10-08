@@ -6913,14 +6913,18 @@ public class SemanticAnalyzer extends BaseSemanticAnalyzer {
    */
   /**
    * Generate a map-side hash Group By with no shuffle and no merge: a partial aggregation whose results
-   * are merged by an aggregation further up the plan.
+   * are merged by an aggregation further up the plan. Its hash mode turns off at the lower
+   * hive.optimize.partial.aggr.join.transpose.min.reduction, as Trino's adaptive partial aggregation does.
    */
   private Operator genGroupByPlanPartialOnly(String dest, QB qb, Operator input) throws SemanticException {
     Pair<List<ASTNode>, List<Long>> grpByExprsGroupingSets =
         getGroupByGroupingSetsForClause(qb.getParseInfo(), dest);
     GroupByOperator groupByOperator = (GroupByOperator) genGroupByPlanMapGroupByOperator(qb, dest,
         grpByExprsGroupingSets.getLeft(), input, null, grpByExprsGroupingSets.getRight(), false);
-    groupByOperator.getConf().setPartialOnly(true);
+    GroupByDesc desc = groupByOperator.getConf();
+    desc.setPartialOnly(true);
+    desc.setMinReductionHashAggr(Math.min(desc.getMinReductionHashAggr(),
+        HiveConf.getFloatVar(conf, ConfVars.PARTIAL_AGGR_JOIN_TRANSPOSE_MIN_REDUCTION)));
     groupOpToInputTables.put(groupByOperator, opParseCtx.get(input).getRowResolver().getTableNames());
     return groupByOperator;
   }

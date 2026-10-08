@@ -1822,6 +1822,14 @@ public class HiveConf extends Configuration {
         "Whether to push a map-side partial aggregate below an inner join, to the join input that holds all\n"
         + "aggregate arguments. The original aggregate stays above the join and merges the partial results.\n"
         + "The pushed aggregate runs in the vertex of the join input, before its existing shuffle."),
+    PARTIAL_AGGR_JOIN_TRANSPOSE_MIN_REDUCTION("hive.optimize.partial.aggr.join.transpose.min.reduction", 0.8f,
+        "Hash aggregation of a pushed partial aggregate is turned off when the ratio between hash table size and\n"
+        + "input rows is bigger than this number (Trino's adaptive partial aggregation threshold).\n"
+        + "hive.map.aggr.hash.min.reduction stays the upper bound."),
+    PARTIAL_AGGR_JOIN_TRANSPOSE_MAX_JOIN_REDUCTION("hive.optimize.partial.aggr.join.transpose.max.join.reduction", 10f,
+        "A partial aggregate is not pushed below a join estimated to reduce the pushed input by more than this\n"
+        + "factor: a map join has no dynamic filter on its probe side, so the pushed aggregate would process every\n"
+        + "row the join discards. 0 disables the check."),
     SEMIJOIN_CONVERSION("hive.optimize.semijoin.conversion", true, "convert group by followed by inner equi join into semijoin"),
     HIVE_COLUMN_ALIGNMENT("hive.order.columnalignment", true, "Flag to control whether we want to try to align" +
         "columns in operators such as Aggregate or Join so that we try to reduce the number of shuffling stages"),
