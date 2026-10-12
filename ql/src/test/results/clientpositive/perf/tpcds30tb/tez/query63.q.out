@@ -17,7 +17,7 @@ STAGE PLANS:
                 TableScan
                   alias: store_sales
                   filterExpr: ss_store_sk is not null (type: boolean)
-                  probeDecodeDetails: cacheKey:HASH_MAP_MAPJOIN_60_container, bigKeyColName:ss_item_sk, smallTablePos:1, keyRatio:1.0145123899040376E-4
+                  probeDecodeDetails: cacheKey:HASH_MAP_MAPJOIN_60_container, bigKeyColName:ss_item_sk, smallTablePos:1, keyRatio:1.038961038961039E-4
                   Statistics: Num rows: 82510879939 Data size: 10988352362648 Basic stats: COMPLETE Column stats: COMPLETE
                   Filter Operator
                     predicate: ss_store_sk is not null (type: boolean)
