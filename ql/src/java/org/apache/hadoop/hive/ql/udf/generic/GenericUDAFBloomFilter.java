@@ -31,9 +31,8 @@ import org.apache.hadoop.hive.ql.exec.vector.expressions.aggregates.*;
 import org.apache.hadoop.hive.ql.metadata.HiveException;
 import org.apache.hadoop.hive.ql.parse.SemanticException;
 import org.apache.hadoop.hive.ql.plan.ColStatistics;
-import org.apache.hadoop.hive.ql.plan.ExprNodeColumnDesc;
-import org.apache.hadoop.hive.ql.plan.ExprNodeDescUtils;
 import org.apache.hadoop.hive.ql.plan.Statistics;
+import org.apache.hadoop.hive.ql.stats.StatsUtils;
 import org.apache.hadoop.hive.serde2.io.DateWritableV2;
 import org.apache.hadoop.hive.serde2.io.HiveDecimalWritable;
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
@@ -243,6 +242,10 @@ public class GenericUDAFBloomFilter implements GenericUDAFResolver2 {
       }
 
       BytesWritable bytes = (BytesWritable) partial;
+      if (SparseBloomFilter.isSparse(bytes.getBytes(), 0, bytes.getLength())) {
+        SparseBloomFilter.addTo(((BloomFilterBuf) agg).bloomFilter, bytes.getBytes(), 0, bytes.getLength());
+        return;
+      }
       ByteArrayInputStream in = new NonSyncByteArrayInputStream(bytes.getBytes());
       // Deserialize the bloom filter
       try {
@@ -287,16 +290,9 @@ public class GenericUDAFBloomFilter implements GenericUDAFResolver2 {
         switch (stats.getColumnStatsState()) {
           case COMPLETE:
           case PARTIAL:
-            // There should only be column in sourceOperator
-            List<ColStatistics> colStats = stats.getColumnStats();
-            ExprNodeColumnDesc colExpr = ExprNodeDescUtils.getColumnExpr(
-                sourceOperator.getConf().getColList().get(0));
-            if (colExpr != null
-                && stats.getColumnStatisticsFromColName(colExpr.getColumn()) != null) {
-              long ndv = stats.getColumnStatisticsFromColName(colExpr.getColumn()).getCountDistint();
-              if (ndv > 0) {
-                expectedEntries = ndv;
-              }
+            long ndv = getKeyNdv(stats);
+            if (ndv > 0) {
+              expectedEntries = Math.min(ndv, stats.getNumRows());
             }
             break;
           default:
@@ -308,6 +304,25 @@ public class GenericUDAFBloomFilter implements GenericUDAFResolver2 {
       expectedEntries = (long) (expectedEntries * factor);
       expectedEntries = expectedEntries > minEntries ? expectedEntries : minEntries;
       return expectedEntries;
+    }
+
+    /**
+     * Returns the NDV of the bloom filter key, or -1 if a key column has no NDV. The source is SEL[c] for a
+     * single-column semijoin and SEL[c1, ..., ck, hash(c1, ..., ck)] for a multi-column one, whose bloom filter
+     * holds the hash of the composite key; its NDV is estimated as the product of the column NDVs.
+     */
+    private long getKeyNdv(Statistics stats) {
+      List<String> columns = sourceOperator.getConf().getOutputColumnNames();
+      List<String> keys = columns.size() == 1 ? columns : columns.subList(0, columns.size() - 1);
+      long ndv = 1;
+      for (String key : keys) {
+        ColStatistics colStats = stats.getColumnStatisticsFromColName(key);
+        if (colStats == null || colStats.getCountDistint() <= 0) {
+          return -1;
+        }
+        ndv = StatsUtils.safeMult(ndv, colStats.getCountDistint());
+      }
+      return ndv;
     }
 
     public Operator<?> getSourceOperator() {

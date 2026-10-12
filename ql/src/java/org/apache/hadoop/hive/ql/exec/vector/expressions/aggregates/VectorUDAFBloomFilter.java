@@ -42,6 +42,7 @@ import org.apache.hadoop.hive.ql.plan.AggregationDesc;
 import org.apache.hadoop.hive.ql.udf.generic.GenericUDAFBloomFilter.GenericUDAFBloomFilterEvaluator;
 import org.apache.hadoop.hive.ql.udf.generic.GenericUDAFEvaluator.Mode;
 import org.apache.hadoop.hive.ql.udf.generic.GenericUDAFEvaluator;
+import org.apache.hadoop.hive.ql.udf.generic.SparseBloomFilter;
 import org.apache.hadoop.hive.ql.util.JavaDataModel;
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveObjectInspectorFactory;
@@ -65,10 +66,31 @@ public class VectorUDAFBloomFilter extends VectorAggregateExpression {
   private static final class Aggregation implements AggregationBuffer {
     private static final long serialVersionUID = 1L;
 
-    BloomKFilter bf;
+    private final long expectedEntries;
+    // the hashes of the values until they outgrow the bit set, then the bloom filter
+    private SparseBloomFilter sparse;
+    private BloomKFilter bf;
 
     public Aggregation(long expectedEntries) {
-      bf = BloomKFilter.build(expectedEntries);
+      this.expectedEntries = expectedEntries;
+      sparse = new SparseBloomFilter(expectedEntries);
+    }
+
+    void add(long hash) {
+      if (bf != null) {
+        bf.addHash(hash);
+      } else if (!sparse.add(hash)) {
+        toBloomFilter().addHash(hash);
+      }
+    }
+
+    BloomKFilter toBloomFilter() {
+      if (bf == null) {
+        bf = BloomKFilter.build(expectedEntries);
+        sparse.addTo(bf);
+        sparse = null;
+      }
+      return bf;
     }
 
     @Override
@@ -78,7 +100,8 @@ public class VectorUDAFBloomFilter extends VectorAggregateExpression {
 
     @Override
     public void reset() {
-      bf.reset();
+      bf = null;
+      sparse = new SparseBloomFilter(expectedEntries);
     }
   }
 
@@ -373,13 +396,7 @@ public class VectorUDAFBloomFilter extends VectorAggregateExpression {
   @Override
   public long getAggregationBufferFixedSize() {
     if (bitSetSize < 0) {
-      // Not pretty, but we need a way to get the size
-      try {
-        Aggregation agg = (Aggregation) getNewAggregationBuffer();
-        bitSetSize = agg.bf.getBitSet().length;
-      } catch (Exception e) {
-        throw new RuntimeException("Unexpected error while creating AggregationBuffer", e);
-      }
+      bitSetSize = BloomKFilter.getNumLongs(expectedEntries);
     }
 
     // BloomFilter: object(BitSet: object(data: long[]), numBits: int, numHashFunctions: int)
@@ -412,7 +429,7 @@ public class VectorUDAFBloomFilter extends VectorAggregateExpression {
     @Override
     protected void processValue(Aggregation myagg, ColumnVector columnVector, int i) {
       BytesColumnVector inputColumn = (BytesColumnVector) columnVector;
-      myagg.bf.addBytes(inputColumn.vector[i], inputColumn.start[i], inputColumn.length[i]);
+      myagg.add(BloomKFilter.hashBytes(inputColumn.vector[i], inputColumn.start[i], inputColumn.length[i]));
     }
   }
 
@@ -420,7 +437,7 @@ public class VectorUDAFBloomFilter extends VectorAggregateExpression {
     @Override
     protected void processValue(Aggregation myagg, ColumnVector columnVector, int i) {
       LongColumnVector inputColumn = (LongColumnVector) columnVector;
-      myagg.bf.addLong(inputColumn.vector[i]);
+      myagg.add(BloomKFilter.hashLong(inputColumn.vector[i]));
     }
   }
 
@@ -428,7 +445,7 @@ public class VectorUDAFBloomFilter extends VectorAggregateExpression {
     @Override
     protected void processValue(Aggregation myagg, ColumnVector columnVector, int i) {
       DoubleColumnVector inputColumn = (DoubleColumnVector) columnVector;
-      myagg.bf.addDouble(inputColumn.vector[i]);
+      myagg.add(BloomKFilter.hashDouble(inputColumn.vector[i]));
     }
   }
 
@@ -439,7 +456,7 @@ public class VectorUDAFBloomFilter extends VectorAggregateExpression {
     protected void processValue(Aggregation myagg, ColumnVector columnVector, int i) {
       DecimalColumnVector inputColumn = (DecimalColumnVector) columnVector;
       int startIdx = inputColumn.vector[i].toBytes(scratchBuffer);
-      myagg.bf.addBytes(scratchBuffer, startIdx, scratchBuffer.length - startIdx);
+      myagg.add(BloomKFilter.hashBytes(scratchBuffer, startIdx, scratchBuffer.length - startIdx));
     }
   }
 
@@ -447,7 +464,7 @@ public class VectorUDAFBloomFilter extends VectorAggregateExpression {
     @Override
     protected void processValue(Aggregation myagg, ColumnVector columnVector, int i) {
       TimestampColumnVector inputColumn = (TimestampColumnVector) columnVector;
-      myagg.bf.addLong(inputColumn.time[i]);
+      myagg.add(BloomKFilter.hashLong(inputColumn.time[i]));
     }
   }
 
@@ -477,7 +494,12 @@ public class VectorUDAFBloomFilter extends VectorAggregateExpression {
     try {
       Aggregation bfAgg = (Aggregation) agg;
       byteStream.reset();
-      BloomKFilter.serialize(byteStream, bfAgg.bf);
+      // the merge of a partial result adds the hashes; a complete one is probed
+      if (mode == Mode.PARTIAL1 && bfAgg.bf == null) {
+        bfAgg.sparse.serialize(byteStream);
+      } else {
+        BloomKFilter.serialize(byteStream, bfAgg.toBloomFilter());
+      }
       byte[] bytes = byteStream.toByteArray();
 
       outputColVector.setVal(batchIndex, bytes);

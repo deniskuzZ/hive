@@ -71,14 +71,20 @@ public class BloomKFilter {
     checkArgument(maxNumEntries > 0, "expectedEntries should be > 0");
     long numBits = optimalNumOfBits(maxNumEntries, DEFAULT_FPP);
     int k = optimalNumOfHashFunctions(maxNumEntries, numBits);
-    long nLongs = (long) Math.ceil((double) numBits / (double) Long.SIZE);
-    // additional bits to pad long array to block size
-    long padLongs = DEFAULT_BLOCK_SIZE - nLongs % DEFAULT_BLOCK_SIZE;
-    long m = (nLongs + padLongs) * Long.SIZE;
-    long[] marr = new long[(int) Math.ceil((double) m / (double) Long.SIZE)];
+    long[] marr = new long[getNumLongs(maxNumEntries)];
     checkArgument((marr.length % DEFAULT_BLOCK_SIZE) == 0, "bitSet has to be block aligned");
     int totalBlockCount = marr.length / DEFAULT_BLOCK_SIZE;
-    return new BloomKFilter(k, m, totalBlockCount, marr);
+    return new BloomKFilter(k, (long) marr.length * Long.SIZE, totalBlockCount, marr);
+  }
+
+  /**
+   * Returns the number of longs in the bit set of a filter built for maxNumEntries.
+   */
+  public static int getNumLongs(long maxNumEntries) {
+    long nLongs = (long) Math.ceil((double) optimalNumOfBits(maxNumEntries, DEFAULT_FPP) / (double) Long.SIZE);
+    // additional bits to pad long array to block size
+    long padLongs = DEFAULT_BLOCK_SIZE - nLongs % DEFAULT_BLOCK_SIZE;
+    return (int) (nLongs + padLongs);
   }
 
 
@@ -117,16 +123,17 @@ public class BloomKFilter {
 
     // Lets split up 64-bit hashcode into two 32-bit hash codes and employ the technique mentioned
     // in the above paper
-    long hash64 = val == null ? Murmur3.NULL_HASHCODE :
-      Murmur3.hash64(val, offset, length);
-    addHash(hash64);
+    addHash(hashBytes(val, offset, length));
   }
 
   public void addBytes(byte[] val) {
     addBytes(val, 0, val.length);
   }
 
-  private void addHash(long hash64) {
+  /**
+   * Adds the hash of a value: {@link #hashBytes}, {@link #hashLong} or {@link #hashDouble}.
+   */
+  public void addHash(long hash64) {
     final int hash1 = (int) hash64;
     final int hash2 = (int) (hash64 >>> 32);
 
@@ -168,8 +175,20 @@ public class BloomKFilter {
 
 
   public void addLong(long val) {
+    addHash(hashLong(val));
+  }
+
+  public static long hashBytes(byte[] val, int offset, int length) {
+    return val == null ? Murmur3.NULL_HASHCODE : Murmur3.hash64(val, offset, length);
+  }
+
+  public static long hashLong(long val) {
     // puts long in little endian order
-    addHash(Murmur3.hash64(val));
+    return Murmur3.hash64(val);
+  }
+
+  public static long hashDouble(double val) {
+    return hashLong(Double.doubleToLongBits(val));
   }
 
   public void addFloat(float val) {

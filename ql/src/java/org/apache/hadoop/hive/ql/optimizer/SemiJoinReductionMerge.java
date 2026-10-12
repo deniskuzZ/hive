@@ -33,6 +33,7 @@ import org.apache.hadoop.hive.ql.exec.SelectOperator;
 import org.apache.hadoop.hive.ql.exec.TableScanOperator;
 import org.apache.hadoop.hive.ql.exec.Utilities;
 import org.apache.hadoop.hive.ql.io.AcidUtils;
+import org.apache.hadoop.hive.ql.optimizer.stats.annotation.AnnotateWithStatistics;
 import org.apache.hadoop.hive.ql.parse.GenTezUtils;
 import org.apache.hadoop.hive.ql.parse.ParseContext;
 import org.apache.hadoop.hive.ql.parse.RuntimeValuesInfo;
@@ -40,6 +41,7 @@ import org.apache.hadoop.hive.ql.parse.SemanticAnalyzer;
 import org.apache.hadoop.hive.ql.parse.SemanticException;
 import org.apache.hadoop.hive.ql.parse.SemiJoinBranchInfo;
 import org.apache.hadoop.hive.ql.plan.AggregationDesc;
+import org.apache.hadoop.hive.ql.plan.ColStatistics;
 import org.apache.hadoop.hive.ql.plan.DynamicValue;
 import org.apache.hadoop.hive.ql.plan.ExprNodeColumnDesc;
 import org.apache.hadoop.hive.ql.plan.ExprNodeConstantDesc;
@@ -52,7 +54,9 @@ import org.apache.hadoop.hive.ql.plan.GroupByDesc;
 import org.apache.hadoop.hive.ql.plan.PlanUtils;
 import org.apache.hadoop.hive.ql.plan.ReduceSinkDesc;
 import org.apache.hadoop.hive.ql.plan.SelectDesc;
+import org.apache.hadoop.hive.ql.plan.Statistics;
 import org.apache.hadoop.hive.ql.plan.TableDesc;
+import org.apache.hadoop.hive.ql.stats.StatsUtils;
 import org.apache.hadoop.hive.ql.udf.generic.GenericUDAFBloomFilter.GenericUDAFBloomFilterEvaluator;
 import org.apache.hadoop.hive.ql.udf.generic.GenericUDAFEvaluator;
 import org.apache.hadoop.hive.ql.udf.generic.GenericUDAFMax;
@@ -101,6 +105,10 @@ import static org.apache.hadoop.hive.ql.plan.ExprNodeDescUtils.and;
  * <pre>
  * SOURCE - SEL[fname, lname, age] - GB1 - RS1 - GB2 - RS2 -&gt; TS[Author] - FIL[in_bloom(hash(fname,lname,age)]
  * </pre>
+ * <p>
+ * The reducers are merged only when the composite filter fits {@link HiveConf.ConfVars#TEZ_MAX_BLOOM_FILTER_ENTRIES}:
+ * a larger one would be removed with all its columns, while the single column filters are checked one by one. The
+ * transformation runs after the statistics annotation, and annotates the statistics of the operators it creates.
  */
 public class SemiJoinReductionMerge extends Transform {
 
@@ -122,6 +130,10 @@ public class SemiJoinReductionMerge extends Transform {
       }
 
       long sjEntriesHint = extractBloomEntriesHint(sjBranches);
+      if (sjEntriesHint == -1
+          && compositeEntries(selOps, hiveConf) > hiveConf.getLongVar(HiveConf.ConfVars.TEZ_MAX_BLOOM_FILTER_ENTRIES)) {
+        continue;
+      }
 
       SelectOperator selectOp = mergeSelectOps(sjMergeCandidate.getKey().source, selOps);
 
@@ -134,6 +146,7 @@ public class SemiJoinReductionMerge extends Transform {
           createGroupBy(selectOp, rsPartialOp, GroupByDesc.Mode.FINAL, sjEntriesHint, hiveConf);
 
       ReduceSinkOperator rsCompleteOp = createReduceSink(gbCompleteOp, NullOrdering.defaultNullOrder(hiveConf));
+      new AnnotateWithStatistics().annotate(parseContext, List.of(selectOp));
 
       final TableScanOperator sjTargetTable = sjMergeCandidate.getKey().target;
       SemiJoinBranchInfo sjInfo = new SemiJoinBranchInfo(sjTargetTable, false);
@@ -152,8 +165,10 @@ public class SemiJoinReductionMerge extends Transform {
           filter.setPredicate(and(filter.getPredicate(), sjPredicate));
         }
       }
-      // Update tableScan with the new semi-join predicate
-      sjTargetTable.getConf().setFilterExpr(and(sjTargetTable.getConf().getFilterExpr(), sjPredicate));
+      // Update tableScan with the new semi-join predicate; constant propagation drops a filter expression that folds
+      // to true, so the scan may have none
+      ExprNodeGenericFuncDesc filterExpr = sjTargetTable.getConf().getFilterExpr();
+      sjTargetTable.getConf().setFilterExpr(filterExpr == null ? sjPredicate : and(filterExpr, sjPredicate));
 
       for (ReduceSinkOperator rs : sjBranches) {
         GenTezUtils.removeSemiJoinOperator(parseContext, rs, sjTargetTable);
@@ -161,6 +176,34 @@ public class SemiJoinReductionMerge extends Transform {
       }
     }
     return parseContext;
+  }
+
+  /**
+   * Returns the entries the composite bloom filter of the branches would expect, sized as
+   * {@link GenericUDAFBloomFilterEvaluator#getExpectedEntries()} sizes it: the product of the key NDVs capped by the
+   * source rows, or the rows without column statistics, scaled by the factor. Its minimum entries floor only raises a
+   * size below the max entries, so it is left out. The branches select from the same source, so they share its rows.
+   */
+  private static long compositeEntries(List<SelectOperator> selOps, HiveConf conf) {
+    Statistics stats = selOps.get(0).getStatistics();
+    long entries = switch (stats.getColumnStatsState()) {
+      case COMPLETE, PARTIAL -> Math.min(keyNdv(selOps), stats.getNumRows());
+      default -> stats.getNumRows();
+    };
+    return (long) (entries * conf.getFloatVar(HiveConf.ConfVars.TEZ_BLOOM_FILTER_FACTOR));
+  }
+
+  /** The product of the branch key NDVs, or Long.MAX_VALUE if one is unknown (the rows bound it). */
+  private static long keyNdv(List<SelectOperator> selOps) {
+    long ndv = 1;
+    for (SelectOperator sel : selOps) {
+      ColStatistics key = sel.getStatistics().getColumnStatisticsFromColName(sel.getConf().getOutputColumnNames().get(0));
+      if (key == null || key.getCountDistint() <= 0) {
+        return Long.MAX_VALUE;
+      }
+      ndv = StatsUtils.safeMult(ndv, key.getCountDistint());
+    }
+    return ndv;
   }
 
   /**
@@ -305,6 +348,7 @@ public class SemiJoinReductionMerge extends Transform {
     String hashName = HiveConf.getColumnInternalName(colDescs.size() + 1);
     colNames.add(hashName);
     columnInfos.add(new ColumnInfo(hashName, hashExp.getTypeInfo(), "", false));
+    selectColumnExprMap.put(hashName, hashExp);
     // The n-1 columns in selDescs are used as parameters to min/max aggregations
     List<ExprNodeDesc> selDescs = new ArrayList<>(colDescs);
     // The nth column in selDescs is used as parameter to the bloom_filter aggregation
