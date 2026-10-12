@@ -66,6 +66,8 @@ public class GroupByDesc extends AbstractOperatorDesc {
   private boolean bucketGroup;
   // map-side hash aggregation with no shuffle and no merge; an aggregation above merges its results
   private boolean partialOnly;
+  // reduce-side aggregation of an unsorted shuffle: a hash aggregation holding every group of its partition
+  private boolean unsortedInput;
 
   private List<ExprNodeDesc> keys;
   private List<Long> listGroupingSets;
@@ -284,6 +286,15 @@ public class GroupByDesc extends AbstractOperatorDesc {
     this.partialOnly = partialOnly;
   }
 
+  @Explain(displayName = "unsortedInput", displayOnlyOnTrue = true)
+  public boolean isUnsortedInput() {
+    return unsortedInput;
+  }
+
+  public void setUnsortedInput(boolean unsortedInput) {
+    this.unsortedInput = unsortedInput;
+  }
+
   /**
    * Checks if this grouping is like distinct, which means that all non-distinct grouping
    * columns behave like they were distinct - for example min and max operators.
@@ -376,6 +387,7 @@ public class GroupByDesc extends AbstractOperatorDesc {
         this.hashAggrFlushPercent, listGroupingSets, this.groupingSetsPresent,
         this.groupingSetPosition, this.isDistinct);
     clone.setPartialOnly(partialOnly);
+    clone.setUnsortedInput(unsortedInput);
     return clone;
   }
 

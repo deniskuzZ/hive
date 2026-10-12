@@ -20,6 +20,7 @@ package org.apache.hadoop.hive.ql.parse;
 
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.ListMultimap;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
@@ -135,7 +136,9 @@ import org.apache.hadoop.hive.ql.plan.MapWork;
 import org.apache.hadoop.hive.ql.plan.MergeJoinWork;
 import org.apache.hadoop.hive.ql.plan.MoveWork;
 import org.apache.hadoop.hive.ql.plan.OperatorDesc;
+import org.apache.hadoop.hive.ql.plan.ReduceWork;
 import org.apache.hadoop.hive.ql.plan.Statistics;
+import org.apache.hadoop.hive.ql.plan.TezEdgeProperty.EdgeType;
 import org.apache.hadoop.hive.ql.plan.TezWork;
 import org.apache.hadoop.hive.ql.plan.mapper.AuxOpTreeSignature;
 import org.apache.hadoop.hive.ql.plan.mapper.PlanMapper;
@@ -262,6 +265,10 @@ public class TezCompiler extends TaskCompiler {
     // involving constant true/false values.
     if(procCtx.conf.getBoolVar(ConfVars.HIVE_OPT_CONSTANT_PROPAGATION)) {
       new ConstantPropagate(ConstantPropagateOption.SHORTCUT).transform(procCtx.parseContext);
+    }
+
+    if (procCtx.conf.getBoolVar(ConfVars.GROUPBY_UNSORTED_SHUFFLE)) {
+      markUnsortedGroupBys(procCtx.parseContext);
     }
 
     perfLogger.perfLogBegin(this.getClass().getName(), PerfLogger.TEZ_COMPILER);
@@ -828,6 +835,7 @@ public class TezCompiler extends TaskCompiler {
     } else {
       LOG.debug("Skipping vectorization");
     }
+    sortShuffleOfRowModeGroupBys(rootTasks);
 
     if (!"none".equalsIgnoreCase(conf.getVar(HiveConf.ConfVars.HIVE_STAGE_ID_REARRANGE))) {
       physicalCtx = new StageIDsRearranger().resolve(physicalCtx);
@@ -1056,6 +1064,79 @@ public class TezCompiler extends TaskCompiler {
       planMapper.link(op, new OperatorStats.IncorrectRuntimeStatsMarker());
     }
 
+  }
+
+  /**
+   * The aggregations whose final result is their partial result, so a GROUP BY over an unsorted input can spill its
+   * groups as it outputs them and merge them later (CBO reduces AVG and the variance family to SUM and COUNT).
+   */
+  private static final Set<String> SPILLABLE_AGGREGATIONS = Set.of("sum", "count", "min", "max");
+
+  /**
+   * Marks a reduce-side GROUP BY that may read an unsorted shuffle and aggregate in a hash table: it merges partial
+   * aggregates by key, has no DISTINCT aggregate or grouping sets, its aggregations can spill, its keys and the partial
+   * results it merges are columns, it is the only consumer of its ReduceSinks (one per UNION branch), and only
+   * operators that ignore row order (select, filter, hash aggregation, map join, top n key) follow it up to the next
+   * ReduceSinks, so nothing in its reducer relies on key order.
+   */
+  private static void markUnsortedGroupBys(ParseContext pctx) {
+    for (GroupByOperator gby : OperatorUtils.findOperators(new ArrayList<>(pctx.getTopOps().values()),
+        GroupByOperator.class)) {
+      GroupByDesc desc = gby.getConf();
+      if (desc.getMode() == GroupByDesc.Mode.MERGEPARTIAL && !desc.getKeys().isEmpty()
+          && desc.getGroupingSetPosition() < 0 && desc.getAggregators().stream().noneMatch(AggregationDesc::getDistinct)
+          && desc.getAggregators().stream().allMatch(agg -> SPILLABLE_AGGREGATIONS.contains(agg.getGenericUDAFName())
+              && agg.getParameters().stream().allMatch(ExprNodeColumnDesc.class::isInstance))
+          && desc.getKeys().stream().allMatch(ExprNodeColumnDesc.class::isInstance)
+          && gby.getParentOperators().stream().allMatch(parent -> parent instanceof ReduceSinkOperator rs
+              && rs.getNumChild() == 1 && rs.getConf().getTopN() < 0)
+          && feedsReduceSinksOnly(gby)) {
+        desc.setUnsortedInput(true);
+      }
+    }
+  }
+
+  /**
+   * A GROUP BY over an unsorted shuffle spills its groups only vectorized: a reducer that did not vectorize reads its
+   * shuffle sorted and merges as usual.
+   */
+  private static void sortShuffleOfRowModeGroupBys(List<Task<?>> rootTasks) {
+    Deque<Task<?>> tasks = new ArrayDeque<>(rootTasks);
+    Set<Task<?>> seen = new HashSet<>();
+    while (!tasks.isEmpty()) {
+      Task<?> task = tasks.pop();
+      if (!seen.add(task)) {
+        continue;
+      }
+      if (task.getChildTasks() != null) {
+        tasks.addAll(task.getChildTasks());
+      }
+      if (!(task instanceof TezTask tezTask)) {
+        continue;
+      }
+      TezWork tezWork = tezTask.getWork();
+      for (BaseWork work : tezWork.getAllWork()) {
+        if (work instanceof ReduceWork reduceWork && !reduceWork.getVectorMode()
+            && reduceWork.getReducer() instanceof GroupByOperator groupBy && groupBy.getConf().isUnsortedInput()) {
+          groupBy.getConf().setUnsortedInput(false);
+          for (BaseWork parent : tezWork.getParents(reduceWork)) {
+            tezWork.getEdgeProperty(parent, reduceWork).setEdgeType(EdgeType.SIMPLE_EDGE);
+          }
+        }
+      }
+    }
+  }
+
+  private static boolean feedsReduceSinksOnly(Operator<?> op) {
+    for (Operator<?> child : op.getChildOperators()) {
+      boolean ignoresOrder = child instanceof SelectOperator || child instanceof FilterOperator
+          || child instanceof MapJoinOperator || child instanceof TopNKeyOperator
+          || child instanceof GroupByOperator groupBy && groupBy.getConf().getMode() == GroupByDesc.Mode.HASH;
+      if (!(child instanceof ReduceSinkOperator) && !(ignoresOrder && feedsReduceSinksOnly(child))) {
+        return false;
+      }
+    }
+    return !op.getChildOperators().isEmpty();
   }
 
   private void markOperatorsWithUnstableRuntimeStats(OptimizeTezProcContext procCtx) throws SemanticException {
