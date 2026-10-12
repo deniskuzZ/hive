@@ -1045,7 +1045,10 @@ public class SharedWorkOptimizer extends Transform {
       return false;
     }
 
-    if (mapJoinOp1.getConf().getPosBigTable() != mapJoinOp2.getConf().getPosBigTable()) {
+    // MapJoinOperator caches the small tables in a layout that does not depend on the big table position, so
+    // the positions may differ unless a join is outer
+    if (mapJoinOp1.getConf().getPosBigTable() != mapJoinOp2.getConf().getPosBigTable()
+        && !(mapJoinOp1.getConf().isNoOuterJoin() && mapJoinOp2.getConf().isNoOuterJoin())) {
       return false;
     }
 
@@ -1059,15 +1062,15 @@ public class SharedWorkOptimizer extends Transform {
     }
 
 
-    for (int i = 0; i < mapJoinOp1.getNumParent(); i ++) {
-      if (i == mapJoinOp1.getConf().getPosBigTable()) {
-        continue;
-      }
+    // the small tables in position order
+    List<ReduceSinkOperator> smallTables1 = smallTableInputs(mapJoinOp1);
+    List<ReduceSinkOperator> smallTables2 = smallTableInputs(mapJoinOp2);
+    for (int i = 0; i < smallTables1.size(); i++) {
+      ReduceSinkOperator parentRS1 = smallTables1.get(i);
+      ReduceSinkOperator parentRS2 = smallTables2.get(i);
 
-      ReduceSinkOperator parentRS1 = (ReduceSinkOperator) mapJoinOp1.getParentOperators().get(i);
-      ReduceSinkOperator parentRS2 = (ReduceSinkOperator) mapJoinOp2.getParentOperators().get(i);
-
-      if (!compareOperator(pctx, parentRS1, parentRS2)) {
+      // the tag only records the join position: the in-memory side of a map join skips it (ReduceSinkMapJoinProc)
+      if (!isSameReduceSinkIgnoringTag(parentRS1.getConf(), parentRS2.getConf())) {
         return false;
       }
 
@@ -1080,6 +1083,16 @@ public class SharedWorkOptimizer extends Transform {
     }
 
     return true;
+  }
+
+  private static List<ReduceSinkOperator> smallTableInputs(MapJoinOperator mapJoinOp) {
+    List<ReduceSinkOperator> inputs = new ArrayList<>();
+    for (int i = 0; i < mapJoinOp.getNumParent(); i++) {
+      if (i != mapJoinOp.getConf().getPosBigTable()) {
+        inputs.add((ReduceSinkOperator) mapJoinOp.getParentOperators().get(i));
+      }
+    }
+    return inputs;
   }
 
   /**
@@ -1839,19 +1852,7 @@ public class SharedWorkOptimizer extends Transform {
     if (op1 instanceof ReduceSinkOperator) {
       ReduceSinkDesc op1Conf = ((ReduceSinkOperator) op1).getConf();
       ReduceSinkDesc op2Conf = ((ReduceSinkOperator) op2).getConf();
-
-      if (StringUtils.equals(op1Conf.getKeyColString(), op2Conf.getKeyColString()) &&
-        StringUtils.equals(op1Conf.getValueColsString(), op2Conf.getValueColsString()) &&
-        StringUtils.equals(op1Conf.getParitionColsString(), op2Conf.getParitionColsString()) &&
-        op1Conf.getTag() == op2Conf.getTag() &&
-        StringUtils.equals(op1Conf.getOrder(), op2Conf.getOrder()) &&
-        StringUtils.equals(op1Conf.getNullOrder(), op2Conf.getNullOrder()) &&
-        op1Conf.getTopN() == op2Conf.getTopN() &&
-        canDeduplicateReduceTraits(op1Conf, op2Conf)) {
-        return true;
-      } else {
-        return false;
-      }
+      return op1Conf.getTag() == op2Conf.getTag() && isSameReduceSinkIgnoringTag(op1Conf, op2Conf);
     }
 
     // We handle TableScanOperator here as we can safely ignore table alias
@@ -2202,6 +2203,16 @@ public class SharedWorkOptimizer extends Transform {
       }
     }
 
+  }
+
+  private static boolean isSameReduceSinkIgnoringTag(ReduceSinkDesc op1Conf, ReduceSinkDesc op2Conf) {
+    return StringUtils.equals(op1Conf.getKeyColString(), op2Conf.getKeyColString()) &&
+        StringUtils.equals(op1Conf.getValueColsString(), op2Conf.getValueColsString()) &&
+        StringUtils.equals(op1Conf.getParitionColsString(), op2Conf.getParitionColsString()) &&
+        StringUtils.equals(op1Conf.getOrder(), op2Conf.getOrder()) &&
+        StringUtils.equals(op1Conf.getNullOrder(), op2Conf.getNullOrder()) &&
+        op1Conf.getTopN() == op2Conf.getTopN() &&
+        canDeduplicateReduceTraits(op1Conf, op2Conf);
   }
 
   static boolean canDeduplicateReduceTraits(ReduceSinkDesc retainable, ReduceSinkDesc discardable) {
