@@ -1,0 +1,116 @@
+PREHOOK: query: create table pam_fact (k int, x bigint) stored as orc tblproperties ('transactional'='true')
+PREHOOK: type: CREATETABLE
+PREHOOK: Output: database:default
+PREHOOK: Output: default@pam_fact
+POSTHOOK: query: create table pam_fact (k int, x bigint) stored as orc tblproperties ('transactional'='true')
+POSTHOOK: type: CREATETABLE
+POSTHOOK: Output: database:default
+POSTHOOK: Output: default@pam_fact
+PREHOOK: query: create table pam_dim (k int, v string) stored as orc tblproperties ('transactional'='true')
+PREHOOK: type: CREATETABLE
+PREHOOK: Output: database:default
+PREHOOK: Output: default@pam_dim
+POSTHOOK: query: create table pam_dim (k int, v string) stored as orc tblproperties ('transactional'='true')
+POSTHOOK: type: CREATETABLE
+POSTHOOK: Output: database:default
+POSTHOOK: Output: default@pam_dim
+PREHOOK: query: insert into pam_fact select pos % 200, pos from (select posexplode(split(space(3999), ' '))) t
+PREHOOK: type: QUERY
+PREHOOK: Input: _dummy_database@_dummy_table
+PREHOOK: Output: default@pam_fact
+POSTHOOK: query: insert into pam_fact select pos % 200, pos from (select posexplode(split(space(3999), ' '))) t
+POSTHOOK: type: QUERY
+POSTHOOK: Input: _dummy_database@_dummy_table
+POSTHOOK: Output: default@pam_fact
+POSTHOOK: Lineage: pam_fact.k SCRIPT []
+POSTHOOK: Lineage: pam_fact.x SCRIPT []
+PREHOOK: query: insert into pam_dim select pos, concat('v', pos % 7) from (select posexplode(split(space(199), ' '))) t
+PREHOOK: type: QUERY
+PREHOOK: Input: _dummy_database@_dummy_table
+PREHOOK: Output: default@pam_dim
+POSTHOOK: query: insert into pam_dim select pos, concat('v', pos % 7) from (select posexplode(split(space(199), ' '))) t
+POSTHOOK: type: QUERY
+POSTHOOK: Input: _dummy_database@_dummy_table
+POSTHOOK: Output: default@pam_dim
+POSTHOOK: Lineage: pam_dim.k SCRIPT []
+POSTHOOK: Lineage: pam_dim.v SCRIPT []
+PREHOOK: query: analyze table pam_fact compute statistics for columns
+PREHOOK: type: ANALYZE_TABLE
+PREHOOK: Input: default@pam_fact
+PREHOOK: Output: default@pam_fact
+#### A masked pattern was here ####
+POSTHOOK: query: analyze table pam_fact compute statistics for columns
+POSTHOOK: type: ANALYZE_TABLE
+POSTHOOK: Input: default@pam_fact
+POSTHOOK: Output: default@pam_fact
+#### A masked pattern was here ####
+PREHOOK: query: analyze table pam_dim compute statistics for columns
+PREHOOK: type: ANALYZE_TABLE
+PREHOOK: Input: default@pam_dim
+PREHOOK: Output: default@pam_dim
+#### A masked pattern was here ####
+POSTHOOK: query: analyze table pam_dim compute statistics for columns
+POSTHOOK: type: ANALYZE_TABLE
+POSTHOOK: Input: default@pam_dim
+POSTHOOK: Output: default@pam_dim
+#### A masked pattern was here ####
+PREHOOK: query: create materialized view pam_mv as
+select d.v, sum(f.x) s from pam_fact f join pam_dim d on f.k = d.k group by d.v
+PREHOOK: type: CREATE_MATERIALIZED_VIEW
+PREHOOK: Input: default@pam_dim
+PREHOOK: Input: default@pam_fact
+PREHOOK: Output: database:default
+PREHOOK: Output: default@pam_mv
+POSTHOOK: query: create materialized view pam_mv as
+select d.v, sum(f.x) s from pam_fact f join pam_dim d on f.k = d.k group by d.v
+POSTHOOK: type: CREATE_MATERIALIZED_VIEW
+POSTHOOK: Input: default@pam_dim
+POSTHOOK: Input: default@pam_fact
+POSTHOOK: Output: database:default
+POSTHOOK: Output: default@pam_mv
+POSTHOOK: Lineage: pam_mv.s EXPRESSION [(pam_fact)f.FieldSchema(name:x, type:bigint, comment:null), ]
+POSTHOOK: Lineage: pam_mv.v SIMPLE [(pam_dim)d.FieldSchema(name:v, type:string, comment:null), ]
+PREHOOK: query: explain cbo
+select d.v, sum(f.x) s from pam_fact f join pam_dim d on f.k = d.k group by d.v
+PREHOOK: type: QUERY
+PREHOOK: Input: default@pam_dim
+PREHOOK: Input: default@pam_fact
+PREHOOK: Input: default@pam_mv
+#### A masked pattern was here ####
+POSTHOOK: query: explain cbo
+select d.v, sum(f.x) s from pam_fact f join pam_dim d on f.k = d.k group by d.v
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@pam_dim
+POSTHOOK: Input: default@pam_fact
+POSTHOOK: Input: default@pam_mv
+#### A masked pattern was here ####
+CBO PLAN:
+HiveProject(d.v=[$0], s=[$1])
+  HiveTableScan(table=[[default, pam_mv]], table:alias=[default.pam_mv])
+
+PREHOOK: query: explain cbo
+select d.v, sum(f.x) s from pam_fact f join pam_dim d on f.k = d.k group by d.v
+PREHOOK: type: QUERY
+PREHOOK: Input: default@pam_dim
+PREHOOK: Input: default@pam_fact
+PREHOOK: Input: default@pam_mv
+#### A masked pattern was here ####
+POSTHOOK: query: explain cbo
+select d.v, sum(f.x) s from pam_fact f join pam_dim d on f.k = d.k group by d.v
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@pam_dim
+POSTHOOK: Input: default@pam_fact
+POSTHOOK: Input: default@pam_mv
+#### A masked pattern was here ####
+CBO PLAN:
+HiveProject(d.v=[$0], s=[$1])
+  HiveTableScan(table=[[default, pam_mv]], table:alias=[default.pam_mv])
+
+PREHOOK: query: drop materialized view pam_mv
+PREHOOK: type: DROP_MATERIALIZED_VIEW
+PREHOOK: Input: default@pam_mv
+PREHOOK: Output: default@pam_mv
+POSTHOOK: query: drop materialized view pam_mv
+POSTHOOK: type: DROP_MATERIALIZED_VIEW
+POSTHOOK: Input: default@pam_mv
+POSTHOOK: Output: default@pam_mv

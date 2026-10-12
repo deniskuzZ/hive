@@ -211,6 +211,7 @@ import org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveUnion;
 import org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.jdbc.HiveJdbcConverter;
 import org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.jdbc.JdbcHiveTableScan;
 import org.apache.hadoop.hive.ql.optimizer.calcite.rules.HiveAggregateJoinTransposeRule;
+import org.apache.hadoop.hive.ql.optimizer.calcite.rules.HivePartialAggregateJoinTransposeRule;
 import org.apache.hadoop.hive.ql.optimizer.calcite.rules.HiveAggregateProjectMergeRule;
 import org.apache.hadoop.hive.ql.optimizer.calcite.rules.HiveAggregatePullUpConstantsRule;
 import org.apache.hadoop.hive.ql.optimizer.calcite.rules.HiveAggregateReduceFunctionsRule;
@@ -2318,6 +2319,20 @@ public class CalcitePlanner extends SemanticAnalyzer {
             HiveWindowingFixRule.INSTANCE);
         generatePartialProgram(program, false, HepMatchOrder.DEPTH_FIRST,
             HiveWindowingLastValueRewrite.INSTANCE);
+      }
+
+      // 6. Push partial aggregates through inner joins; runs after the rules above since a partial
+      // aggregate must not be merged, removed or converted into a semijoin. Not in a materialized view
+      // plan: view-based rewriting matches only joins, filters and projects under the aggregate
+      if (conf.getBoolVar(ConfVars.PARTIAL_AGGR_JOIN_TRANSPOSE)
+          && !isMaterializedViewMaintenance()
+          && conf.getBoolVar(ConfVars.HIVE_MAPSIDE_AGGREGATE)
+          && !conf.getBoolVar(ConfVars.HIVE_GROUPBY_SKEW)
+          && !conf.getBoolVar(ConfVars.HIVE_CBO_RETPATH_HIVEOP)) {
+        double maxJoinReduction = conf.getFloatVar(ConfVars.PARTIAL_AGGR_JOIN_TRANSPOSE_MAX_JOIN_REDUCTION);
+        generatePartialProgram(program, true, HepMatchOrder.DEPTH_FIRST,
+            HivePartialAggregateJoinTransposeRule.overJoin(maxJoinReduction),
+            HivePartialAggregateJoinTransposeRule.overProject(maxJoinReduction));
       }
 
       // Expand SEARCH since JDBC (and potentially other federation rules) do not know how to handle it.

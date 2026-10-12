@@ -64,6 +64,8 @@ public class GroupByDesc extends AbstractOperatorDesc {
 
   // no hash aggregations for group by
   private boolean bucketGroup;
+  // map-side hash aggregation with no shuffle and no merge; an aggregation above merges its results
+  private boolean partialOnly;
 
   private List<ExprNodeDesc> keys;
   private List<Long> listGroupingSets;
@@ -272,6 +274,16 @@ public class GroupByDesc extends AbstractOperatorDesc {
     this.bucketGroup = bucketGroup;
   }
 
+  @Explain(displayName = "partialOnly", displayOnlyOnTrue = true)
+  @Signature
+  public boolean isPartialOnly() {
+    return partialOnly;
+  }
+
+  public void setPartialOnly(boolean partialOnly) {
+    this.partialOnly = partialOnly;
+  }
+
   /**
    * Checks if this grouping is like distinct, which means that all non-distinct grouping
    * columns behave like they were distinct - for example min and max operators.
@@ -359,10 +371,12 @@ public class GroupByDesc extends AbstractOperatorDesc {
     aggregators.addAll(this.aggregators);
     List<Long> listGroupingSets = new ArrayList<>();
     listGroupingSets.addAll(this.listGroupingSets);
-    return new GroupByDesc(this.mode, outputColumnNames, keys, aggregators,
+    GroupByDesc clone = new GroupByDesc(this.mode, outputColumnNames, keys, aggregators,
         this.groupByMemoryUsage, this.memoryThreshold, this.minReductionHashAggr, this.minReductionHashAggrLowerBound,
         this.hashAggrFlushPercent, listGroupingSets, this.groupingSetsPresent,
         this.groupingSetPosition, this.isDistinct);
+    clone.setPartialOnly(partialOnly);
+    return clone;
   }
 
   public class GroupByOperatorExplainVectorization extends OperatorExplainVectorization {
