@@ -193,13 +193,6 @@ public class TezCompiler extends TaskCompiler {
     runDynamicPartitionPruning(procCtx);
     perfLogger.perfLogEnd(this.getClass().getName(), PerfLogger.TEZ_COMPILER, "Setup dynamic partition pruning");
 
-    if(procCtx.conf.getBoolVar(ConfVars.TEZ_DYNAMIC_SEMIJOIN_REDUCTION_MULTICOLUMN)) {
-      SemiJoinReductionMerge sjmerge = new SemiJoinReductionMerge();
-      sjmerge.beginPerfLogging();
-      sjmerge.transform(procCtx.parseContext);
-      sjmerge.endPerfLogging("Merge single column semi-join reducers to composite");
-    }
-
     // need to run this; to get consistent filterop conditions(for operator tree matching)
     if (procCtx.conf.getBoolVar(ConfVars.HIVE_OPT_CONSTANT_PROPAGATION)) {
       new ConstantPropagate(ConstantPropagateOption.SHORTCUT).transform(procCtx.parseContext);
@@ -207,8 +200,18 @@ public class TezCompiler extends TaskCompiler {
 
     perfLogger.perfLogBegin(this.getClass().getName(), PerfLogger.TEZ_COMPILER);
     // setup stats in the operator plan
-    runStatsAnnotation(procCtx);
+    new AnnotateWithStatistics().transform(procCtx.parseContext);
     perfLogger.perfLogEnd(this.getClass().getName(), PerfLogger.TEZ_COMPILER, "Setup stats in the operator plan");
+
+    // between the annotations: the merge sizes the composite filter from the statistics, and the operators it creates
+    // get their traits with the rest of the plan
+    if(procCtx.conf.getBoolVar(ConfVars.TEZ_DYNAMIC_SEMIJOIN_REDUCTION_MULTICOLUMN)) {
+      SemiJoinReductionMerge sjmerge = new SemiJoinReductionMerge();
+      sjmerge.beginPerfLogging();
+      sjmerge.transform(procCtx.parseContext);
+      sjmerge.endPerfLogging("Merge single column semi-join reducers to composite");
+    }
+    new AnnotateWithOpTraits().transform(procCtx.parseContext);
 
     // run Sorted dynamic partition optimization
     if(HiveConf.getBoolVar(procCtx.conf, HiveConf.ConfVars.DYNAMIC_PARTITIONING) &&
@@ -478,11 +481,6 @@ public class TezCompiler extends TaskCompiler {
         component.add(current);
       } while (current != o);
     }
-  }
-
-  private void runStatsAnnotation(OptimizeTezProcContext procCtx) throws SemanticException {
-    new AnnotateWithStatistics().transform(procCtx.parseContext);
-    new AnnotateWithOpTraits().transform(procCtx.parseContext);
   }
 
   private void runStatsDependentOptimizations(OptimizeTezProcContext procCtx) throws SemanticException {
