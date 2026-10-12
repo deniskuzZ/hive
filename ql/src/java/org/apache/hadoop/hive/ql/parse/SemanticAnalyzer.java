@@ -1955,6 +1955,8 @@ public class SemanticAnalyzer extends BaseSemanticAnalyzer {
         break;
 
       case HiveParser.TOK_GROUPBY:
+      case HiveParser.TOK_PARTIAL_GROUPBY:
+      case HiveParser.TOK_MERGE_GROUPBY:
       case HiveParser.TOK_ROLLUP_GROUPBY:
       case HiveParser.TOK_CUBE_GROUPBY:
       case HiveParser.TOK_GROUPING_SETS:
@@ -4626,7 +4628,9 @@ public class SemanticAnalyzer extends BaseSemanticAnalyzer {
     boolean isGroupBy = false;
     if (selectExpr.getParent() != null && selectExpr.getParent() instanceof Node) {
       for (Node sibling : ((Node)selectExpr.getParent()).getChildren()) {
-        isGroupBy |= sibling instanceof ASTNode && ((ASTNode)sibling).getType() == HiveParser.TOK_GROUPBY;
+        isGroupBy |= sibling instanceof ASTNode && (((ASTNode) sibling).getType() == HiveParser.TOK_GROUPBY
+            || ((ASTNode) sibling).getType() == HiveParser.TOK_PARTIAL_GROUPBY
+            || ((ASTNode) sibling).getType() == HiveParser.TOK_MERGE_GROUPBY);
       }
     }
 
@@ -6000,7 +6004,9 @@ public class SemanticAnalyzer extends BaseSemanticAnalyzer {
       boolean isDistinct = value.getType() == HiveParser.TOK_FUNCTIONDI;
       containsDistinctAggr = containsDistinctAggr || isDistinct;
       boolean isAllColumns = value.getType() == HiveParser.TOK_FUNCTIONSTAR;
-      Mode amode = groupByDescModeToUDAFMode(GroupByDesc.Mode.HASH, isDistinct);
+      // a merge GROUP BY reads partial results: its map side merges them (PARTIAL2), keeping their type
+      Mode amode = parseInfo.isMergeGroupByForClause(dest) ? Mode.PARTIAL2
+          : groupByDescModeToUDAFMode(GroupByDesc.Mode.HASH, isDistinct);
 
       GenericUDAFEvaluator genericUDAFEvaluator = getGenericUDAFEvaluator(
           aggName, aggParameters, value, isDistinct, isAllColumns);
@@ -6909,6 +6915,24 @@ public class SemanticAnalyzer extends BaseSemanticAnalyzer {
    * Group by Operator:
    * grouping keys: group by expressions + grouping id.
    */
+  /**
+   * Generate a map-side hash Group By with no shuffle and no merge: a partial aggregation whose results
+   * are merged by an aggregation further up the plan. Its hash mode turns off at the lower
+   * hive.optimize.partial.aggr.join.transpose.min.reduction, as Trino's adaptive partial aggregation does.
+   */
+  private Operator genGroupByPlanPartialOnly(String dest, QB qb, Operator input) throws SemanticException {
+    Pair<List<ASTNode>, List<Long>> grpByExprsGroupingSets =
+        getGroupByGroupingSetsForClause(qb.getParseInfo(), dest);
+    GroupByOperator groupByOperator = (GroupByOperator) genGroupByPlanMapGroupByOperator(qb, dest,
+        grpByExprsGroupingSets.getLeft(), input, null, grpByExprsGroupingSets.getRight(), false);
+    GroupByDesc desc = groupByOperator.getConf();
+    desc.setPartialOnly(true);
+    desc.setMinReductionHashAggr(Math.min(desc.getMinReductionHashAggr(),
+        HiveConf.getFloatVar(conf, ConfVars.PARTIAL_AGGR_JOIN_TRANSPOSE_MIN_REDUCTION)));
+    groupOpToInputTables.put(groupByOperator, opParseCtx.get(input).getRowResolver().getTableNames());
+    return groupByOperator;
+  }
+
   @SuppressWarnings("nls")
   private Operator genGroupByPlanMapAggrNoSkew(String dest, QB qb,
                                                Operator inputOperatorInfo) throws SemanticException {
@@ -11624,7 +11648,9 @@ public class SemanticAnalyzer extends BaseSemanticAnalyzer {
                   qbp.setSelExprForClause(dest, genSelectDIAST(rr));
                 }
               }
-              if (conf.getBoolVar(HiveConf.ConfVars.HIVE_MAPSIDE_AGGREGATE)) {
+              if (qbp.isPartialGroupByForClause(dest)) {
+                curr = genGroupByPlanPartialOnly(dest, qb, curr);
+              } else if (conf.getBoolVar(HiveConf.ConfVars.HIVE_MAPSIDE_AGGREGATE)) {
                 if (!conf.getBoolVar(HiveConf.ConfVars.HIVE_GROUPBY_SKEW)) {
                   curr = genGroupByPlanMapAggrNoSkew(dest, qb, curr);
                 } else {

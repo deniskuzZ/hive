@@ -32,6 +32,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
+import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.hadoop.conf.Configuration;
@@ -64,6 +65,7 @@ import org.apache.hadoop.hive.ql.util.JavaDataModel;
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspectorFactory;
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveObjectInspectorUtils;
+import org.apache.hadoop.hive.serde2.typeinfo.DecimalTypeInfo;
 import org.apache.hadoop.hive.serde2.typeinfo.TypeInfo;
 import org.apache.hadoop.hive.serde2.typeinfo.TypeInfoUtils;
 import org.apache.hadoop.io.DataOutputBuffer;
@@ -163,6 +165,9 @@ public class VectorGroupByOperator extends Operator<GroupByDesc>
   // tracks overall access count in map agg buffer any given time.
   private long totalAccessCount;
   private boolean batchNeedsClone;
+
+  // set for a partial aggregate pushed below a join when every aggregate can pass a row through
+  private transient PassThroughAggregate[] passThroughAggregates;
 
   /**
    * Interface for processing mode: global, hash, unsorted streaming, or group batch
@@ -832,7 +837,11 @@ public class VectorGroupByOperator extends Operator<GroupByDesc>
         if (ratio > minReductionHashAggr) {
           if (inputRecords > maxHtEntries) { // Don't bail out too soon.
             flush(true);
-            changeToStreamingMode();
+            if (passThroughAggregates != null) {
+              changeToPassThroughMode();
+            } else {
+              changeToStreamingMode();
+            }
           }
         }
       }
@@ -1647,6 +1656,7 @@ public class VectorGroupByOperator extends Operator<GroupByDesc>
     forwardCache = new Object[outputKeyLength + aggregators.length];
 
     setupGroupingSets();
+    passThroughAggregates = conf.isPartialOnly() && !groupingSetsPresent ? createPassThroughAggregates() : null;
 
     switch (vectorDesc.getProcessingMode()) {
     case GLOBAL:
@@ -1772,6 +1782,177 @@ public class VectorGroupByOperator extends Operator<GroupByDesc>
     processingMode = this.new ProcessingModeStreaming();
     processingMode.initialize(null);
     LOG.info("switched to streaming mode");
+  }
+
+  private PassThroughAggregate[] createPassThroughAggregates() {
+    PassThroughAggregate[] result = new PassThroughAggregate[aggregators.length];
+    for (int i = 0; i < aggregators.length; i++) {
+      result[i] = PassThroughAggregate.of(vecAggrDescs[i], aggregators[i]);
+      if (result[i] == null) {
+        return null;
+      }
+    }
+    return result;
+  }
+
+  private void changeToPassThroughMode() throws HiveException {
+    processingMode = this.new ProcessingModePassThrough();
+    processingMode.initialize(null);
+    LOG.info("switched to pass-through mode");
+  }
+
+  /**
+   * Pass-through mode of a partial aggregate pushed below a join ({@link GroupByDesc#isPartialOnly()}) whose hash
+   * mode stopped reducing its input: every row is forwarded as its own partial result, as Trino's adaptive partial
+   * aggregation does. The aggregate above the join merges the partial results.
+   */
+  final class ProcessingModePassThrough extends ProcessingModeBase {
+
+    @Override
+    public void initialize(Configuration hconf) {
+    }
+
+    @Override
+    protected void doProcessBatch(VectorizedRowBatch batch, boolean isFirstGroupingSet,
+        boolean[] currentGroupingSetsOverrideIsNulls) throws HiveException {
+      if (batch.size == 0) {
+        return;
+      }
+      for (VectorExpression keyExpression : keyExpressions) {
+        keyExpression.evaluate(batch);
+      }
+      for (VectorAggregateExpression aggregator : aggregators) {
+        if (aggregator.getInputExpression() != null) {
+          aggregator.getInputExpression().evaluate(batch);
+        }
+      }
+      // rows are appended to the output batch, after any the hash mode flush left in it
+      if (outputBatch.size + batch.size > VectorizedRowBatch.DEFAULT_SIZE) {
+        flushOutput();
+      }
+      final int offset = outputBatch.size;
+      final int[] selected = batch.selectedInUse ? batch.selected : null;
+      for (int i = 0; i < outputKeyLength; i++) {
+        copyColumn(batch.cols[keyExpressions[i].getOutputColumnNum()], selected, batch.size,
+            outputBatch.cols[i], offset);
+      }
+      for (int i = 0; i < aggregators.length; i++) {
+        passThroughAggregates[i].write(batch, selected, batch.size, outputBatch.cols[outputKeyLength + i], offset);
+      }
+      outputBatch.size += batch.size;
+      if (outputBatch.size == VectorizedRowBatch.DEFAULT_SIZE) {
+        flushOutput();
+      }
+    }
+  }
+
+  private static void copyColumn(ColumnVector in, int[] selected, int size, ColumnVector out, int offset) {
+    for (int j = 0; j < size; j++) {
+      out.setElement(offset + j, selected != null ? selected[j] : j, in);
+    }
+  }
+
+  /**
+   * The single row partial result of a pushed SUM, COUNT, MIN or MAX, written by the pass-through mode. $SUM0 never
+   * vectorizes, so it never reaches this operator.
+   */
+  private static final class PassThroughAggregate {
+
+    /** The aggregate functions with a pass-through form. */
+    private enum Function {
+      COUNT, SUM, MIN, MAX;
+
+      private static final Map<String, Function> NAME_MAP = Arrays.stream(values())
+          .collect(Collectors.toUnmodifiableMap(function -> function.name().toLowerCase(), function -> function));
+
+      /** Returns the function of a vectorized aggregation name, or null when it has no pass-through form. */
+      static Function of(String aggregationName) {
+        return NAME_MAP.get(aggregationName.toLowerCase());
+      }
+    }
+
+    private final Function function;
+    // -1 for COUNT(*)
+    private final int inputColumnNum;
+    private final int decimal64Scale;
+
+    private PassThroughAggregate(Function function, int inputColumnNum, int decimal64Scale) {
+      this.function = function;
+      this.inputColumnNum = inputColumnNum;
+      this.decimal64Scale = decimal64Scale;
+    }
+
+    /**
+     * Returns the pass-through form of an aggregate, or null when its partial result is not the input value
+     * (other functions, or an input column type the output cannot take as is).
+     */
+    static PassThroughAggregate of(VectorAggregationDesc desc, VectorAggregateExpression aggregator) {
+      Function function = Function.of(desc.getAggregationName());
+      if (function == null) {
+        return null;
+      }
+      VectorExpression input = aggregator.getInputExpression();
+      return switch (function) {
+        case COUNT -> new PassThroughAggregate(function, input == null ? -1 : input.getOutputColumnNum(), -1);
+        case SUM, MIN, MAX -> input == null ? null : ofValue(function, desc, input);
+      };
+    }
+
+    /** A SUM, MIN or MAX: the partial result is the input value, when the output column takes it. */
+    private static PassThroughAggregate ofValue(Function function, VectorAggregationDesc desc,
+        VectorExpression input) {
+      ColumnVector.Type in = desc.getInputColVectorType();
+      ColumnVector.Type out = desc.getOutputColVectorType();
+      if (in == ColumnVector.Type.DECIMAL_64 && out == ColumnVector.Type.DECIMAL) {
+        return new PassThroughAggregate(function, input.getOutputColumnNum(),
+            ((DecimalTypeInfo) desc.getInputTypeInfo()).getScale());
+      }
+      if (in != out || in == ColumnVector.Type.DECIMAL_64
+          && ((DecimalTypeInfo) desc.getInputTypeInfo()).getScale()
+              != ((DecimalTypeInfo) desc.getOutputTypeInfo()).getScale()) {
+        return null;
+      }
+      return new PassThroughAggregate(function, input.getOutputColumnNum(), -1);
+    }
+
+    /** Writes the partial results of the batch's rows into out, from row offset on. */
+    void write(VectorizedRowBatch batch, int[] selected, int size, ColumnVector out, int offset) {
+      switch (function) {
+      case COUNT -> {
+        long[] counts = ((LongColumnVector) out).vector;
+        if (inputColumnNum < 0) {
+          Arrays.fill(counts, offset, offset + size, 1L);
+          return;
+        }
+        ColumnVector in = batch.cols[inputColumnNum];
+        for (int j = 0; j < size; j++) {
+          int row = in.isRepeating ? 0 : selected != null ? selected[j] : j;
+          counts[offset + j] = in.noNulls || !in.isNull[row] ? 1 : 0;
+        }
+      }
+      case SUM, MIN, MAX -> {
+        ColumnVector in = batch.cols[inputColumnNum];
+        if (decimal64Scale >= 0) {
+          writeDecimal64AsDecimal((Decimal64ColumnVector) in, selected, size, (DecimalColumnVector) out, offset);
+        } else {
+          copyColumn(in, selected, size, out, offset);
+        }
+      }
+      }
+    }
+
+    private void writeDecimal64AsDecimal(Decimal64ColumnVector in, int[] selected, int size,
+        DecimalColumnVector out, int offset) {
+      for (int j = 0; j < size; j++) {
+        int row = in.isRepeating ? 0 : selected != null ? selected[j] : j;
+        if (in.noNulls || !in.isNull[row]) {
+          out.vector[offset + j].deserialize64(in.vector[row], decimal64Scale);
+        } else {
+          out.isNull[offset + j] = true;
+          out.noNulls = false;
+        }
+      }
+    }
   }
 
   @Override

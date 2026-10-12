@@ -30,7 +30,9 @@ import org.apache.calcite.rel.metadata.RelMetadataProvider;
 import org.apache.calcite.rel.metadata.RelMetadataQuery;
 import org.apache.calcite.util.BuiltInMethod;
 import org.apache.calcite.util.ImmutableBitSet;
+import com.google.common.collect.ImmutableSet;
 import org.apache.hadoop.hive.ql.optimizer.calcite.RelOptHiveTable;
+import org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HivePartialAggregate;
 import org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveTableScan;
 
 public class HiveRelMdUniqueKeys implements MetadataHandler<BuiltInMetadata.UniqueKeys> {
@@ -42,6 +44,11 @@ public class HiveRelMdUniqueKeys implements MetadataHandler<BuiltInMetadata.Uniq
   @Override
   public MetadataDef<BuiltInMetadata.UniqueKeys> getDef() {
     return BuiltInMetadata.UniqueKeys.DEF;
+  }
+
+  public Set<ImmutableBitSet> getUniqueKeys(HivePartialAggregate rel, RelMetadataQuery mq,
+                                            boolean ignoreNulls) {
+    return ImmutableSet.of();
   }
 
   public Set<ImmutableBitSet> getUniqueKeys(HiveTableScan rel, RelMetadataQuery mq,
