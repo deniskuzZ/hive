@@ -22,6 +22,7 @@ package org.apache.hadoop.hive.ql.exec;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.Future;
 
@@ -230,9 +231,9 @@ public class MapJoinOperator extends AbstractMapJoinOperator<MapJoinDesc> implem
        */
       LOG.debug("This is not bucket map join, so cache");
 
-      Future<Pair<MapJoinTableContainer[], MapJoinTableContainerSerDe[]>> future =
+      Future<SmallTables> future =
           cache.retrieveAsync(
-              cacheKey, () ->loadHashTable(mapContext, mrContext));
+              cacheKey, () -> SmallTables.of(loadHashTable(mapContext, mrContext), posBigTable));
       asyncInitOperations.add(future);
     } else if (!isInputFileChangeSensitive(mapContext)) {
       loadHashTable(mapContext, mrContext);
@@ -240,12 +241,11 @@ public class MapJoinOperator extends AbstractMapJoinOperator<MapJoinDesc> implem
     }
   }
 
-  @SuppressWarnings("unchecked")
   @Override
   protected void completeInitializationOp(Object[] os) throws HiveException {
     if (os.length != 0) {
       Pair<MapJoinTableContainer[], MapJoinTableContainerSerDe[]> pair =
-          (Pair<MapJoinTableContainer[], MapJoinTableContainerSerDe[]>) os[0];
+          ((SmallTables) os[0]).atPositions(posBigTable);
 
       boolean spilled = false;
       for (MapJoinTableContainer container : pair.getLeft()) {
@@ -278,6 +278,30 @@ public class MapJoinOperator extends AbstractMapJoinOperator<MapJoinDesc> implem
       // properly
       this.getExecContext().setLastInputPath(null);
       this.getExecContext().setCurrentInputPath(null);
+    }
+  }
+
+  /**
+   * The hash tables of the small tables in position order, without the big table slot: the value cached under the
+   * cache key. Map joins that share a cache key (SharedWorkOptimizer) read the same small tables, possibly with the
+   * big table at a different position.
+   */
+  private record SmallTables(MapJoinTableContainer[] tables, MapJoinTableContainerSerDe[] serdes) {
+
+    static SmallTables of(Pair<MapJoinTableContainer[], MapJoinTableContainerSerDe[]> byPosition, byte posBigTable) {
+      return new SmallTables(ArrayUtils.remove(byPosition.getLeft(), posBigTable),
+          ArrayUtils.remove(byPosition.getRight(), posBigTable));
+    }
+
+    Pair<MapJoinTableContainer[], MapJoinTableContainerSerDe[]> atPositions(byte posBigTable) {
+      return new ImmutablePair<>(withBigTableSlot(tables, posBigTable), withBigTableSlot(serdes, posBigTable));
+    }
+
+    private static <T> T[] withBigTableSlot(T[] smallTables, byte posBigTable) {
+      T[] byPosition = Arrays.copyOf(smallTables, smallTables.length + 1);
+      System.arraycopy(smallTables, posBigTable, byPosition, posBigTable + 1, smallTables.length - posBigTable);
+      byPosition[posBigTable] = null;
+      return byPosition;
     }
   }
 
