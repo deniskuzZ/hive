@@ -23,7 +23,7 @@ STAGE PLANS:
                 TableScan
                   alias: cs1
                   filterExpr: (cs_ship_addr_sk is not null and cs_ship_date_sk is not null and cs_call_center_sk is not null) (type: boolean)
-                  probeDecodeDetails: cacheKey:HASH_MAP_MAPJOIN_120_container, bigKeyColName:cs_call_center_sk, smallTablePos:1, keyRatio:4.13026255875998E-4
+                  probeDecodeDetails: cacheKey:HASH_MAP_MAPJOIN_118_container, bigKeyColName:cs_ship_addr_sk, smallTablePos:1, keyRatio:0.018867924528301886
                   Statistics: Num rows: 43220864887 Data size: 11379157992136 Basic stats: COMPLETE Column stats: COMPLETE
                   Filter Operator
                     predicate: (cs_ship_addr_sk is not null and cs_ship_date_sk is not null and cs_call_center_sk is not null) (type: boolean)
@@ -41,7 +41,7 @@ STAGE PLANS:
                         outputColumnNames: _col1, _col2, _col3, _col4, _col5, _col6
                         input vertices:
                           1 Map 8
-                        Statistics: Num rows: 4730608045 Data size: 1182045115232 Basic stats: COMPLETE Column stats: COMPLETE
+                        Statistics: Num rows: 4730608045 Data size: 1207814708544 Basic stats: COMPLETE Column stats: COMPLETE
                         Map Join Operator
                           condition map:
                                Inner Join 0 to 1
@@ -51,7 +51,7 @@ STAGE PLANS:
                           outputColumnNames: _col2, _col3, _col4, _col5, _col6
                           input vertices:
                             1 Map 9
-                          Statistics: Num rows: 89256757 Data size: 10710810968 Basic stats: COMPLETE Column stats: COMPLETE
+                          Statistics: Num rows: 89256757 Data size: 22078463600 Basic stats: COMPLETE Column stats: COMPLETE
                           Map Join Operator
                             condition map:
                                  Inner Join 0 to 1
@@ -61,13 +61,13 @@ STAGE PLANS:
                             outputColumnNames: _col3, _col4, _col5, _col6
                             input vertices:
                               1 Map 10
-                            Statistics: Num rows: 17851352 Data size: 2142162360 Basic stats: COMPLETE Column stats: COMPLETE
+                            Statistics: Num rows: 17851352 Data size: 4273592184 Basic stats: COMPLETE Column stats: COMPLETE
                             Reduce Output Operator
                               key expressions: _col4 (type: bigint)
                               null sort order: z
                               sort order: +
                               Map-reduce partition columns: _col4 (type: bigint)
-                              Statistics: Num rows: 17851352 Data size: 2142162360 Basic stats: COMPLETE Column stats: COMPLETE
+                              Statistics: Num rows: 17851352 Data size: 4273592184 Basic stats: COMPLETE Column stats: COMPLETE
                               value expressions: _col3 (type: bigint), _col5 (type: decimal(7,2)), _col6 (type: decimal(7,2))
                             Select Operator
                               expressions: _col4 (type: bigint)
@@ -111,10 +111,10 @@ STAGE PLANS:
             Map Operator Tree:
                 TableScan
                   alias: cs2
-                  filterExpr: (cs_warehouse_sk is not null and cs_order_number BETWEEN DynamicValue(RS_29_cs1_cs_order_number_min) AND DynamicValue(RS_29_cs1_cs_order_number_max) and in_bloom_filter(cs_order_number, DynamicValue(RS_29_cs1_cs_order_number_bloom_filter))) (type: boolean)
+                  filterExpr: (cs_warehouse_sk is not null and cs_order_number BETWEEN DynamicValue(RS_28_cs1_cs_order_number_min) AND DynamicValue(RS_28_cs1_cs_order_number_max) and in_bloom_filter(cs_order_number, DynamicValue(RS_28_cs1_cs_order_number_bloom_filter))) (type: boolean)
                   Statistics: Num rows: 43220864887 Data size: 689811596216 Basic stats: COMPLETE Column stats: COMPLETE
                   Filter Operator
-                    predicate: (cs_warehouse_sk is not null and cs_order_number BETWEEN DynamicValue(RS_29_cs1_cs_order_number_min) AND DynamicValue(RS_29_cs1_cs_order_number_max) and in_bloom_filter(cs_order_number, DynamicValue(RS_29_cs1_cs_order_number_bloom_filter))) (type: boolean)
+                    predicate: (cs_warehouse_sk is not null and cs_order_number BETWEEN DynamicValue(RS_28_cs1_cs_order_number_min) AND DynamicValue(RS_28_cs1_cs_order_number_max) and in_bloom_filter(cs_order_number, DynamicValue(RS_28_cs1_cs_order_number_bloom_filter))) (type: boolean)
                     Statistics: Num rows: 43005584639 Data size: 686375690624 Basic stats: COMPLETE Column stats: COMPLETE
                     Select Operator
                       expressions: cs_order_number (type: bigint), cs_warehouse_sk (type: bigint)
@@ -139,10 +139,10 @@ STAGE PLANS:
             Map Operator Tree:
                 TableScan
                   alias: cr1
-                  filterExpr: (cr_order_number BETWEEN DynamicValue(RS_35_cs1_cs_order_number_min) AND DynamicValue(RS_35_cs1_cs_order_number_max) and in_bloom_filter(cr_order_number, DynamicValue(RS_35_cs1_cs_order_number_bloom_filter))) (type: boolean)
+                  filterExpr: (cr_order_number BETWEEN DynamicValue(RS_34_cs1_cs_order_number_min) AND DynamicValue(RS_34_cs1_cs_order_number_max) and in_bloom_filter(cr_order_number, DynamicValue(RS_34_cs1_cs_order_number_bloom_filter))) (type: boolean)
                   Statistics: Num rows: 4320980099 Data size: 34567840792 Basic stats: COMPLETE Column stats: COMPLETE
                   Filter Operator
-                    predicate: (cr_order_number BETWEEN DynamicValue(RS_35_cs1_cs_order_number_min) AND DynamicValue(RS_35_cs1_cs_order_number_max) and in_bloom_filter(cr_order_number, DynamicValue(RS_35_cs1_cs_order_number_bloom_filter))) (type: boolean)
+                    predicate: (cr_order_number BETWEEN DynamicValue(RS_34_cs1_cs_order_number_min) AND DynamicValue(RS_34_cs1_cs_order_number_max) and in_bloom_filter(cr_order_number, DynamicValue(RS_34_cs1_cs_order_number_bloom_filter))) (type: boolean)
                     Statistics: Num rows: 4320980099 Data size: 34567840792 Basic stats: COMPLETE Column stats: COMPLETE
                     Select Operator
                       expressions: cr_order_number (type: bigint)
@@ -217,18 +217,18 @@ STAGE PLANS:
                 input vertices:
                   1 Map 11
                 residual filter predicates: {(_col3 <> _col14)}
-                Statistics: Num rows: 17851352 Data size: 2142162368 Basic stats: COMPLETE Column stats: COMPLETE
+                Statistics: Num rows: 17851352 Data size: 4415691680 Basic stats: COMPLETE Column stats: COMPLETE
                 DynamicPartitionHashJoin: true
                 Select Operator
                   expressions: _col4 (type: bigint), _col5 (type: decimal(7,2)), _col6 (type: decimal(7,2))
                   outputColumnNames: _col4, _col5, _col6
-                  Statistics: Num rows: 17851352 Data size: 2142162352 Basic stats: COMPLETE Column stats: COMPLETE
+                  Statistics: Num rows: 17851352 Data size: 4131492688 Basic stats: COMPLETE Column stats: COMPLETE
                   Reduce Output Operator
                     key expressions: _col4 (type: bigint)
                     null sort order: z
                     sort order: +
                     Map-reduce partition columns: _col4 (type: bigint)
-                    Statistics: Num rows: 17851352 Data size: 2142162352 Basic stats: COMPLETE Column stats: COMPLETE
+                    Statistics: Num rows: 17851352 Data size: 4131492688 Basic stats: COMPLETE Column stats: COMPLETE
                     value expressions: _col5 (type: decimal(7,2)), _col6 (type: decimal(7,2))
                   Select Operator
                     expressions: _col4 (type: bigint)
@@ -257,7 +257,7 @@ STAGE PLANS:
                 outputColumnNames: _col4, _col5, _col6
                 input vertices:
                   1 Map 12
-                Statistics: Num rows: 17851352 Data size: 2142162352 Basic stats: COMPLETE Column stats: COMPLETE
+                Statistics: Num rows: 17851352 Data size: 4131492688 Basic stats: COMPLETE Column stats: COMPLETE
                 DynamicPartitionHashJoin: true
                 Group By Operator
                   aggregations: sum(_col5), sum(_col6)
