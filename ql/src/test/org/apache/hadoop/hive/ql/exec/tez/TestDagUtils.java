@@ -20,6 +20,7 @@ package org.apache.hadoop.hive.ql.exec.tez;
 
 import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.atMost;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -29,14 +30,20 @@ import java.util.HashMap;
 import java.security.PrivilegedExceptionAction;
 
 import org.apache.hadoop.hive.conf.HiveConf;
+import org.apache.hadoop.hive.ql.CompilationOpContext;
+import org.apache.hadoop.hive.ql.exec.Operator;
+import org.apache.hadoop.hive.ql.exec.OperatorFactory;
+import org.apache.hadoop.hive.ql.exec.vector.VectorGroupByOperator;
 import org.apache.hadoop.hive.ql.io.HiveFileFormatUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hive.ql.plan.BaseWork;
+import org.apache.hadoop.hive.ql.plan.GroupByDesc;
 import org.apache.hadoop.hive.ql.plan.MergeJoinWork;
 import org.apache.hadoop.hive.ql.plan.ReduceWork;
 import org.apache.hadoop.hive.ql.plan.TezEdgeProperty;
 import org.apache.hadoop.hive.ql.plan.TezEdgeProperty.EdgeType;
 import org.apache.hadoop.hive.ql.plan.TezWork;
+import org.apache.hadoop.hive.ql.plan.UnionWork;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.security.Credentials;
@@ -230,6 +237,50 @@ public class TestDagUtils {
     Assert.assertEquals(0, pluginConf.getFloat(ShuffleVertexManager.TEZ_SHUFFLE_VERTEX_MANAGER_MAX_SRC_FRACTION, -1), 0);
   }
 
+  /**
+   * A GROUP BY over an unsorted shuffle aggregates whatever partitions a task reads, so an auto-reduced one auto-reduces
+   * over its unsorted edge, vectorized or not, from one vertex or a union of them; other reducers of an unsorted edge
+   * do not.
+   */
+  @Test
+  public void testUnsortedGroupByEdgeAutoReduces() throws Exception {
+    for (boolean vectorized : new boolean[] {false, true}) {
+      for (boolean union : new boolean[] {false, true}) {
+        String message = "vectorized " + vectorized + ", union " + union;
+        Assert.assertTrue(message, autoParallel(groupByWork(true, vectorized), union));
+        Assert.assertFalse(message, autoParallel(groupByWork(false, vectorized), union));
+      }
+    }
+  }
+
+  private static ReduceWork groupByWork(boolean unsortedInput, boolean vectorized) {
+    GroupByDesc desc = new GroupByDesc();
+    desc.setUnsortedInput(unsortedInput);
+    CompilationOpContext ctx = new CompilationOpContext();
+    Operator<GroupByDesc> groupBy = vectorized ? new VectorGroupByOperator(ctx) : OperatorFactory.get(ctx, desc);
+    groupBy.setConf(desc);
+    ReduceWork work = new ReduceWork("Reducer 2");
+    work.setReducer(groupBy);
+    work.setAutoReduceParallelism(true);
+    work.setMinReduceTasks(1);
+    return work;
+  }
+
+  /** Whether the work's vertex auto-reduces, its input an unsorted edge from one vertex or from a union. */
+  private static boolean autoParallel(ReduceWork work, boolean union) throws Exception {
+    TezWork tezWork = new TezWork("q");
+    tezWork.add(work);
+    BaseWork input = union ? new UnionWork("Union 3") : new ReduceWork("Reducer 1");
+    tezWork.add(input);
+    tezWork.connect(input, work, new TezEdgeProperty(EdgeType.CUSTOM_SIMPLE_EDGE));
+    Vertex vertex = mock(Vertex.class);
+    DagUtils.getInstance().setupVertexManager(new JobConf(), vertex, work, tezWork);
+    ArgumentCaptor<VertexManagerPluginDescriptor> manager = ArgumentCaptor.forClass(VertexManagerPluginDescriptor.class);
+    verify(vertex, atMost(1)).setVertexManagerPlugin(manager.capture());
+    return !manager.getAllValues().isEmpty() && TezUtils.createConfFromUserPayload(manager.getValue().getUserPayload())
+        .getBoolean(ShuffleVertexManager.TEZ_SHUFFLE_VERTEX_MANAGER_ENABLE_AUTO_PARALLEL, false);
+  }
+
   /** A partitioned input of a work that waits for its sources keeps Tez's default slow start. */
   @Test
   public void testSlowStartKeepsTheDefaultVertexManager() throws Exception {
@@ -250,8 +301,7 @@ public class TestDagUtils {
    */
   @Test
   public void testPartitionedInputsDoNotAutoReduce() throws Exception {
-    ReduceWork work = new ReduceWork("Reducer 2");
-    work.setAutoReduceParallelism(true);
+    ReduceWork work = groupByWork(false, false);
     TezWork tezWork = new TezWork("q");
     tezWork.add(work);
     connect(tezWork, work, EdgeType.CUSTOM_SIMPLE_EDGE, EdgeType.CUSTOM_SIMPLE_EDGE);

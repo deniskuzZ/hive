@@ -274,6 +274,13 @@ final class VectorGroupByBytesKeyTable {
   }
 
   /**
+   * Returns the hash of the key of an entry, 0 for the NULL entry.
+   */
+  int hash(int entry) {
+    return entry == nullEntry ? 0 : (int) (entryWords[ENTRY_WORDS * entry + 2] >>> 32);
+  }
+
+  /**
    * Sets the key of the entry at the given row of the column.
    */
   void writeKey(int entry, BytesColumnVector column, int row) {

@@ -1818,6 +1818,11 @@ public class HiveConf extends Configuration {
     AGGR_JOIN_TRANSPOSE("hive.transpose.aggr.join", false, "push aggregates through join"),
     AGGR_JOIN_TRANSPOSE_UNIQUE("hive.transpose.aggr.join.unique", true, "push aggregates through join(s) in "
         + "case data is regrouped on a previously unique column"),
+    GROUPBY_UNSORTED_SHUFFLE("hive.optimize.groupby.unsorted.shuffle", false,
+        "Whether a reduce-side GROUP BY of SUM, COUNT, MIN and MAX whose reducer does not rely on key order reads\n"
+        + "an unsorted, hash partitioned shuffle and aggregates in a hash table, instead of sorting the shuffle and\n"
+        + "merging runs. The hash table spills key-sorted runs under memory pressure and merges them at close; a\n"
+        + "reducer that does not vectorize reads the sorted shuffle."),
     SEMIJOIN_CONVERSION("hive.optimize.semijoin.conversion", true, "convert group by followed by inner equi join into semijoin"),
     HIVE_COLUMN_ALIGNMENT("hive.order.columnalignment", true, "Flag to control whether we want to try to align" +
         "columns in operators such as Aggregate or Join so that we try to reduce the number of shuffling stages"),

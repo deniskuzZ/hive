@@ -64,6 +64,8 @@ public class GroupByDesc extends AbstractOperatorDesc {
 
   // no hash aggregations for group by
   private boolean bucketGroup;
+  // reduce-side aggregation of an unsorted shuffle: a hash aggregation holding every group of its partition
+  private boolean unsortedInput;
 
   private List<ExprNodeDesc> keys;
   private List<Long> listGroupingSets;
@@ -272,6 +274,15 @@ public class GroupByDesc extends AbstractOperatorDesc {
     this.bucketGroup = bucketGroup;
   }
 
+  @Explain(displayName = "unsortedInput", displayOnlyOnTrue = true)
+  public boolean isUnsortedInput() {
+    return unsortedInput;
+  }
+
+  public void setUnsortedInput(boolean unsortedInput) {
+    this.unsortedInput = unsortedInput;
+  }
+
   /**
    * Checks if this grouping is like distinct, which means that all non-distinct grouping
    * columns behave like they were distinct - for example min and max operators.
@@ -359,10 +370,12 @@ public class GroupByDesc extends AbstractOperatorDesc {
     aggregators.addAll(this.aggregators);
     List<Long> listGroupingSets = new ArrayList<>();
     listGroupingSets.addAll(this.listGroupingSets);
-    return new GroupByDesc(this.mode, outputColumnNames, keys, aggregators,
+    GroupByDesc clone = new GroupByDesc(this.mode, outputColumnNames, keys, aggregators,
         this.groupByMemoryUsage, this.memoryThreshold, this.minReductionHashAggr, this.minReductionHashAggrLowerBound,
         this.hashAggrFlushPercent, listGroupingSets, this.groupingSetsPresent,
         this.groupingSetPosition, this.isDistinct);
+    clone.setUnsortedInput(unsortedInput);
+    return clone;
   }
 
   public class GroupByOperatorExplainVectorization extends OperatorExplainVectorization {

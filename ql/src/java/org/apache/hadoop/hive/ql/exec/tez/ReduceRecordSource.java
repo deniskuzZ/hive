@@ -111,6 +111,9 @@ public class ReduceRecordSource implements RecordSource {
 
   private boolean handleGroupKey;
 
+  // an unordered input has no key groups: its rows share batches across keys
+  private boolean unordered;
+
   private ObjectInspector valueObjectInspector;
 
   private final PerfLogger perfLogger = SessionState.getPerfLogger();
@@ -146,6 +149,7 @@ public class ReduceRecordSource implements RecordSource {
     this.keyTableDesc = keyTableDesc;
     if (reader instanceof KeyValueReader) {
       this.reader = new KeyValuesFromKeyValue((KeyValueReader) reader);
+      this.unordered = true;
     } else {
       this.reader = new KeyValuesFromKeyValues((KeyValuesReader) reader);
     }
@@ -392,6 +396,9 @@ public class ReduceRecordSource implements RecordSource {
 
   private boolean pushRecordVector() {
     try {
+      if (unordered) {
+        return processVectorRecords();
+      }
       if (!reader.next()) {
         return false;
       }
@@ -411,6 +418,48 @@ public class ReduceRecordSource implements RecordSource {
         throw new RuntimeException(e);
       }
     }
+  }
+
+  /**
+   * Fills a batch with the rows of an unordered input, each with its own key, and forwards it. Returns false once
+   * the input is exhausted.
+   */
+  private boolean processVectorRecords() throws HiveException, IOException {
+    if (reducer.batchNeedsClone()) {
+      batch = batchContext.createVectorizedRowBatch();
+    }
+    Preconditions.checkState(batch.size == 0);
+    final int maxSize =
+        (vectorizedTestingReducerBatchSize > 0 ?
+            Math.min(vectorizedTestingReducerBatchSize, batch.getMaxSize()) :
+            batch.getMaxSize());
+    int rowIdx = 0;
+    int batchBytes = 0;
+    // check the room before advancing the reader: a record read is a record added
+    boolean more = true;
+    while (rowIdx < maxSize && batchBytes < BATCH_BYTES && (more = reader.next())) {
+      BytesWritable keyWritable = (BytesWritable) reader.getCurrentKey();
+      for (Object value : reader.getCurrentValues()) {
+        keyBinarySortableDeserializeToRow.setBytes(keyWritable.getBytes(), 0, keyWritable.getLength());
+        keyBinarySortableDeserializeToRow.deserialize(batch, rowIdx);
+        batchBytes += keyWritable.getLength();
+        if (valueLazyBinaryDeserializeToRow != null) {
+          BytesWritable valueWritable = (BytesWritable) value;
+          valueLazyBinaryDeserializeToRow.setBytes(valueWritable.getBytes(), 0, valueWritable.getLength());
+          valueLazyBinaryDeserializeToRow.deserialize(batch, rowIdx);
+          batchBytes += valueWritable.getLength();
+        }
+        rowIdx++;
+      }
+    }
+    if (rowIdx > 0) {
+      batch.size = rowIdx;
+      reducer.process(batch, tag);
+      if (!reducer.batchNeedsClone()) {
+        batch.reset();
+      }
+    }
+    return more;
   }
 
   /**
