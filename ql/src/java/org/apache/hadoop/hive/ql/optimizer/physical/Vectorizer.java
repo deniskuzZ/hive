@@ -2810,7 +2810,8 @@ public class Vectorizer implements PhysicalPlanResolver {
      */
     boolean hasKeys = (desc.getKeys().size() > 0);
 
-    ProcessingMode processingMode =
+    // an unsorted input has no key groups: the merge of the partial results is a hash aggregation
+    ProcessingMode processingMode = desc.isUnsortedInput() ? ProcessingMode.HASH :
         VectorGroupByDesc.groupByDescModeToVectorProcessingMode(desc.getMode(), hasKeys);
     if (desc.isGroupingSetsPresent() &&
         (processingMode != ProcessingMode.HASH && processingMode != ProcessingMode.STREAMING)) {

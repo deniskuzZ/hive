@@ -47,6 +47,7 @@ import org.apache.hadoop.hive.ql.exec.KeyWrapper;
 import org.apache.hadoop.hive.ql.exec.Operator;
 import org.apache.hadoop.hive.ql.exec.Utilities;
 import org.apache.hadoop.hive.ql.exec.vector.expressions.ConstantVectorExpression;
+import org.apache.hadoop.hive.ql.exec.vector.expressions.IdentityExpression;
 import org.apache.hadoop.hive.ql.exec.vector.expressions.VectorExpression;
 import org.apache.hadoop.hive.ql.exec.vector.expressions.VectorExpressionWriter;
 import org.apache.hadoop.hive.ql.exec.vector.expressions.VectorExpressionWriterFactory;
@@ -107,6 +108,17 @@ public class VectorGroupByOperator extends Operator<GroupByDesc>
 
   private TypeInfo[] outputTypeInfos;
   private DataTypePhysicalVariation[] outputDataTypePhysicalVariations;
+
+  // the sorted runs of a hash aggregation of an unsorted input, which holds every group of its partition: groups are
+  // spilled as they are output (their final result is their partial result) and merged by key at close
+  private transient VectorGroupBySpill spill;
+  private transient boolean spilling;
+  // while spilling, the key hash of each row of the output batch
+  private transient int[] outputHashes;
+  // a batch of the input layout, and its key and partial result columns, for the merge of the runs
+  private transient VectorizedRowBatch mergeBatch;
+  private transient int[] mergeKeyColumns;
+  private transient int[] mergeValueColumns;
 
   // Create a new outgoing vectorization context because column name map will change.
   private VectorizationContext vOutContext = null;
@@ -222,8 +234,8 @@ public class VectorGroupByOperator extends Operator<GroupByDesc>
         }
       }
 
-      if (this instanceof ProcessingModeHashAggregate) {
-        // Check if we should turn into streaming mode
+      // Check if we should turn into streaming mode; a final hash aggregation holds every group
+      if (this instanceof ProcessingModeHashAggregate && !conf.isUnsortedInput()) {
         ((ProcessingModeHashAggregate)this).checkHashModeEfficiency();
       }
     }
@@ -490,21 +502,25 @@ public class VectorGroupByOperator extends Operator<GroupByDesc>
       //Flush if memory limits were reached
       // We keep flushing until the memory is under threshold
       int preFlushEntriesCount = numEntriesHashTable;
-      while (shouldFlush(batch)) {
-        flush(false);
-
-        if(gcCanary.get() == null) {
-          gcCanaryFlushes++;
-          gcCanary = new SoftReference<Object>(new Object());
+      if (spill != null) {
+        // an unsorted input: its groups are complete only at close, so the whole table goes to a sorted run
+        if (shouldSpill(batch)) {
+          spillHashTable();
+          renewGcCanary();
         }
+      } else {
+        while (shouldFlush(batch)) {
+          flush(false);
+          renewGcCanary();
 
-        //Validate that some progress is being made
-        if (!(numEntriesHashTable < preFlushEntriesCount)) {
-          LOG.debug("Flush did not progress: {} entries before, {} entries after", preFlushEntriesCount,
-              numEntriesHashTable);
-          break;
+          //Validate that some progress is being made
+          if (!(numEntriesHashTable < preFlushEntriesCount)) {
+            LOG.debug("Flush did not progress: {} entries before, {} entries after", preFlushEntriesCount,
+                numEntriesHashTable);
+            break;
+          }
+          preFlushEntriesCount = numEntriesHashTable;
         }
-        preFlushEntriesCount = numEntriesHashTable;
       }
 
       if (sumBatchSize == 0 && 0 != batch.size) {
@@ -539,7 +555,14 @@ public class VectorGroupByOperator extends Operator<GroupByDesc>
       if (reusableKeyWrapperBuffer != null) {
         reusableKeyWrapperBuffer.clear();
       }
-      if (!aborted) {
+      if (aborted) {
+        if (spill != null) {
+          spill.discard();
+        }
+      } else if (spill != null && spill.hasRuns()) {
+        spillHashTable();
+        mergeSpilledRuns();
+      } else {
         flush(true);
       }
       if (!aborted && sumBatchSize == 0 && GroupByOperator.shouldEmitSummaryRow(conf)) {
@@ -755,6 +778,30 @@ public class VectorGroupByOperator extends Operator<GroupByDesc>
     }
 
     /**
+     * Emits every entry in the order of the hash of its key, the order of a spilled run, and empties the table.
+     */
+    void spillAll() throws HiveException {
+      @SuppressWarnings("unchecked")
+      final Map.Entry<KeyWrapper, VectorAggregationBufferRow>[] entries =
+          mapKeysAggregationBuffers.entrySet().toArray(new Map.Entry[0]);
+      final long[] order = new long[entries.length];
+      for (int i = 0; i < entries.length; i++) {
+        order[i] = (long) entries[i].getKey().hashCode() << 32 | i;
+      }
+      Arrays.sort(order);
+      for (long hashAndIndex : order) {
+        final Map.Entry<KeyWrapper, VectorAggregationBufferRow> pair = entries[(int) hashAndIndex];
+        outputHashes[outputBatch.size] = (int) (hashAndIndex >> 32);
+        finishAggregators(pair.getValue(), false);
+        writeSingleRow((VectorHashKeyWrapperBase) pair.getKey(), pair.getValue());
+      }
+      mapKeysAggregationBuffers.clear();
+      totalAccessCount = 0;
+      numEntriesHashTable = 0;
+      numFlushedOutEntriesBeforeFinalFlush = 0;
+    }
+
+    /**
      * Logs the start of a flush at debug level.
      */
     void logFlush(int entriesToFlush, boolean all) {
@@ -770,6 +817,30 @@ public class VectorGroupByOperator extends Operator<GroupByDesc>
           LOG.debug(String.format("GC canary caused %d flushes", gcCanaryFlushes));
         }
       }
+    }
+
+    private void renewGcCanary() {
+      if (gcCanary.get() == null) {
+        gcCanaryFlushes++;
+        gcCanary = new SoftReference<Object>(new Object());
+      }
+    }
+
+    /**
+     * Returns true if the hash table of an unsorted input outgrew the hash table memory or the heap runs short. A spill
+     * writes and merges the whole table, so the entry count rule that bounds a partial aggregation's flushes does not
+     * apply; the hash table memory leaves the rest of the task's memory to its other operators, as for any hash
+     * aggregation.
+     */
+    private boolean shouldSpill(VectorizedRowBatch batch) {
+      if (batch.size == 0) {
+        return false;
+      }
+      if (numEntriesSinceCheck >= this.checkInterval) {
+        updateAvgVariableSize(batch);
+        numEntriesSinceCheck = 0;
+      }
+      return getHashTableMemorySize() > maxHashTblMemory || gcCanary.get() == null;
     }
 
     /**
@@ -859,11 +930,11 @@ public class VectorGroupByOperator extends Operator<GroupByDesc>
   abstract class ProcessingModeHashAggregateKeyTable extends ProcessingModeHashAggregate {
 
     @VisibleForTesting
-    final VectorGroupByBytesKeyTable keyTable = new VectorGroupByBytesKeyTable();
+    VectorGroupByBytesKeyTable keyTable = new VectorGroupByBytesKeyTable();
 
     // The aggregation state of the entries; null when kept in aggregation buffers.
     @VisibleForTesting
-    final VectorGroupByAggregationColumns aggregationColumns =
+    VectorGroupByAggregationColumns aggregationColumns =
         VectorGroupByAggregationColumns.create(aggregators);
 
     // Entries whose aggregation columns are initialized.
@@ -1002,6 +1073,33 @@ public class VectorGroupByOperator extends Operator<GroupByDesc>
         keyTable.compactIfSparse(aggregationColumns);
         numFlushedOutEntriesBeforeFinalFlush += entriesFlushed;
       }
+      initializedEntries = keyTable.end();
+      entriesChanged();
+    }
+
+    @Override
+    void spillAll() throws HiveException {
+      final int end = keyTable.end();
+      final long[] order = new long[end];
+      int count = 0;
+      for (int entry = 0; entry < end; entry++) {
+        if (!keyTable.isRemoved(entry)) {
+          order[count++] = (long) keyTable.hash(entry) << 32 | entry;
+        }
+      }
+      Arrays.sort(order, 0, count);
+      for (int i = 0; i < count; i++) {
+        outputHashes[outputBatch.size] = (int) (order[i] >> 32);
+        writeEntryRow((int) order[i]);
+      }
+      // A table cleared in place keeps its capacity, which counts as hash table memory: rebuilt, it frees the memory.
+      keyTable = new VectorGroupByBytesKeyTable();
+      if (aggregationColumns != null) {
+        aggregationColumns = VectorGroupByAggregationColumns.create(aggregators);
+      }
+      totalAccessCount = 0;
+      numEntriesHashTable = 0;
+      numFlushedOutEntriesBeforeFinalFlush = 0;
       initializedEntries = keyTable.end();
       entriesChanged();
     }
@@ -1687,6 +1785,63 @@ public class VectorGroupByOperator extends Operator<GroupByDesc>
           vectorDesc.getProcessingMode().name());
     }
     processingMode.initialize(hconf);
+    if (conf.isUnsortedInput() && processingMode instanceof ProcessingModeHashAggregate) {
+      initializeSpill(hconf);
+    }
+  }
+
+  /**
+   * Sets up the spill of a hash aggregation of an unsorted input: runs of the output rows, merged back into the
+   * columns the operator reads its keys and partial results from (a merge GROUP BY reads them as columns, and its
+   * spillable aggregations output their partial result).
+   */
+  private void initializeSpill(Configuration hconf) throws HiveException {
+    VectorExpression[] inputs = new VectorExpression[aggregators.length];
+    for (int i = 0; i < aggregators.length; i++) {
+      inputs[i] = aggregators[i].getInputExpression();
+    }
+    mergeKeyColumns = inputColumns(keyExpressions);
+    mergeValueColumns = inputColumns(inputs);
+    VectorExpression[] columns = ArrayUtils.addAll(keyExpressions, inputs);
+    TypeInfo[] types = new TypeInfo[columns.length];
+    DataTypePhysicalVariation[] variations = new DataTypePhysicalVariation[columns.length];
+    int maxColumn = 0;
+    for (int i = 0; i < columns.length; i++) {
+      types[i] = outputTypeInfos[i];
+      variations[i] = outputDataTypePhysicalVariations[i];
+      if (!types[i].equals(columns[i].getOutputTypeInfo())
+          || variations[i] != columns[i].getOutputDataTypePhysicalVariation()) {
+        throw new HiveException("An unsorted input GROUP BY outputs its partial results: " + columns[i]);
+      }
+      maxColumn = Math.max(maxColumn, columns[i].getOutputColumnNum());
+    }
+    spill = new VectorGroupBySpill(hconf, Arrays.copyOf(types, outputKeyLength),
+        Arrays.copyOf(variations, outputKeyLength), Arrays.copyOfRange(types, outputKeyLength, types.length),
+        Arrays.copyOfRange(variations, outputKeyLength, variations.length));
+    outputHashes = new int[VectorizedRowBatch.DEFAULT_SIZE];
+    mergeBatch = new VectorizedRowBatch(maxColumn + 1);
+    for (int i = 0; i < columns.length; i++) {
+      mergeBatch.cols[columns[i].getOutputColumnNum()] =
+          VectorizedBatchUtil.createColumnVector(types[i], variations[i]);
+    }
+    // the merge reads no other column
+    for (int c = 0; c <= maxColumn; c++) {
+      if (mergeBatch.cols[c] == null) {
+        mergeBatch.cols[c] = new LongColumnVector(0);
+      }
+    }
+  }
+
+  private static int[] inputColumns(VectorExpression[] expressions) throws HiveException {
+    int[] columns = new int[expressions.length];
+    for (int i = 0; i < expressions.length; i++) {
+      if (!(expressions[i] instanceof IdentityExpression)) {
+        throw new HiveException("An unsorted input GROUP BY reads its keys and partial results as columns: "
+            + expressions[i]);
+      }
+      columns[i] = expressions[i].getOutputColumnNum();
+    }
+    return columns;
   }
 
   /**
@@ -2037,8 +2192,40 @@ public class VectorGroupByOperator extends Operator<GroupByDesc>
   }
 
   private void flushOutput() throws HiveException {
-    vectorForward(outputBatch);
+    if (spilling) {
+      spill.add(outputBatch, outputHashes);
+    } else {
+      vectorForward(outputBatch);
+    }
     outputBatch.reset();
+  }
+
+  /**
+   * Writes every group of the hash table to a run in key hash order and empties the table.
+   */
+  private void spillHashTable() throws HiveException {
+    spill.startRun();
+    spilling = true;
+    try {
+      ((ProcessingModeHashAggregate) processingMode).spillAll();
+      if (outputBatch.size > 0) {
+        flushOutput();
+      }
+    } finally {
+      spilling = false;
+    }
+    spill.endRun();
+  }
+
+  /**
+   * Merges the spilled runs by key through a streaming aggregation with the same merge aggregators, which outputs the
+   * final results.
+   */
+  private void mergeSpilledRuns() throws HiveException {
+    ProcessingModeBase streaming = new ProcessingModeStreaming();
+    streaming.initialize(null);
+    spill.merge(mergeBatch, mergeKeyColumns, mergeValueColumns, streaming::processBatch);
+    streaming.close(false);
   }
 
   @Override

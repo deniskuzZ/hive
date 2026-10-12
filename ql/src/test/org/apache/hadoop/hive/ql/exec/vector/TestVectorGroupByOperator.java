@@ -31,6 +31,8 @@ import static org.mockito.Mockito.verify;
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryMXBean;
 import java.lang.reflect.Constructor;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
 import java.util.ArrayList;
@@ -4949,5 +4951,199 @@ public class TestVectorGroupByOperator {
       System.arraycopy(selected, 0, batch.selected, 0, selected.length);
       batch.size = selected.length;
     }
+  }
+  /**
+   * A GROUP BY over an unsorted input holds every group of its partition, so it spills only when its table outgrows
+   * the hash table memory, not on the entry count rule that bounds a partial aggregation's flushes.
+   */
+  @Test
+  public void testUnsortedInputSpillsOnlyWhenHashTableMemoryRunsShort() throws Exception {
+    int groups = 20_000;
+    long tableSize = hashTableMemorySize(unsortedInputGroupBy(Long.MAX_VALUE / 4, groups, 1, null));
+    hconf.setIntVar(HiveConf.ConfVars.HIVE_VECTORIZATION_GROUPBY_MAXENTRIES, 100);
+    try {
+      // the hash table memory (0.5 of the task's) at 1.5 times the table: above the entry count rule's 30% of it
+      VectorGroupByOperator vgo = unsortedInputGroupBy(tableSize * 3, groups, 1, null);
+      Assert.assertFalse("spilled below the hash table memory", spillHasRuns(vgo));
+    } finally {
+      hconf.setIntVar(HiveConf.ConfVars.HIVE_VECTORIZATION_GROUPBY_MAXENTRIES, 1000000);
+    }
+  }
+
+  /**
+   * A table that outgrows the task's memory spills runs, and the merge combines a key's partial results across them.
+   */
+  @Test
+  public void testUnsortedInputSpillsAndMergesRuns() throws Exception {
+    int groups = 20_000;
+    int passes = 3;
+    long tableSize = hashTableMemorySize(unsortedInputGroupBy(Long.MAX_VALUE / 4, groups, 1, null));
+    Map<Long, Long> sum = new HashMap<>();
+    VectorGroupByOperator vgo = unsortedInputGroupBy(tableSize / 4, groups, passes, sum);
+    Assert.assertTrue("did not spill", spillHasRuns(vgo));
+    // a spill frees the table, so a run holds the groups of several batches, not one batch per run
+    int batches = groups * passes / 1000;
+    int runs = spillRunCount(vgo);
+    Assert.assertTrue(runs + " runs of " + batches + " batches", runs <= batches / 2);
+    vgo.close(false);
+    Assert.assertEquals(groups, sum.size());
+    for (Map.Entry<Long, Long> e : sum.entrySet()) {
+      // key k gets the values k, k + groups, ... over the passes
+      long k = e.getKey();
+      Assert.assertEquals("sum of key " + k, passes * k + (long) groups * passes * (passes - 1) / 2, (long) e.getValue());
+    }
+  }
+
+  /**
+   * Keys of one hash spilled in several runs are merged in key order, so each key's partial results are adjacent and
+   * the key comes out once: pairs of distinct keys with the same hash, among keys that make the table spill.
+   */
+  @Test
+  public void testUnsortedInputMergesCollidingKeysAcrossRuns() throws Exception {
+    // whole batches of 1000 rows, so every pass feeds each key once
+    int pairs = 20, regular = 20_000 - pairs, passes = 3;
+    long[] keys = new long[regular + pairs];
+    for (int i = 0; i < regular; i++) {
+      keys[i] = i + 1;
+    }
+    Map<Integer, Long> keysByHash = new HashMap<>();
+    ByteBuffer word = ByteBuffer.allocate(Long.BYTES).order(ByteOrder.LITTLE_ENDIAN);
+    for (long key = 1L << 40, found = 0; found < pairs; key++) {
+      // a LONG key hashes as its eight little-endian bytes; a paired key leaves the map, so none is used twice
+      int hash = VectorGroupByBytesKeyTable.hash(word.putLong(0, key).array(), 0, Long.BYTES);
+      Long other = keysByHash.remove(hash);
+      if (other == null) {
+        keysByHash.put(hash, key);
+      } else {
+        // one key of the pair among the first batches, the other in the last, so they are added to different runs
+        keys[(int) found * (regular / pairs)] = other;
+        keys[regular + (int) found] = key;
+        found++;
+      }
+    }
+    long tableSize = hashTableMemorySize(unsortedInputGroupBy(Long.MAX_VALUE / 4, keys, 1, null));
+    Map<Long, Long> sum = new HashMap<>();
+    VectorGroupByOperator vgo = unsortedInputGroupBy(tableSize / 4, keys, passes, sum);
+    assertTrue("did not spill", spillRunCount(vgo) > 1);
+    vgo.close(false);
+    Assert.assertEquals(keys.length, sum.size());
+    for (int j = 0; j < keys.length; j++) {
+      // the key at position j gets the values j + 1, j + 1 + keys.length, ... over the passes
+      Assert.assertEquals("sum of key " + keys[j],
+          passes * (j + 1L) + (long) keys.length * passes * (passes - 1) / 2, (long) sum.get(keys[j]));
+    }
+  }
+
+  /**
+   * A GROUP BY of sum(Value) by Key over an unsorted input, in LLAP with the given task memory, fed passes rounds of the
+   * keys 1..groups, the values counting up across the rounds; its output goes to sums when given.
+   */
+  private VectorGroupByOperator unsortedInputGroupBy(long taskMemory, int groups, int passes, Map<Long, Long> sums)
+      throws Exception {
+    long[] keys = new long[groups];
+    Arrays.setAll(keys, i -> i + 1);
+    return unsortedInputGroupBy(taskMemory, keys, passes, sums);
+  }
+
+  /** The same, fed passes rounds of the given keys. */
+  private VectorGroupByOperator unsortedInputGroupBy(long taskMemory, long[] groupKeys, int passes,
+      Map<Long, Long> sums)
+      throws Exception {
+    VectorizationContext ctx = new VectorizationContext("name", Arrays.asList("Key", "Value"),
+        Arrays.asList(TypeInfoFactory.longTypeInfo, TypeInfoFactory.longTypeInfo),
+        Arrays.asList(DataTypePhysicalVariation.NONE, DataTypePhysicalVariation.NONE), null);
+    Pair<GroupByDesc, VectorGroupByDesc> pair = buildKeyGroupByDesc(ctx, "sum", "Value", TypeInfoFactory.longTypeInfo,
+        new String[] {"Key"}, new TypeInfo[] {TypeInfoFactory.longTypeInfo});
+    GroupByDesc desc = pair.left;
+    desc.setGroupByMemoryUsage(0.5f);
+    desc.setUnsortedInput(true);
+    CompilationOpContext cCtx = new CompilationOpContext();
+    Operator<? extends OperatorDesc> groupByOp = OperatorFactory.get(cCtx, desc);
+    VectorGroupByOperator vgo = (VectorGroupByOperator) Vectorizer.vectorizeGroupByOperator(groupByOp, ctx, pair.right);
+    FakeCaptureVectorToRowOutputOperator out = FakeCaptureVectorToRowOutputOperator.addCaptureOutputChild(cCtx, vgo);
+    if (sums != null) {
+      out.setOutputInspector((row, tag) -> {
+        Object[] fields = (Object[]) row;
+        sums.put(((LongWritable) fields[0]).get(), ((LongWritable) fields[1]).get());
+        out.getCapturedRows().clear();
+      });
+    }
+    LlapProxy.setDaemon(true);
+    try {
+      vgo.getConf().setMaxMemoryAvailable(taskMemory);
+      vgo.initialize(hconf, null);
+    } finally {
+      LlapProxy.setDaemon(false);
+    }
+    Iterable<Object> keys = () -> new Iterator<Object>() {
+      private long v = 0;
+      @Override
+      public boolean hasNext() {
+        return true;
+      }
+      @Override
+      public Object next() {
+        return groupKeys[(int) (v++ % groupKeys.length)];
+      }
+    };
+    Iterable<Object> values = () -> new Iterator<Object>() {
+      private long v = 0;
+      @Override
+      public boolean hasNext() {
+        return true;
+      }
+      @Override
+      public Object next() {
+        return ++v;
+      }
+    };
+    @SuppressWarnings("unchecked")
+    FakeVectorRowBatchFromObjectIterables data =
+        new FakeVectorRowBatchFromObjectIterables(1000, new String[] {"long", "long"}, keys, values);
+    long fed = 0;
+    for (VectorizedRowBatch unit : data) {
+      vgo.process(unit, 0);
+      fed += unit.size;
+      if (fed >= (long) groupKeys.length * passes) {
+        break;
+      }
+    }
+    return vgo;
+  }
+
+  private static boolean spillHasRuns(VectorGroupByOperator vgo) throws Exception {
+    Object spill = field(vgo, "spill");
+    return (Boolean) spill.getClass().getMethod("hasRuns").invoke(spill);
+  }
+
+  private static int spillRunCount(VectorGroupByOperator vgo) throws Exception {
+    return ((List<?>) field(field(vgo, "spill"), "runs")).size();
+  }
+
+  private static long hashTableMemorySize(VectorGroupByOperator vgo) throws Exception {
+    Object mode = field(vgo, "processingMode");
+    for (Class<?> c = mode.getClass(); c != null; c = c.getSuperclass()) {
+      try {
+        java.lang.reflect.Method m = c.getDeclaredMethod("getHashTableMemorySize");
+        m.setAccessible(true);
+        return (Long) m.invoke(mode);
+      } catch (NoSuchMethodException e) {
+        // up
+      }
+    }
+    throw new NoSuchMethodException("getHashTableMemorySize");
+  }
+
+  private static Object field(Object o, String name) throws Exception {
+    for (Class<?> c = o.getClass(); c != null; c = c.getSuperclass()) {
+      try {
+        java.lang.reflect.Field f = c.getDeclaredField(name);
+        f.setAccessible(true);
+        return f.get(o);
+      } catch (NoSuchFieldException e) {
+        // up
+      }
+    }
+    throw new NoSuchFieldException(name);
   }
 }

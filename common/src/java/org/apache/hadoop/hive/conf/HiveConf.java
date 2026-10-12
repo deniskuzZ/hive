@@ -1830,6 +1830,11 @@ public class HiveConf extends Configuration {
         "A partial aggregate is not pushed below a join estimated to reduce the pushed input by more than this\n"
         + "factor: a map join has no dynamic filter on its probe side, so the pushed aggregate would process every\n"
         + "row the join discards. 0 disables the check."),
+    GROUPBY_UNSORTED_SHUFFLE("hive.optimize.groupby.unsorted.shuffle", false,
+        "Whether a reduce-side GROUP BY of SUM, COUNT, MIN and MAX whose reducer does not rely on key order reads\n"
+        + "an unsorted, hash partitioned shuffle and aggregates in a hash table, instead of sorting the shuffle and\n"
+        + "merging runs. The hash table spills key-sorted runs under memory pressure and merges them at close; a\n"
+        + "reducer that does not vectorize reads the sorted shuffle."),
     SEMIJOIN_CONVERSION("hive.optimize.semijoin.conversion", true, "convert group by followed by inner equi join into semijoin"),
     HIVE_COLUMN_ALIGNMENT("hive.order.columnalignment", true, "Flag to control whether we want to try to align" +
         "columns in operators such as Aggregate or Join so that we try to reduce the number of shuffling stages"),
