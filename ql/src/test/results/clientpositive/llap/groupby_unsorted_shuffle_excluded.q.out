@@ -1,0 +1,2166 @@
+PREHOOK: query: create table gux (k1 int, k2 int, s string, v int)
+PREHOOK: type: CREATETABLE
+PREHOOK: Output: database:default
+PREHOOK: Output: default@gux
+POSTHOOK: query: create table gux (k1 int, k2 int, s string, v int)
+POSTHOOK: type: CREATETABLE
+POSTHOOK: Output: database:default
+POSTHOOK: Output: default@gux
+PREHOOK: query: insert into gux select pos % 17, pos % 23, concat('s', pos % 31), pos % 7
+from (select posexplode(split(space(999), ' '))) t
+PREHOOK: type: QUERY
+PREHOOK: Input: _dummy_database@_dummy_table
+PREHOOK: Output: default@gux
+POSTHOOK: query: insert into gux select pos % 17, pos % 23, concat('s', pos % 31), pos % 7
+from (select posexplode(split(space(999), ' '))) t
+POSTHOOK: type: QUERY
+POSTHOOK: Input: _dummy_database@_dummy_table
+POSTHOOK: Output: default@gux
+POSTHOOK: Lineage: gux.k1 SCRIPT []
+POSTHOOK: Lineage: gux.k2 SCRIPT []
+POSTHOOK: Lineage: gux.s SCRIPT []
+POSTHOOK: Lineage: gux.v SCRIPT []
+PREHOOK: query: explain
+select k1, k2, sum(v) from gux group by k1, k2 with rollup order by k1, k2
+PREHOOK: type: QUERY
+PREHOOK: Input: default@gux
+#### A masked pattern was here ####
+POSTHOOK: query: explain
+select k1, k2, sum(v) from gux group by k1, k2 with rollup order by k1, k2
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@gux
+#### A masked pattern was here ####
+STAGE DEPENDENCIES:
+  Stage-1 is a root stage
+  Stage-0 depends on stages: Stage-1
+
+STAGE PLANS:
+  Stage: Stage-1
+    Tez
+#### A masked pattern was here ####
+      Edges:
+        Reducer 2 <- Map 1 (SIMPLE_EDGE)
+        Reducer 3 <- Reducer 2 (SIMPLE_EDGE)
+#### A masked pattern was here ####
+      Vertices:
+        Map 1 
+            Map Operator Tree:
+                TableScan
+                  alias: gux
+                  Statistics: Num rows: 1000 Data size: 12000 Basic stats: COMPLETE Column stats: COMPLETE
+                  Select Operator
+                    expressions: k1 (type: int), k2 (type: int), v (type: int)
+                    outputColumnNames: k1, k2, v
+                    Statistics: Num rows: 1000 Data size: 12000 Basic stats: COMPLETE Column stats: COMPLETE
+                    Group By Operator
+                      aggregations: sum(v)
+                      keys: k1 (type: int), k2 (type: int), 0L (type: bigint)
+                      grouping sets: 0, 1, 3
+                      minReductionHashAggr: 0.906
+                      mode: hash
+                      outputColumnNames: _col0, _col1, _col2, _col3
+                      Statistics: Num rows: 1173 Data size: 28152 Basic stats: COMPLETE Column stats: COMPLETE
+                      Reduce Output Operator
+                        key expressions: _col0 (type: int), _col1 (type: int), _col2 (type: bigint)
+                        null sort order: zzz
+                        sort order: +++
+                        Map-reduce partition columns: _col0 (type: int), _col1 (type: int), _col2 (type: bigint)
+                        Statistics: Num rows: 1173 Data size: 28152 Basic stats: COMPLETE Column stats: COMPLETE
+                        value expressions: _col3 (type: bigint)
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Reducer 2 
+            Execution mode: vectorized, llap
+            Reduce Operator Tree:
+              Group By Operator
+                aggregations: sum(VALUE._col0)
+                keys: KEY._col0 (type: int), KEY._col1 (type: int), KEY._col2 (type: bigint)
+                mode: mergepartial
+                outputColumnNames: _col0, _col1, _col3
+                Statistics: Num rows: 1173 Data size: 28152 Basic stats: COMPLETE Column stats: COMPLETE
+                pruneGroupingSetId: true
+                Select Operator
+                  expressions: _col0 (type: int), _col1 (type: int), _col3 (type: bigint)
+                  outputColumnNames: _col0, _col1, _col2
+                  Statistics: Num rows: 1173 Data size: 18768 Basic stats: COMPLETE Column stats: COMPLETE
+                  Reduce Output Operator
+                    key expressions: _col0 (type: int), _col1 (type: int)
+                    null sort order: zz
+                    sort order: ++
+                    Statistics: Num rows: 1173 Data size: 18768 Basic stats: COMPLETE Column stats: COMPLETE
+                    value expressions: _col2 (type: bigint)
+        Reducer 3 
+            Execution mode: vectorized, llap
+            Reduce Operator Tree:
+              Select Operator
+                expressions: KEY.reducesinkkey0 (type: int), KEY.reducesinkkey1 (type: int), VALUE._col0 (type: bigint)
+                outputColumnNames: _col0, _col1, _col2
+                Statistics: Num rows: 1173 Data size: 18768 Basic stats: COMPLETE Column stats: COMPLETE
+                File Output Operator
+                  compressed: false
+                  Statistics: Num rows: 1173 Data size: 18768 Basic stats: COMPLETE Column stats: COMPLETE
+                  table:
+                      input format: org.apache.hadoop.mapred.SequenceFileInputFormat
+                      output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
+                      serde: org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe
+
+  Stage: Stage-0
+    Fetch Operator
+      limit: -1
+      Processor Tree:
+        ListSink
+
+PREHOOK: query: explain
+select c, k1, max(s) from (select 'constant' c, k1, s from gux) t group by c, k1 order by c, k1
+PREHOOK: type: QUERY
+PREHOOK: Input: default@gux
+#### A masked pattern was here ####
+POSTHOOK: query: explain
+select c, k1, max(s) from (select 'constant' c, k1, s from gux) t group by c, k1 order by c, k1
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@gux
+#### A masked pattern was here ####
+STAGE DEPENDENCIES:
+  Stage-1 is a root stage
+  Stage-0 depends on stages: Stage-1
+
+STAGE PLANS:
+  Stage: Stage-1
+    Tez
+#### A masked pattern was here ####
+      Edges:
+        Reducer 2 <- Map 1 (CUSTOM_SIMPLE_EDGE)
+        Reducer 3 <- Reducer 2 (SIMPLE_EDGE)
+#### A masked pattern was here ####
+      Vertices:
+        Map 1 
+            Map Operator Tree:
+                TableScan
+                  alias: gux
+                  Statistics: Num rows: 1000 Data size: 91000 Basic stats: COMPLETE Column stats: COMPLETE
+                  Select Operator
+                    expressions: k1 (type: int), s (type: string)
+                    outputColumnNames: k1, s
+                    Statistics: Num rows: 1000 Data size: 91000 Basic stats: COMPLETE Column stats: COMPLETE
+                    Group By Operator
+                      aggregations: max(s)
+                      keys: k1 (type: int)
+                      minReductionHashAggr: 0.983
+                      mode: hash
+                      outputColumnNames: _col0, _col1
+                      Statistics: Num rows: 17 Data size: 3196 Basic stats: COMPLETE Column stats: COMPLETE
+                      Reduce Output Operator
+                        key expressions: _col0 (type: int)
+                        null sort order: z
+                        sort order: +
+                        Map-reduce partition columns: _col0 (type: int)
+                        Statistics: Num rows: 17 Data size: 3196 Basic stats: COMPLETE Column stats: COMPLETE
+                        value expressions: _col1 (type: string)
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Reducer 2 
+            Execution mode: vectorized, llap
+            Reduce Operator Tree:
+              Group By Operator
+                aggregations: max(VALUE._col0)
+                keys: KEY._col0 (type: int)
+                mode: mergepartial
+                outputColumnNames: _col0, _col1
+                Statistics: Num rows: 17 Data size: 3196 Basic stats: COMPLETE Column stats: COMPLETE
+                unsortedInput: true
+                Reduce Output Operator
+                  key expressions: _col0 (type: int)
+                  null sort order: z
+                  sort order: +
+                  Statistics: Num rows: 17 Data size: 3196 Basic stats: COMPLETE Column stats: COMPLETE
+                  value expressions: _col1 (type: string)
+        Reducer 3 
+            Execution mode: vectorized, llap
+            Reduce Operator Tree:
+              Select Operator
+                expressions: 'constant' (type: string), KEY.reducesinkkey0 (type: int), VALUE._col0 (type: string)
+                outputColumnNames: _col0, _col1, _col2
+                Statistics: Num rows: 17 Data size: 4760 Basic stats: COMPLETE Column stats: COMPLETE
+                File Output Operator
+                  compressed: false
+                  Statistics: Num rows: 17 Data size: 4760 Basic stats: COMPLETE Column stats: COMPLETE
+                  table:
+                      input format: org.apache.hadoop.mapred.SequenceFileInputFormat
+                      output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
+                      serde: org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe
+
+  Stage: Stage-0
+    Fetch Operator
+      limit: -1
+      Processor Tree:
+        ListSink
+
+PREHOOK: query: explain
+select constant_col, key, max(value) from (select 'constant' as constant_col, key, value from src distribute by constant_col, key sort by constant_col, key, value) a group by constant_col, key order by constant_col, key limit 10
+PREHOOK: type: QUERY
+PREHOOK: Input: default@src
+#### A masked pattern was here ####
+POSTHOOK: query: explain
+select constant_col, key, max(value) from (select 'constant' as constant_col, key, value from src distribute by constant_col, key sort by constant_col, key, value) a group by constant_col, key order by constant_col, key limit 10
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@src
+#### A masked pattern was here ####
+STAGE DEPENDENCIES:
+  Stage-1 is a root stage
+  Stage-0 depends on stages: Stage-1
+
+STAGE PLANS:
+  Stage: Stage-1
+    Tez
+#### A masked pattern was here ####
+      Edges:
+        Reducer 2 <- Map 1 (SIMPLE_EDGE)
+        Reducer 3 <- Reducer 2 (SIMPLE_EDGE)
+        Reducer 4 <- Reducer 3 (SIMPLE_EDGE)
+#### A masked pattern was here ####
+      Vertices:
+        Map 1 
+            Map Operator Tree:
+                TableScan
+                  alias: src
+                  Statistics: Num rows: 500 Data size: 89000 Basic stats: COMPLETE Column stats: COMPLETE
+                  Select Operator
+                    expressions: key (type: string), value (type: string)
+                    outputColumnNames: _col1, _col2
+                    Statistics: Num rows: 500 Data size: 89000 Basic stats: COMPLETE Column stats: COMPLETE
+                    Reduce Output Operator
+                      key expressions: _col1 (type: string), _col2 (type: string)
+                      null sort order: zz
+                      sort order: ++
+                      Map-reduce partition columns: 'constant' (type: string), _col1 (type: string)
+                      Statistics: Num rows: 500 Data size: 89000 Basic stats: COMPLETE Column stats: COMPLETE
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Reducer 2 
+            Execution mode: vectorized, llap
+            Reduce Operator Tree:
+              Select Operator
+                expressions: KEY.reducesinkkey0 (type: string), KEY.reducesinkkey1 (type: string)
+                outputColumnNames: _col1, _col2
+                Statistics: Num rows: 500 Data size: 89000 Basic stats: COMPLETE Column stats: COMPLETE
+                Group By Operator
+                  aggregations: max(_col2)
+                  keys: 'constant' (type: string), _col1 (type: string)
+                  minReductionHashAggr: 0.4
+                  mode: hash
+                  outputColumnNames: _col0, _col1, _col2
+                  Statistics: Num rows: 316 Data size: 114708 Basic stats: COMPLETE Column stats: COMPLETE
+                  Top N Key Operator
+                    sort order: +
+                    keys: _col1 (type: string)
+                    null sort order: z
+                    Statistics: Num rows: 316 Data size: 114708 Basic stats: COMPLETE Column stats: COMPLETE
+                    top n: 10
+                    Reduce Output Operator
+                      key expressions: 'constant' (type: string), _col1 (type: string)
+                      null sort order: zz
+                      sort order: ++
+                      Map-reduce partition columns: 'constant' (type: string), _col1 (type: string)
+                      Statistics: Num rows: 316 Data size: 114708 Basic stats: COMPLETE Column stats: COMPLETE
+                      value expressions: _col2 (type: string)
+        Reducer 3 
+            Execution mode: vectorized, llap
+            Reduce Operator Tree:
+              Group By Operator
+                aggregations: max(VALUE._col0)
+                keys: 'constant' (type: string), KEY._col1 (type: string)
+                mode: mergepartial
+                outputColumnNames: _col0, _col1, _col2
+                Statistics: Num rows: 316 Data size: 114708 Basic stats: COMPLETE Column stats: COMPLETE
+                Top N Key Operator
+                  sort order: +
+                  keys: _col1 (type: string)
+                  null sort order: z
+                  Statistics: Num rows: 316 Data size: 114708 Basic stats: COMPLETE Column stats: COMPLETE
+                  top n: 10
+                  Select Operator
+                    expressions: _col1 (type: string), _col2 (type: string)
+                    outputColumnNames: _col1, _col2
+                    Statistics: Num rows: 316 Data size: 85636 Basic stats: COMPLETE Column stats: COMPLETE
+                    Reduce Output Operator
+                      key expressions: 'constant' (type: string), _col1 (type: string)
+                      null sort order: zz
+                      sort order: ++
+                      Statistics: Num rows: 316 Data size: 85636 Basic stats: COMPLETE Column stats: COMPLETE
+                      value expressions: _col2 (type: string)
+        Reducer 4 
+            Execution mode: vectorized, llap
+            Reduce Operator Tree:
+              Select Operator
+                expressions: 'constant' (type: string), KEY.reducesinkkey1 (type: string), VALUE._col0 (type: string)
+                outputColumnNames: _col0, _col1, _col2
+                Statistics: Num rows: 316 Data size: 114708 Basic stats: COMPLETE Column stats: COMPLETE
+                Limit
+                  Number of rows: 10
+                  Statistics: Num rows: 10 Data size: 3630 Basic stats: COMPLETE Column stats: COMPLETE
+                  File Output Operator
+                    compressed: false
+                    Statistics: Num rows: 10 Data size: 3630 Basic stats: COMPLETE Column stats: COMPLETE
+                    table:
+                        input format: org.apache.hadoop.mapred.SequenceFileInputFormat
+                        output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
+                        serde: org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe
+
+  Stage: Stage-0
+    Fetch Operator
+      limit: 10
+      Processor Tree:
+        ListSink
+
+PREHOOK: query: select k1, k2, sum(v) from gux group by k1, k2 with rollup order by k1, k2
+PREHOOK: type: QUERY
+PREHOOK: Input: default@gux
+#### A masked pattern was here ####
+POSTHOOK: query: select k1, k2, sum(v) from gux group by k1, k2 with rollup order by k1, k2
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@gux
+#### A masked pattern was here ####
+0	0	11
+0	1	1
+0	10	9
+0	11	15
+0	12	6
+0	13	3
+0	14	7
+0	15	15
+0	16	7
+0	17	6
+0	18	7
+0	19	11
+0	2	5
+0	20	7
+0	21	6
+0	22	12
+0	3	12
+0	4	11
+0	5	3
+0	6	5
+0	7	9
+0	8	6
+0	9	3
+0	NULL	177
+1	0	15
+1	1	7
+1	10	6
+1	11	12
+1	12	11
+1	13	1
+1	14	5
+1	15	9
+1	16	11
+1	17	3
+1	18	9
+1	19	9
+1	2	3
+1	20	6
+1	21	3
+1	22	9
+1	3	7
+1	4	15
+1	5	7
+1	6	6
+1	7	7
+1	8	11
+1	9	1
+1	NULL	173
+10	0	9
+10	1	6
+10	10	6
+10	11	7
+10	12	11
+10	13	7
+10	14	6
+10	15	12
+10	16	11
+10	17	1
+10	18	5
+10	19	12
+10	2	3
+10	20	11
+10	21	3
+10	22	5
+10	3	9
+10	4	15
+10	5	6
+10	6	3
+10	7	9
+10	8	15
+10	9	7
+10	NULL	179
+11	0	7
+11	1	11
+11	10	3
+11	11	9
+11	12	9
+11	13	6
+11	14	3
+11	15	9
+11	16	15
+11	17	6
+11	18	3
+11	19	7
+11	2	1
+11	20	15
+11	21	7
+11	22	6
+11	3	6
+11	4	12
+11	5	11
+11	6	1
+11	7	5
+11	8	12
+11	9	11
+11	NULL	175
+12	0	9
+12	1	9
+12	10	7
+12	11	6
+12	12	12
+12	13	11
+12	14	1
+12	15	6
+12	16	12
+12	17	11
+12	18	1
+12	19	5
+12	2	6
+12	20	9
+12	21	11
+12	22	3
+12	3	3
+12	4	9
+12	5	15
+12	6	7
+12	7	3
+12	8	7
+12	9	15
+12	NULL	178
+13	0	6
+13	1	12
+13	10	11
+13	11	3
+13	12	9
+13	13	15
+13	14	6
+13	15	3
+13	16	9
+13	17	15
+13	18	7
+13	19	3
+13	2	11
+13	20	7
+13	21	11
+13	22	7
+13	3	1
+13	4	5
+13	5	12
+13	6	11
+13	7	3
+13	8	5
+13	9	9
+13	NULL	181
+14	0	3
+14	1	9
+14	10	11
+14	11	1
+14	12	6
+14	13	12
+14	14	11
+14	15	1
+14	16	5
+14	17	12
+14	18	11
+14	19	3
+14	2	15
+14	20	5
+14	21	9
+14	22	6
+14	3	6
+14	4	3
+14	5	7
+14	6	15
+14	7	7
+14	8	6
+14	9	7
+14	NULL	171
+15	0	1
+15	1	6
+15	10	9
+15	11	6
+15	12	3
+15	13	9
+15	14	15
+15	15	7
+15	16	3
+15	17	7
+15	18	15
+15	19	7
+15	2	12
+15	20	6
+15	21	7
+15	22	11
+15	3	11
+15	4	1
+15	5	5
+15	6	9
+15	7	11
+15	8	3
+15	9	9
+15	NULL	173
+16	0	6
+16	1	3
+16	10	12
+16	11	11
+16	12	1
+16	13	5
+16	14	12
+16	15	11
+16	16	3
+16	17	5
+16	18	9
+16	19	11
+16	2	9
+16	20	3
+16	21	9
+16	22	9
+16	3	15
+16	4	7
+16	5	3
+16	6	7
+16	7	11
+16	8	7
+16	9	6
+16	NULL	175
+2	0	12
+2	1	11
+2	10	3
+2	11	9
+2	12	15
+2	13	7
+2	14	3
+2	15	7
+2	16	11
+2	17	7
+2	18	6
+2	19	12
+2	2	3
+2	20	11
+2	21	1
+2	22	6
+2	3	5
+2	4	9
+2	5	11
+2	6	3
+2	7	9
+2	8	9
+2	9	6
+2	NULL	176
+3	0	9
+3	1	15
+3	10	1
+3	11	5
+3	12	12
+3	13	11
+3	14	3
+3	15	5
+3	16	9
+3	17	6
+3	18	3
+3	19	9
+3	2	7
+3	20	15
+3	21	6
+3	22	3
+3	3	6
+3	4	7
+3	5	11
+3	6	7
+3	7	6
+3	8	12
+3	9	11
+3	NULL	179
+4	0	5
+4	1	12
+4	10	6
+4	11	3
+4	12	7
+4	13	15
+4	14	7
+4	15	6
+4	16	7
+4	17	11
+4	18	1
+4	19	6
+4	2	11
+4	20	12
+4	21	11
+4	22	1
+4	3	3
+4	4	9
+4	5	9
+4	6	6
+4	7	3
+4	8	9
+4	9	15
+4	NULL	175
+5	0	3
+5	1	7
+5	10	11
+5	11	1
+5	12	5
+5	13	9
+5	14	11
+5	15	3
+5	16	9
+5	17	9
+5	18	6
+5	19	3
+5	2	15
+5	20	9
+5	21	15
+5	22	7
+5	3	7
+5	4	6
+5	5	12
+5	6	11
+5	7	1
+5	8	6
+5	9	12
+5	NULL	178
+6	0	3
+6	1	5
+6	10	15
+6	11	7
+6	12	3
+6	13	7
+6	14	11
+6	15	7
+6	16	6
+6	17	12
+6	18	11
+6	19	1
+6	2	9
+6	20	5
+6	21	12
+6	22	11
+6	3	11
+6	4	3
+6	5	9
+6	6	15
+6	7	6
+6	8	3
+6	9	9
+6	NULL	181
+7	0	7
+7	1	6
+7	10	12
+7	11	11
+7	12	3
+7	13	5
+7	14	9
+7	15	6
+7	16	3
+7	17	9
+7	18	15
+7	19	6
+7	2	7
+7	20	3
+7	21	7
+7	22	15
+7	3	11
+7	4	7
+7	5	6
+7	6	12
+7	7	11
+7	8	1
+7	9	5
+7	NULL	177
+8	0	11
+8	1	3
+8	10	7
+8	11	15
+8	12	7
+8	13	6
+8	14	7
+8	15	11
+8	16	1
+8	17	6
+8	18	12
+8	19	11
+8	2	9
+8	20	1
+8	21	5
+8	22	9
+8	3	9
+8	4	6
+8	5	3
+8	6	9
+8	7	15
+8	8	7
+8	9	3
+8	NULL	173
+9	0	11
+9	1	7
+9	10	5
+9	11	9
+9	12	11
+9	13	3
+9	14	9
+9	15	9
+9	16	6
+9	17	3
+9	18	9
+9	19	15
+9	2	6
+9	20	7
+9	21	3
+9	22	7
+9	3	12
+9	4	11
+9	5	1
+9	6	6
+9	7	12
+9	8	11
+9	9	3
+9	NULL	176
+NULL	NULL	2997
+PREHOOK: query: select k1, grouping(k1), sum(v), count(*) from gux group by k1 with rollup order by k1
+PREHOOK: type: QUERY
+PREHOOK: Input: default@gux
+#### A masked pattern was here ####
+POSTHOOK: query: select k1, grouping(k1), sum(v), count(*) from gux group by k1 with rollup order by k1
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@gux
+#### A masked pattern was here ####
+0	0	177	59
+1	0	173	59
+10	0	179	59
+11	0	175	59
+12	0	178	59
+13	0	181	59
+14	0	171	58
+15	0	173	58
+16	0	175	58
+2	0	176	59
+3	0	179	59
+4	0	175	59
+5	0	178	59
+6	0	181	59
+7	0	177	59
+8	0	173	59
+9	0	176	59
+NULL	1	2997	1000
+PREHOOK: query: select k1, k2, max(s) from gux group by cube(k1, k2) order by k1, k2
+PREHOOK: type: QUERY
+PREHOOK: Input: default@gux
+#### A masked pattern was here ####
+POSTHOOK: query: select k1, k2, max(s) from gux group by cube(k1, k2) order by k1, k2
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@gux
+#### A masked pattern was here ####
+0	0	s7
+0	1	s13
+0	10	s9
+0	11	s3
+0	12	s4
+0	13	s29
+0	14	s4
+0	15	s5
+0	16	s30
+0	17	s5
+0	18	s30
+0	19	s24
+0	2	s7
+0	20	s6
+0	21	s19
+0	22	s6
+0	3	s8
+0	4	s26
+0	5	s8
+0	6	s21
+0	7	s27
+0	8	s9
+0	9	s3
+0	NULL	s9
+1	0	s7
+1	1	s8
+1	10	s4
+1	11	s29
+1	12	s4
+1	13	s5
+1	14	s30
+1	15	s5
+1	16	s6
+1	17	s24
+1	18	s6
+1	19	s19
+1	2	s2
+1	20	s25
+1	21	s7
+1	22	s20
+1	3	s8
+1	4	s9
+1	5	s3
+1	6	s9
+1	7	s3
+1	8	s28
+1	9	s22
+1	NULL	s9
+10	0	s8
+10	1	s2
+10	10	s29
+10	11	s23
+10	12	s5
+10	13	s30
+10	14	s5
+10	15	s6
+10	16	s12
+10	17	s6
+10	18	s19
+10	19	s25
+10	2	s8
+10	20	s7
+10	21	s20
+10	22	s26
+10	3	s9
+10	4	s3
+10	5	s9
+10	6	s3
+10	7	s4
+10	8	s29
+10	9	s4
+10	NULL	s9
+11	0	s27
+11	1	s9
+11	10	s5
+11	11	s30
+11	12	s24
+11	13	s6
+11	14	s19
+11	15	s6
+11	16	s7
+11	17	s13
+11	18	s7
+11	19	s20
+11	2	s3
+11	20	s26
+11	21	s8
+11	22	s21
+11	3	s9
+11	4	s3
+11	5	s4
+11	6	s29
+11	7	s4
+11	8	s5
+11	9	s30
+11	NULL	s9
+12	0	s3
+12	1	s28
+12	10	s24
+12	11	s6
+12	12	s19
+12	13	s25
+12	14	s7
+12	15	s20
+12	16	s7
+12	17	s8
+12	18	s2
+12	19	s8
+12	2	s22
+12	20	s21
+12	21	s3
+12	22	s9
+12	3	s4
+12	4	s29
+12	5	s4
+12	6	s5
+12	7	s30
+12	8	s5
+12	9	s6
+12	NULL	s9
+13	0	s29
+13	1	s4
+13	10	s7
+13	11	s25
+13	12	s7
+13	13	s20
+13	14	s26
+13	15	s8
+13	16	s21
+13	17	s8
+13	18	s9
+13	19	s3
+13	2	s29
+13	20	s9
+13	21	s3
+13	22	s4
+13	3	s23
+13	4	s5
+13	5	s30
+13	6	s5
+13	7	s6
+13	8	s12
+13	9	s6
+13	NULL	s9
+14	0	s5
+14	1	s30
+14	10	s7
+14	11	s20
+14	12	s26
+14	13	s8
+14	14	s21
+14	15	s27
+14	16	s9
+14	17	s3
+14	18	s9
+14	19	s3
+14	2	s5
+14	20	s4
+14	21	s29
+14	22	s4
+14	3	s30
+14	4	s24
+14	5	s6
+14	6	s19
+14	7	s6
+14	8	s7
+14	9	s13
+14	NULL	s9
+15	0	s5
+15	1	s6
+15	10	s2
+15	11	s8
+15	12	s21
+15	13	s3
+15	14	s9
+15	15	s3
+15	16	s28
+15	17	s22
+15	18	s4
+15	19	s29
+15	2	s24
+15	20	s4
+15	21	s5
+15	22	s30
+15	3	s6
+15	4	s19
+15	5	s25
+15	6	s7
+15	7	s20
+15	8	s7
+15	9	s8
+15	NULL	s9
+16	0	s12
+16	1	s6
+16	10	s9
+16	11	s3
+16	12	s9
+16	13	s3
+16	14	s4
+16	15	s29
+16	16	s4
+16	17	s29
+16	18	s23
+16	19	s5
+16	2	s7
+16	20	s30
+16	21	s5
+16	22	s6
+16	3	s25
+16	4	s7
+16	5	s20
+16	6	s26
+16	7	s8
+16	8	s21
+16	9	s8
+16	NULL	s9
+2	0	s21
+2	1	s8
+2	10	s23
+2	11	s5
+2	12	s30
+2	13	s5
+2	14	s6
+2	15	s12
+2	16	s6
+2	17	s7
+2	18	s25
+2	19	s7
+2	2	s9
+2	20	s20
+2	21	s26
+2	22	s8
+2	3	s3
+2	4	s9
+2	5	s3
+2	6	s4
+2	7	s29
+2	8	s4
+2	9	s29
+2	NULL	s9
+3	0	s9
+3	1	s3
+3	10	s30
+3	11	s24
+3	12	s6
+3	13	s19
+3	14	s6
+3	15	s7
+3	16	s13
+3	17	s7
+3	18	s8
+3	19	s26
+3	2	s9
+3	20	s8
+3	21	s21
+3	22	s27
+3	3	s3
+3	4	s4
+3	5	s29
+3	6	s4
+3	7	s5
+3	8	s30
+3	9	s5
+3	NULL	s9
+4	0	s28
+4	1	s29
+4	10	s6
+4	11	s19
+4	12	s25
+4	13	s7
+4	14	s20
+4	15	s7
+4	16	s8
+4	17	s2
+4	18	s8
+4	19	s9
+4	2	s4
+4	20	s3
+4	21	s9
+4	22	s3
+4	3	s29
+4	4	s4
+4	5	s5
+4	6	s30
+4	7	s5
+4	8	s6
+4	9	s24
+4	NULL	s9
+5	0	s4
+5	1	s29
+5	10	s25
+5	11	s7
+5	12	s20
+5	13	s26
+5	14	s8
+5	15	s21
+5	16	s8
+5	17	s9
+5	18	s3
+5	19	s9
+5	2	s30
+5	20	s3
+5	21	s4
+5	22	s29
+5	3	s5
+5	4	s30
+5	5	s5
+5	6	s6
+5	7	s12
+5	8	s6
+5	9	s7
+5	NULL	s9
+6	0	s30
+6	1	s5
+6	10	s8
+6	11	s26
+6	12	s8
+6	13	s21
+6	14	s27
+6	15	s9
+6	16	s3
+6	17	s9
+6	18	s22
+6	19	s4
+6	2	s30
+6	20	s29
+6	21	s4
+6	22	s5
+6	3	s24
+6	4	s6
+6	5	s19
+6	6	s6
+6	7	s7
+6	8	s13
+6	9	s7
+6	NULL	s9
+7	0	s6
+7	1	s24
+7	10	s8
+7	11	s9
+7	12	s3
+7	13	s9
+7	14	s3
+7	15	s28
+7	16	s29
+7	17	s4
+7	18	s29
+7	19	s23
+7	2	s6
+7	20	s5
+7	21	s30
+7	22	s5
+7	3	s19
+7	4	s25
+7	5	s7
+7	6	s20
+7	7	s7
+7	8	s8
+7	9	s2
+7	NULL	s9
+8	0	s6
+8	1	s7
+8	10	s3
+8	11	s9
+8	12	s3
+8	13	s4
+8	14	s29
+8	15	s4
+8	16	s29
+8	17	s30
+8	18	s5
+8	19	s30
+8	2	s25
+8	20	s24
+8	21	s6
+8	22	s12
+8	3	s7
+8	4	s20
+8	5	s26
+8	6	s8
+8	7	s21
+8	8	s8
+8	9	s9
+8	NULL	s9
+9	0	s13
+9	1	s7
+9	10	s22
+9	11	s4
+9	12	s29
+9	13	s4
+9	14	s5
+9	15	s30
+9	16	s5
+9	17	s30
+9	18	s24
+9	19	s6
+9	2	s8
+9	20	s19
+9	21	s25
+9	22	s7
+9	3	s26
+9	4	s8
+9	5	s21
+9	6	s3
+9	7	s9
+9	8	s3
+9	9	s9
+9	NULL	s9
+NULL	0	s9
+NULL	1	s9
+NULL	10	s9
+NULL	11	s9
+NULL	12	s9
+NULL	13	s9
+NULL	14	s9
+NULL	15	s9
+NULL	16	s9
+NULL	17	s9
+NULL	18	s9
+NULL	19	s9
+NULL	2	s9
+NULL	20	s9
+NULL	21	s9
+NULL	22	s9
+NULL	3	s9
+NULL	4	s9
+NULL	5	s9
+NULL	6	s9
+NULL	7	s9
+NULL	8	s9
+NULL	9	s9
+NULL	NULL	s9
+PREHOOK: query: select c, k1, max(s) from (select 'constant' c, k1, s from gux) t group by c, k1 order by c, k1
+PREHOOK: type: QUERY
+PREHOOK: Input: default@gux
+#### A masked pattern was here ####
+POSTHOOK: query: select c, k1, max(s) from (select 'constant' c, k1, s from gux) t group by c, k1 order by c, k1
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@gux
+#### A masked pattern was here ####
+constant	0	s9
+constant	1	s9
+constant	10	s9
+constant	11	s9
+constant	12	s9
+constant	13	s9
+constant	14	s9
+constant	15	s9
+constant	16	s9
+constant	2	s9
+constant	3	s9
+constant	4	s9
+constant	5	s9
+constant	6	s9
+constant	7	s9
+constant	8	s9
+constant	9	s9
+PREHOOK: query: select constant_col, key, max(value) from (select 'constant' as constant_col, key, value from src distribute by constant_col, key sort by constant_col, key, value) a group by constant_col, key order by constant_col, key limit 10
+PREHOOK: type: QUERY
+PREHOOK: Input: default@src
+#### A masked pattern was here ####
+POSTHOOK: query: select constant_col, key, max(value) from (select 'constant' as constant_col, key, value from src distribute by constant_col, key sort by constant_col, key, value) a group by constant_col, key order by constant_col, key limit 10
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@src
+#### A masked pattern was here ####
+constant	0	val_0
+constant	10	val_10
+constant	100	val_100
+constant	103	val_103
+constant	104	val_104
+constant	105	val_105
+constant	11	val_11
+constant	111	val_111
+constant	113	val_113
+constant	114	val_114
+PREHOOK: query: select k1, k2, sum(v) from gux group by k1, k2 with rollup order by k1, k2
+PREHOOK: type: QUERY
+PREHOOK: Input: default@gux
+#### A masked pattern was here ####
+POSTHOOK: query: select k1, k2, sum(v) from gux group by k1, k2 with rollup order by k1, k2
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@gux
+#### A masked pattern was here ####
+0	0	11
+0	1	1
+0	10	9
+0	11	15
+0	12	6
+0	13	3
+0	14	7
+0	15	15
+0	16	7
+0	17	6
+0	18	7
+0	19	11
+0	2	5
+0	20	7
+0	21	6
+0	22	12
+0	3	12
+0	4	11
+0	5	3
+0	6	5
+0	7	9
+0	8	6
+0	9	3
+0	NULL	177
+1	0	15
+1	1	7
+1	10	6
+1	11	12
+1	12	11
+1	13	1
+1	14	5
+1	15	9
+1	16	11
+1	17	3
+1	18	9
+1	19	9
+1	2	3
+1	20	6
+1	21	3
+1	22	9
+1	3	7
+1	4	15
+1	5	7
+1	6	6
+1	7	7
+1	8	11
+1	9	1
+1	NULL	173
+10	0	9
+10	1	6
+10	10	6
+10	11	7
+10	12	11
+10	13	7
+10	14	6
+10	15	12
+10	16	11
+10	17	1
+10	18	5
+10	19	12
+10	2	3
+10	20	11
+10	21	3
+10	22	5
+10	3	9
+10	4	15
+10	5	6
+10	6	3
+10	7	9
+10	8	15
+10	9	7
+10	NULL	179
+11	0	7
+11	1	11
+11	10	3
+11	11	9
+11	12	9
+11	13	6
+11	14	3
+11	15	9
+11	16	15
+11	17	6
+11	18	3
+11	19	7
+11	2	1
+11	20	15
+11	21	7
+11	22	6
+11	3	6
+11	4	12
+11	5	11
+11	6	1
+11	7	5
+11	8	12
+11	9	11
+11	NULL	175
+12	0	9
+12	1	9
+12	10	7
+12	11	6
+12	12	12
+12	13	11
+12	14	1
+12	15	6
+12	16	12
+12	17	11
+12	18	1
+12	19	5
+12	2	6
+12	20	9
+12	21	11
+12	22	3
+12	3	3
+12	4	9
+12	5	15
+12	6	7
+12	7	3
+12	8	7
+12	9	15
+12	NULL	178
+13	0	6
+13	1	12
+13	10	11
+13	11	3
+13	12	9
+13	13	15
+13	14	6
+13	15	3
+13	16	9
+13	17	15
+13	18	7
+13	19	3
+13	2	11
+13	20	7
+13	21	11
+13	22	7
+13	3	1
+13	4	5
+13	5	12
+13	6	11
+13	7	3
+13	8	5
+13	9	9
+13	NULL	181
+14	0	3
+14	1	9
+14	10	11
+14	11	1
+14	12	6
+14	13	12
+14	14	11
+14	15	1
+14	16	5
+14	17	12
+14	18	11
+14	19	3
+14	2	15
+14	20	5
+14	21	9
+14	22	6
+14	3	6
+14	4	3
+14	5	7
+14	6	15
+14	7	7
+14	8	6
+14	9	7
+14	NULL	171
+15	0	1
+15	1	6
+15	10	9
+15	11	6
+15	12	3
+15	13	9
+15	14	15
+15	15	7
+15	16	3
+15	17	7
+15	18	15
+15	19	7
+15	2	12
+15	20	6
+15	21	7
+15	22	11
+15	3	11
+15	4	1
+15	5	5
+15	6	9
+15	7	11
+15	8	3
+15	9	9
+15	NULL	173
+16	0	6
+16	1	3
+16	10	12
+16	11	11
+16	12	1
+16	13	5
+16	14	12
+16	15	11
+16	16	3
+16	17	5
+16	18	9
+16	19	11
+16	2	9
+16	20	3
+16	21	9
+16	22	9
+16	3	15
+16	4	7
+16	5	3
+16	6	7
+16	7	11
+16	8	7
+16	9	6
+16	NULL	175
+2	0	12
+2	1	11
+2	10	3
+2	11	9
+2	12	15
+2	13	7
+2	14	3
+2	15	7
+2	16	11
+2	17	7
+2	18	6
+2	19	12
+2	2	3
+2	20	11
+2	21	1
+2	22	6
+2	3	5
+2	4	9
+2	5	11
+2	6	3
+2	7	9
+2	8	9
+2	9	6
+2	NULL	176
+3	0	9
+3	1	15
+3	10	1
+3	11	5
+3	12	12
+3	13	11
+3	14	3
+3	15	5
+3	16	9
+3	17	6
+3	18	3
+3	19	9
+3	2	7
+3	20	15
+3	21	6
+3	22	3
+3	3	6
+3	4	7
+3	5	11
+3	6	7
+3	7	6
+3	8	12
+3	9	11
+3	NULL	179
+4	0	5
+4	1	12
+4	10	6
+4	11	3
+4	12	7
+4	13	15
+4	14	7
+4	15	6
+4	16	7
+4	17	11
+4	18	1
+4	19	6
+4	2	11
+4	20	12
+4	21	11
+4	22	1
+4	3	3
+4	4	9
+4	5	9
+4	6	6
+4	7	3
+4	8	9
+4	9	15
+4	NULL	175
+5	0	3
+5	1	7
+5	10	11
+5	11	1
+5	12	5
+5	13	9
+5	14	11
+5	15	3
+5	16	9
+5	17	9
+5	18	6
+5	19	3
+5	2	15
+5	20	9
+5	21	15
+5	22	7
+5	3	7
+5	4	6
+5	5	12
+5	6	11
+5	7	1
+5	8	6
+5	9	12
+5	NULL	178
+6	0	3
+6	1	5
+6	10	15
+6	11	7
+6	12	3
+6	13	7
+6	14	11
+6	15	7
+6	16	6
+6	17	12
+6	18	11
+6	19	1
+6	2	9
+6	20	5
+6	21	12
+6	22	11
+6	3	11
+6	4	3
+6	5	9
+6	6	15
+6	7	6
+6	8	3
+6	9	9
+6	NULL	181
+7	0	7
+7	1	6
+7	10	12
+7	11	11
+7	12	3
+7	13	5
+7	14	9
+7	15	6
+7	16	3
+7	17	9
+7	18	15
+7	19	6
+7	2	7
+7	20	3
+7	21	7
+7	22	15
+7	3	11
+7	4	7
+7	5	6
+7	6	12
+7	7	11
+7	8	1
+7	9	5
+7	NULL	177
+8	0	11
+8	1	3
+8	10	7
+8	11	15
+8	12	7
+8	13	6
+8	14	7
+8	15	11
+8	16	1
+8	17	6
+8	18	12
+8	19	11
+8	2	9
+8	20	1
+8	21	5
+8	22	9
+8	3	9
+8	4	6
+8	5	3
+8	6	9
+8	7	15
+8	8	7
+8	9	3
+8	NULL	173
+9	0	11
+9	1	7
+9	10	5
+9	11	9
+9	12	11
+9	13	3
+9	14	9
+9	15	9
+9	16	6
+9	17	3
+9	18	9
+9	19	15
+9	2	6
+9	20	7
+9	21	3
+9	22	7
+9	3	12
+9	4	11
+9	5	1
+9	6	6
+9	7	12
+9	8	11
+9	9	3
+9	NULL	176
+NULL	NULL	2997
+PREHOOK: query: select k1, grouping(k1), sum(v), count(*) from gux group by k1 with rollup order by k1
+PREHOOK: type: QUERY
+PREHOOK: Input: default@gux
+#### A masked pattern was here ####
+POSTHOOK: query: select k1, grouping(k1), sum(v), count(*) from gux group by k1 with rollup order by k1
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@gux
+#### A masked pattern was here ####
+0	0	177	59
+1	0	173	59
+10	0	179	59
+11	0	175	59
+12	0	178	59
+13	0	181	59
+14	0	171	58
+15	0	173	58
+16	0	175	58
+2	0	176	59
+3	0	179	59
+4	0	175	59
+5	0	178	59
+6	0	181	59
+7	0	177	59
+8	0	173	59
+9	0	176	59
+NULL	1	2997	1000
+PREHOOK: query: select k1, k2, max(s) from gux group by cube(k1, k2) order by k1, k2
+PREHOOK: type: QUERY
+PREHOOK: Input: default@gux
+#### A masked pattern was here ####
+POSTHOOK: query: select k1, k2, max(s) from gux group by cube(k1, k2) order by k1, k2
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@gux
+#### A masked pattern was here ####
+0	0	s7
+0	1	s13
+0	10	s9
+0	11	s3
+0	12	s4
+0	13	s29
+0	14	s4
+0	15	s5
+0	16	s30
+0	17	s5
+0	18	s30
+0	19	s24
+0	2	s7
+0	20	s6
+0	21	s19
+0	22	s6
+0	3	s8
+0	4	s26
+0	5	s8
+0	6	s21
+0	7	s27
+0	8	s9
+0	9	s3
+0	NULL	s9
+1	0	s7
+1	1	s8
+1	10	s4
+1	11	s29
+1	12	s4
+1	13	s5
+1	14	s30
+1	15	s5
+1	16	s6
+1	17	s24
+1	18	s6
+1	19	s19
+1	2	s2
+1	20	s25
+1	21	s7
+1	22	s20
+1	3	s8
+1	4	s9
+1	5	s3
+1	6	s9
+1	7	s3
+1	8	s28
+1	9	s22
+1	NULL	s9
+10	0	s8
+10	1	s2
+10	10	s29
+10	11	s23
+10	12	s5
+10	13	s30
+10	14	s5
+10	15	s6
+10	16	s12
+10	17	s6
+10	18	s19
+10	19	s25
+10	2	s8
+10	20	s7
+10	21	s20
+10	22	s26
+10	3	s9
+10	4	s3
+10	5	s9
+10	6	s3
+10	7	s4
+10	8	s29
+10	9	s4
+10	NULL	s9
+11	0	s27
+11	1	s9
+11	10	s5
+11	11	s30
+11	12	s24
+11	13	s6
+11	14	s19
+11	15	s6
+11	16	s7
+11	17	s13
+11	18	s7
+11	19	s20
+11	2	s3
+11	20	s26
+11	21	s8
+11	22	s21
+11	3	s9
+11	4	s3
+11	5	s4
+11	6	s29
+11	7	s4
+11	8	s5
+11	9	s30
+11	NULL	s9
+12	0	s3
+12	1	s28
+12	10	s24
+12	11	s6
+12	12	s19
+12	13	s25
+12	14	s7
+12	15	s20
+12	16	s7
+12	17	s8
+12	18	s2
+12	19	s8
+12	2	s22
+12	20	s21
+12	21	s3
+12	22	s9
+12	3	s4
+12	4	s29
+12	5	s4
+12	6	s5
+12	7	s30
+12	8	s5
+12	9	s6
+12	NULL	s9
+13	0	s29
+13	1	s4
+13	10	s7
+13	11	s25
+13	12	s7
+13	13	s20
+13	14	s26
+13	15	s8
+13	16	s21
+13	17	s8
+13	18	s9
+13	19	s3
+13	2	s29
+13	20	s9
+13	21	s3
+13	22	s4
+13	3	s23
+13	4	s5
+13	5	s30
+13	6	s5
+13	7	s6
+13	8	s12
+13	9	s6
+13	NULL	s9
+14	0	s5
+14	1	s30
+14	10	s7
+14	11	s20
+14	12	s26
+14	13	s8
+14	14	s21
+14	15	s27
+14	16	s9
+14	17	s3
+14	18	s9
+14	19	s3
+14	2	s5
+14	20	s4
+14	21	s29
+14	22	s4
+14	3	s30
+14	4	s24
+14	5	s6
+14	6	s19
+14	7	s6
+14	8	s7
+14	9	s13
+14	NULL	s9
+15	0	s5
+15	1	s6
+15	10	s2
+15	11	s8
+15	12	s21
+15	13	s3
+15	14	s9
+15	15	s3
+15	16	s28
+15	17	s22
+15	18	s4
+15	19	s29
+15	2	s24
+15	20	s4
+15	21	s5
+15	22	s30
+15	3	s6
+15	4	s19
+15	5	s25
+15	6	s7
+15	7	s20
+15	8	s7
+15	9	s8
+15	NULL	s9
+16	0	s12
+16	1	s6
+16	10	s9
+16	11	s3
+16	12	s9
+16	13	s3
+16	14	s4
+16	15	s29
+16	16	s4
+16	17	s29
+16	18	s23
+16	19	s5
+16	2	s7
+16	20	s30
+16	21	s5
+16	22	s6
+16	3	s25
+16	4	s7
+16	5	s20
+16	6	s26
+16	7	s8
+16	8	s21
+16	9	s8
+16	NULL	s9
+2	0	s21
+2	1	s8
+2	10	s23
+2	11	s5
+2	12	s30
+2	13	s5
+2	14	s6
+2	15	s12
+2	16	s6
+2	17	s7
+2	18	s25
+2	19	s7
+2	2	s9
+2	20	s20
+2	21	s26
+2	22	s8
+2	3	s3
+2	4	s9
+2	5	s3
+2	6	s4
+2	7	s29
+2	8	s4
+2	9	s29
+2	NULL	s9
+3	0	s9
+3	1	s3
+3	10	s30
+3	11	s24
+3	12	s6
+3	13	s19
+3	14	s6
+3	15	s7
+3	16	s13
+3	17	s7
+3	18	s8
+3	19	s26
+3	2	s9
+3	20	s8
+3	21	s21
+3	22	s27
+3	3	s3
+3	4	s4
+3	5	s29
+3	6	s4
+3	7	s5
+3	8	s30
+3	9	s5
+3	NULL	s9
+4	0	s28
+4	1	s29
+4	10	s6
+4	11	s19
+4	12	s25
+4	13	s7
+4	14	s20
+4	15	s7
+4	16	s8
+4	17	s2
+4	18	s8
+4	19	s9
+4	2	s4
+4	20	s3
+4	21	s9
+4	22	s3
+4	3	s29
+4	4	s4
+4	5	s5
+4	6	s30
+4	7	s5
+4	8	s6
+4	9	s24
+4	NULL	s9
+5	0	s4
+5	1	s29
+5	10	s25
+5	11	s7
+5	12	s20
+5	13	s26
+5	14	s8
+5	15	s21
+5	16	s8
+5	17	s9
+5	18	s3
+5	19	s9
+5	2	s30
+5	20	s3
+5	21	s4
+5	22	s29
+5	3	s5
+5	4	s30
+5	5	s5
+5	6	s6
+5	7	s12
+5	8	s6
+5	9	s7
+5	NULL	s9
+6	0	s30
+6	1	s5
+6	10	s8
+6	11	s26
+6	12	s8
+6	13	s21
+6	14	s27
+6	15	s9
+6	16	s3
+6	17	s9
+6	18	s22
+6	19	s4
+6	2	s30
+6	20	s29
+6	21	s4
+6	22	s5
+6	3	s24
+6	4	s6
+6	5	s19
+6	6	s6
+6	7	s7
+6	8	s13
+6	9	s7
+6	NULL	s9
+7	0	s6
+7	1	s24
+7	10	s8
+7	11	s9
+7	12	s3
+7	13	s9
+7	14	s3
+7	15	s28
+7	16	s29
+7	17	s4
+7	18	s29
+7	19	s23
+7	2	s6
+7	20	s5
+7	21	s30
+7	22	s5
+7	3	s19
+7	4	s25
+7	5	s7
+7	6	s20
+7	7	s7
+7	8	s8
+7	9	s2
+7	NULL	s9
+8	0	s6
+8	1	s7
+8	10	s3
+8	11	s9
+8	12	s3
+8	13	s4
+8	14	s29
+8	15	s4
+8	16	s29
+8	17	s30
+8	18	s5
+8	19	s30
+8	2	s25
+8	20	s24
+8	21	s6
+8	22	s12
+8	3	s7
+8	4	s20
+8	5	s26
+8	6	s8
+8	7	s21
+8	8	s8
+8	9	s9
+8	NULL	s9
+9	0	s13
+9	1	s7
+9	10	s22
+9	11	s4
+9	12	s29
+9	13	s4
+9	14	s5
+9	15	s30
+9	16	s5
+9	17	s30
+9	18	s24
+9	19	s6
+9	2	s8
+9	20	s19
+9	21	s25
+9	22	s7
+9	3	s26
+9	4	s8
+9	5	s21
+9	6	s3
+9	7	s9
+9	8	s3
+9	9	s9
+9	NULL	s9
+NULL	0	s9
+NULL	1	s9
+NULL	10	s9
+NULL	11	s9
+NULL	12	s9
+NULL	13	s9
+NULL	14	s9
+NULL	15	s9
+NULL	16	s9
+NULL	17	s9
+NULL	18	s9
+NULL	19	s9
+NULL	2	s9
+NULL	20	s9
+NULL	21	s9
+NULL	22	s9
+NULL	3	s9
+NULL	4	s9
+NULL	5	s9
+NULL	6	s9
+NULL	7	s9
+NULL	8	s9
+NULL	9	s9
+NULL	NULL	s9
+PREHOOK: query: select c, k1, max(s) from (select 'constant' c, k1, s from gux) t group by c, k1 order by c, k1
+PREHOOK: type: QUERY
+PREHOOK: Input: default@gux
+#### A masked pattern was here ####
+POSTHOOK: query: select c, k1, max(s) from (select 'constant' c, k1, s from gux) t group by c, k1 order by c, k1
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@gux
+#### A masked pattern was here ####
+constant	0	s9
+constant	1	s9
+constant	10	s9
+constant	11	s9
+constant	12	s9
+constant	13	s9
+constant	14	s9
+constant	15	s9
+constant	16	s9
+constant	2	s9
+constant	3	s9
+constant	4	s9
+constant	5	s9
+constant	6	s9
+constant	7	s9
+constant	8	s9
+constant	9	s9
+PREHOOK: query: select constant_col, key, max(value) from (select 'constant' as constant_col, key, value from src distribute by constant_col, key sort by constant_col, key, value) a group by constant_col, key order by constant_col, key limit 10
+PREHOOK: type: QUERY
+PREHOOK: Input: default@src
+#### A masked pattern was here ####
+POSTHOOK: query: select constant_col, key, max(value) from (select 'constant' as constant_col, key, value from src distribute by constant_col, key sort by constant_col, key, value) a group by constant_col, key order by constant_col, key limit 10
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@src
+#### A masked pattern was here ####
+constant	0	val_0
+constant	10	val_10
+constant	100	val_100
+constant	103	val_103
+constant	104	val_104
+constant	105	val_105
+constant	11	val_11
+constant	111	val_111
+constant	113	val_113
+constant	114	val_114

@@ -104,6 +104,7 @@ import org.apache.hadoop.hive.ql.metadata.HiveException;
 import org.apache.hadoop.hive.ql.parse.SemanticException;
 import org.apache.hadoop.hive.ql.plan.BaseWork;
 import org.apache.hadoop.hive.ql.plan.FileSinkDesc;
+import org.apache.hadoop.hive.ql.plan.GroupByDesc;
 import org.apache.hadoop.hive.ql.plan.MapWork;
 import org.apache.hadoop.hive.ql.plan.MergeJoinWork;
 import org.apache.hadoop.hive.ql.plan.OperatorDesc;
@@ -1623,8 +1624,8 @@ public class DagUtils {
    * <ul>
    *   <li>a cross product input: CartesianProductVertexManager;</li>
    *   <li>a CUSTOM_EDGE input: CustomPartitionVertex, which routes the buckets of a bucket map join;</li>
-   *   <li>a SIMPLE_EDGE input of an auto-reduced work: ShuffleVertexManager with the work's minimum and source
-   *   fractions;</li>
+   *   <li>a SIMPLE_EDGE input of an auto-reduced work, or the CUSTOM_SIMPLE_EDGE input of an auto-reduced GROUP BY over
+   *   an unsorted shuffle: ShuffleVertexManager with the work's minimum and source fractions;</li>
    *   <li>a CUSTOM_SIMPLE_EDGE input of a work that does not wait for its sources: ShuffleVertexManager without
    *   slow start.</li>
    * </ul>
@@ -1660,12 +1661,21 @@ public class DagUtils {
       vertex.setVertexManagerPlugin(VertexManagerPluginDescriptor.create(CustomPartitionVertex.class.getName())
           .setUserPayload(UserPayload.create(ByteBuffer.wrap(dob.getData()))));
     } else if (vertexWork instanceof ReduceWork reduceWork) {
-      if (shuffleInput && reduceWork.isAutoReduceParallelism()) {
+      if (reduceWork.isAutoReduceParallelism() && (shuffleInput || partitionedInput && isUnsortedGroupBy(work))) {
         setupAutoReducerParallelism(conf, reduceWork, vertex);
       } else if (partitionedInput && !reduceWork.isSlowStart()) {
         setupQuickStart(vertex);
       }
     }
+  }
+
+  /**
+   * A GROUP BY over an unsorted shuffle aggregates whatever partitions a task reads, so auto-reduce may merge the
+   * partitions of its unsorted edge.
+   */
+  private static boolean isUnsortedGroupBy(BaseWork work) {
+    return work instanceof ReduceWork reduceWork && reduceWork.getReducer().getConf() instanceof GroupByDesc groupBy
+        && groupBy.isUnsortedInput();
   }
 
   public String createDagName(Configuration conf, QueryPlan plan) {

@@ -20,6 +20,7 @@ package org.apache.hadoop.hive.ql.parse;
 
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.ListMultimap;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
@@ -38,6 +39,7 @@ import java.util.SortedSet;
 import java.util.Stack;
 import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Multimap;
@@ -57,8 +59,10 @@ import org.apache.hadoop.hive.ql.exec.GroupByOperator;
 import org.apache.hadoop.hive.ql.exec.JoinOperator;
 import org.apache.hadoop.hive.ql.exec.MapJoinOperator;
 import org.apache.hadoop.hive.ql.exec.Operator;
+import org.apache.hadoop.hive.ql.exec.OperatorFactory;
 import org.apache.hadoop.hive.ql.exec.OperatorUtils;
 import org.apache.hadoop.hive.ql.exec.ReduceSinkOperator;
+import org.apache.hadoop.hive.ql.exec.RowSchema;
 import org.apache.hadoop.hive.ql.exec.SelectOperator;
 import org.apache.hadoop.hive.ql.exec.TableScanOperator;
 import org.apache.hadoop.hive.ql.exec.Task;
@@ -135,7 +139,9 @@ import org.apache.hadoop.hive.ql.plan.MapWork;
 import org.apache.hadoop.hive.ql.plan.MergeJoinWork;
 import org.apache.hadoop.hive.ql.plan.MoveWork;
 import org.apache.hadoop.hive.ql.plan.OperatorDesc;
+import org.apache.hadoop.hive.ql.plan.ReduceWork;
 import org.apache.hadoop.hive.ql.plan.Statistics;
+import org.apache.hadoop.hive.ql.plan.TezEdgeProperty.EdgeType;
 import org.apache.hadoop.hive.ql.plan.TezWork;
 import org.apache.hadoop.hive.ql.plan.mapper.AuxOpTreeSignature;
 import org.apache.hadoop.hive.ql.plan.mapper.PlanMapper;
@@ -144,6 +150,7 @@ import org.apache.hadoop.hive.ql.session.SessionState.LogHelper;
 import org.apache.hadoop.hive.ql.stats.OperatorStats;
 import org.apache.hadoop.hive.ql.stats.StatsUtils;
 import org.apache.hadoop.hive.ql.udf.generic.GenericUDAFBloomFilter.GenericUDAFBloomFilterEvaluator;
+import org.apache.hadoop.hive.ql.udf.generic.GenericUDAFEvaluator;
 import org.apache.hadoop.hive.serde2.typeinfo.TypeInfoUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -262,6 +269,10 @@ public class TezCompiler extends TaskCompiler {
     // involving constant true/false values.
     if(procCtx.conf.getBoolVar(ConfVars.HIVE_OPT_CONSTANT_PROPAGATION)) {
       new ConstantPropagate(ConstantPropagateOption.SHORTCUT).transform(procCtx.parseContext);
+    }
+
+    if (procCtx.conf.getBoolVar(ConfVars.GROUPBY_UNSORTED_SHUFFLE)) {
+      markUnsortedGroupBys(procCtx.parseContext);
     }
 
     perfLogger.perfLogBegin(this.getClass().getName(), PerfLogger.TEZ_COMPILER);
@@ -828,6 +839,7 @@ public class TezCompiler extends TaskCompiler {
     } else {
       LOG.debug("Skipping vectorization");
     }
+    sortShuffleOfRowModeGroupBys(rootTasks);
 
     if (!"none".equalsIgnoreCase(conf.getVar(HiveConf.ConfVars.HIVE_STAGE_ID_REARRANGE))) {
       physicalCtx = new StageIDsRearranger().resolve(physicalCtx);
@@ -1056,6 +1068,207 @@ public class TezCompiler extends TaskCompiler {
       planMapper.link(op, new OperatorStats.IncorrectRuntimeStatsMarker());
     }
 
+  }
+
+  /**
+   * The aggregations whose final result is their partial result, so a GROUP BY over an unsorted input can spill its
+   * groups as it outputs them and merge them later (CBO reduces AVG and the variance family to SUM and COUNT).
+   */
+  private static final Set<String> SPILLABLE_AGGREGATIONS = Set.of("sum", "count", "min", "max");
+
+  /**
+   * Marks a reduce-side GROUP BY that may read an unsorted shuffle and aggregate in a hash table: it merges partial
+   * aggregates by key, aggregates spillably, it is the only consumer of its ReduceSinks (one per UNION branch), and
+   * only operators that ignore row order (select, filter, hash aggregation, map join, top n key, union) follow it up to
+   * the next ReduceSinks, so nothing in its reducer relies on key order. A COMPLETE GROUP BY in the reducer (a second
+   * aggregation ReduceSinkDeDuplication moved into it) ignores order too when it groups the merge's rows on all of its
+   * keys; otherwise it is split into a hash aggregation and a merge over the unsorted partial results.
+   */
+  private static void markUnsortedGroupBys(ParseContext pctx) throws SemanticException {
+    List<GroupByOperator> toSplit = new ArrayList<>();
+    for (GroupByOperator gby : OperatorUtils.findOperators(new ArrayList<>(pctx.getTopOps().values()),
+        GroupByOperator.class)) {
+      GroupByDesc desc = gby.getConf();
+      if (desc.getMode() == GroupByDesc.Mode.MERGEPARTIAL && aggregatesSpillably(desc)
+          && gby.getParentOperators().stream().allMatch(parent -> parent instanceof ReduceSinkOperator rs
+              && rs.getNumChild() == 1 && rs.getConf().getTopN() < 0)
+          && feedsReduceSinksOnly(gby, gby, true, toSplit)) {
+        desc.setUnsortedInput(true);
+        toSplit.forEach(TezCompiler::splitIntoHashAndMerge);
+      }
+      toSplit.clear();
+    }
+  }
+
+  /**
+   * It has keys, no DISTINCT aggregate or grouping sets, its aggregations can spill, and its keys and the parameters of
+   * its aggregations are columns.
+   */
+  private static boolean aggregatesSpillably(GroupByDesc desc) {
+    return !desc.getKeys().isEmpty() && desc.getGroupingSetPosition() < 0
+        && desc.getAggregators().stream().noneMatch(AggregationDesc::getDistinct)
+        && desc.getAggregators().stream().allMatch(agg -> SPILLABLE_AGGREGATIONS.contains(agg.getGenericUDAFName())
+            && agg.getParameters().stream().allMatch(ExprNodeColumnDesc.class::isInstance))
+        && desc.getKeys().stream().allMatch(ExprNodeColumnDesc.class::isInstance);
+  }
+
+  /**
+   * A COMPLETE GROUP BY over the merge's rows (through selects and filters) on all of the merge's keys gets one row a
+   * group, whatever the order.
+   */
+  private static boolean groupsSingleRows(GroupByOperator merge, GroupByOperator complete) throws SemanticException {
+    List<ExprNodeDesc> keys = ExprNodeDescUtils.backtrack(complete.getConf().getKeys(), complete, merge);
+    return complete.getConf().getGroupingSetPosition() < 0
+        && merge.getConf().getKeys().stream().allMatch(key -> ExprNodeDescUtils.indexOf(key, keys) >= 0);
+  }
+
+  /**
+   * Splits a COMPLETE GROUP BY back into the hash aggregation and the merge ReduceSinkDeDuplication collapsed: the
+   * first aggregates into partial results and may flush them, the second merges them in a hash table over its
+   * unsorted input; the two share the COMPLETE GROUP BY's hash table memory. The partial results of these aggregations
+   * have their final types, so the schema stays.
+   */
+  private static void splitIntoHashAndMerge(GroupByOperator complete) {
+    GroupByDesc desc = complete.getConf();
+    GroupByDesc hashDesc = (GroupByDesc) desc.clone();
+    hashDesc.setMode(GroupByDesc.Mode.HASH);
+    hashDesc.setGroupByMemoryUsage(desc.getGroupByMemoryUsage() / 2);
+    desc.setGroupByMemoryUsage(desc.getGroupByMemoryUsage() / 2);
+    List<AggregationDesc> partials = new ArrayList<>();
+    List<AggregationDesc> merges = new ArrayList<>();
+    List<ExprNodeDesc> keys = new ArrayList<>();
+    Map<String, ExprNodeDesc> columnExprMap = new HashMap<>();
+    List<String> outputs = desc.getOutputColumnNames();
+    for (int i = 0; i < outputs.size(); i++) {
+      ExprNodeColumnDesc column = new ExprNodeColumnDesc(complete.getSchema().getColumnInfo(outputs.get(i)));
+      if (i < desc.getKeys().size()) {
+        keys.add(column);
+        columnExprMap.put(outputs.get(i), column);
+      } else {
+        AggregationDesc agg = desc.getAggregators().get(i - desc.getKeys().size());
+        partials.add(new AggregationDesc(agg.getGenericUDAFName(), agg.getGenericUDAFEvaluator(), agg.getParameters(),
+            false, GenericUDAFEvaluator.Mode.PARTIAL1));
+        merges.add(new AggregationDesc(agg.getGenericUDAFName(), agg.getGenericUDAFEvaluator(),
+            new ArrayList<>(List.of(column)), false, GenericUDAFEvaluator.Mode.FINAL));
+      }
+    }
+    hashDesc.setAggregators(partials);
+    Operator<GroupByDesc> hash = OperatorFactory.get(complete.getCompilationOpContext(), hashDesc);
+    hash.setSchema(new RowSchema(complete.getSchema()));
+    hash.setColumnExprMap(complete.getColumnExprMap());
+    hash.setStatistics(complete.getStatistics().clone());
+
+    desc.setMode(GroupByDesc.Mode.MERGEPARTIAL);
+    desc.setKeys(keys);
+    desc.setAggregators(merges);
+    desc.setUnsortedInput(true);
+    complete.setColumnExprMap(columnExprMap);
+
+    Operator<?> parent = complete.getParentOperators().get(0);
+    parent.replaceChild(complete, hash);
+    hash.setParentOperators(new ArrayList<>(List.of(parent)));
+    hash.setChildOperators(new ArrayList<>(List.of(complete)));
+    complete.replaceParent(parent, hash);
+  }
+
+  /**
+   * Undoes {@link #splitIntoHashAndMerge} for a reducer that reads its shuffle sorted again: the merge takes the hash
+   * aggregation's keys and aggregations back, in COMPLETE mode.
+   */
+  private static void mergeIntoComplete(GroupByOperator hash, GroupByOperator merge) {
+    GroupByDesc desc = merge.getConf();
+    desc.setMode(GroupByDesc.Mode.COMPLETE);
+    desc.setGroupByMemoryUsage(desc.getGroupByMemoryUsage() * 2);
+    desc.setKeys(hash.getConf().getKeys());
+    desc.setAggregators(hash.getConf().getAggregators().stream()
+        .map(agg -> new AggregationDesc(agg.getGenericUDAFName(), agg.getGenericUDAFEvaluator(), agg.getParameters(),
+            false, GenericUDAFEvaluator.Mode.COMPLETE))
+        .collect(Collectors.toList()));
+    desc.setUnsortedInput(false);
+    merge.setColumnExprMap(hash.getColumnExprMap());
+
+    Operator<?> parent = hash.getParentOperators().get(0);
+    parent.replaceChild(hash, merge);
+    merge.replaceParent(hash, parent);
+  }
+
+  /**
+   * A GROUP BY over an unsorted shuffle spills its groups only vectorized: a reducer that did not vectorize reads its
+   * shuffle sorted and merges as usual, and a COMPLETE GROUP BY split after it is whole again. Only its shuffle inputs
+   * change; the inputs of a map join in the reducer keep their edges.
+   */
+  private static void sortShuffleOfRowModeGroupBys(List<Task<?>> rootTasks) {
+    Deque<Task<?>> tasks = new ArrayDeque<>(rootTasks);
+    Set<Task<?>> seen = new HashSet<>();
+    while (!tasks.isEmpty()) {
+      Task<?> task = tasks.pop();
+      if (!seen.add(task)) {
+        continue;
+      }
+      if (task.getChildTasks() != null) {
+        tasks.addAll(task.getChildTasks());
+      }
+      if (!(task instanceof TezTask tezTask)) {
+        continue;
+      }
+      TezWork tezWork = tezTask.getWork();
+      for (BaseWork work : tezWork.getAllWork()) {
+        if (work instanceof ReduceWork reduceWork && !reduceWork.getVectorMode()
+            && reduceWork.getReducer() instanceof GroupByOperator groupBy && groupBy.getConf().isUnsortedInput()) {
+          groupBy.getConf().setUnsortedInput(false);
+          // a split pair may sit behind selects and filters
+          for (GroupByOperator hash : OperatorUtils.findOperators(groupBy, GroupByOperator.class)) {
+            if (hash.getConf().getMode() == GroupByDesc.Mode.HASH && hash.getNumChild() == 1
+                && hash.getChildOperators().get(0) instanceof GroupByOperator merge && merge.getConf().isUnsortedInput()) {
+              mergeIntoComplete(hash, merge);
+            }
+          }
+          for (BaseWork parent : tezWork.getParents(reduceWork)) {
+            if (reduceWork.getTagToInput().containsValue(parent.getName())) {
+              tezWork.getEdgeProperty(parent, reduceWork).setEdgeType(EdgeType.SIMPLE_EDGE);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Only order-insensitive operators follow {@code op} up to the next ReduceSinks; {@code mergeRows} while only selects
+   * and filters separate it from the merge. Collects the COMPLETE GROUP BYs that must be split.
+   */
+  private static boolean feedsReduceSinksOnly(Operator<?> op, GroupByOperator merge, boolean mergeRows,
+      List<GroupByOperator> toSplit) throws SemanticException {
+    for (Operator<?> child : op.getChildOperators()) {
+      boolean ignoresOrder = child instanceof SelectOperator || child instanceof FilterOperator
+          || child instanceof MapJoinOperator || child instanceof TopNKeyOperator || child instanceof UnionOperator
+          || child instanceof GroupByOperator groupBy && (groupBy.getConf().getMode() == GroupByDesc.Mode.HASH
+              || completesUnsortedGroups(merge, mergeRows, groupBy, toSplit));
+      boolean keepsMergeRows = mergeRows && (child instanceof SelectOperator || child instanceof FilterOperator);
+      if (!(child instanceof ReduceSinkOperator)
+          && !(ignoresOrder && feedsReduceSinksOnly(child, merge, keepsMergeRows, toSplit))) {
+        return false;
+      }
+    }
+    return !op.getChildOperators().isEmpty();
+  }
+
+  /**
+   * A COMPLETE GROUP BY in the merge's reducer, which it either follows as is or is split for.
+   */
+  private static boolean completesUnsortedGroups(GroupByOperator merge, boolean mergeRows, GroupByOperator groupBy,
+      List<GroupByOperator> toSplit) throws SemanticException {
+    if (groupBy.getConf().getMode() != GroupByDesc.Mode.COMPLETE) {
+      return false;
+    }
+    if (mergeRows && groupsSingleRows(merge, groupBy)) {
+      return true;
+    }
+    if (aggregatesSpillably(groupBy.getConf())) {
+      toSplit.add(groupBy);
+      return true;
+    }
+    return false;
   }
 
   private void markOperatorsWithUnstableRuntimeStats(OptimizeTezProcContext procCtx) throws SemanticException {
