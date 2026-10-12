@@ -435,9 +435,49 @@ public class TestSharedWorkOptimizer {
     Operator<?> rsB1 = OperatorFactory.getAndMakeChild(getReduceSinkDesc(), smallTableB);
     Operator<?> rsB2 = OperatorFactory.getAndMakeChild(getReduceSinkDesc(), smallTableB);
 
-    // case 3. MapJoin1: (big, A, B), MapJoin2: (A, big, B)
+    // case 3. MapJoin1: (big, A, B), MapJoin2: (A, big, B): the same small tables in the same order
     setupJoinOperatorsAndTest(ts1, rsA2, rsA1, ts2, rsB1, rsB2, 0, 1,
+            JoinType.INNER.ordinal(), JoinType.INNER.ordinal(), true);
+  }
+
+  @Test
+  public void testMapJoinCacheReuseSwappedSmallTables() {
+    // Big tables
+    TableScanOperator ts1 = getTsOp();
+    TableScanOperator ts2 = getTsOp();
+    // Small tables
+    Operator<?> smallTableA = getFilterOp(0);
+    Operator<?> smallTableB = getFilterOp(0);
+
+    Operator<?> rsA1 = OperatorFactory.getAndMakeChild(getReduceSinkDesc(), smallTableA);
+    Operator<?> rsA2 = OperatorFactory.getAndMakeChild(getReduceSinkDesc(), smallTableA);
+
+    Operator<?> rsB1 = OperatorFactory.getAndMakeChild(getReduceSinkDesc(), smallTableB);
+    Operator<?> rsB2 = OperatorFactory.getAndMakeChild(getReduceSinkDesc(), smallTableB);
+
+    // MapJoin1: (big, A, B), MapJoin2: (B, big, A)
+    setupJoinOperatorsAndTest(ts1, rsB2, rsA1, ts2, rsB1, rsA2, 0, 1,
             JoinType.INNER.ordinal(), JoinType.INNER.ordinal(), false);
+  }
+
+  @Test
+  public void testMapJoinCacheReuseDifferentOrderingOuter() {
+    // Big tables
+    TableScanOperator ts1 = getTsOp();
+    TableScanOperator ts2 = getTsOp();
+    // Small tables
+    Operator<?> smallTableA = getFilterOp(0);
+    Operator<?> smallTableB = getFilterOp(0);
+
+    Operator<?> rsA1 = OperatorFactory.getAndMakeChild(getReduceSinkDesc(), smallTableA);
+    Operator<?> rsA2 = OperatorFactory.getAndMakeChild(getReduceSinkDesc(), smallTableA);
+
+    Operator<?> rsB1 = OperatorFactory.getAndMakeChild(getReduceSinkDesc(), smallTableB);
+    Operator<?> rsB2 = OperatorFactory.getAndMakeChild(getReduceSinkDesc(), smallTableB);
+
+    // same as case 3 with left outer joins: the big table position matters
+    setupJoinOperatorsAndTest(ts1, rsA2, rsA1, ts2, rsB1, rsB2, 0, 1,
+            JoinType.LEFTOUTER.ordinal(), JoinType.LEFTOUTER.ordinal(), false);
   }
 
   @Test
@@ -602,6 +642,12 @@ public class TestSharedWorkOptimizer {
   MapJoinOperator setupMapJoin(List<Operator<?>> joinSource, int joinType, int joinPosBigTable) {
     MapJoinOperator mapJoin = (MapJoinOperator) OperatorFactory.getAndMakeChild(
             cCtx, getMapJoinDesc(joinPosBigTable), joinSource);
+    // as in a real plan, a small table input is tagged with its join position
+    for (int pos = 0; pos < joinSource.size(); pos++) {
+      if (joinSource.get(pos) instanceof ReduceSinkOperator rs) {
+        rs.getConf().setTag(pos);
+      }
+    }
     JoinCondDesc cond = new JoinCondDesc(0,0, joinType);
     mapJoin.getConf().setConds(new JoinCondDesc[]{cond});
     boolean isNoOuterJoin = !(joinType == JoinType.RIGHTOUTER.ordinal() || joinType == JoinType.LEFTOUTER.ordinal()
