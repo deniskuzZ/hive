@@ -41,7 +41,10 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class DynamicValueRegistryTez implements DynamicValueRegistry {
   private static final Logger LOG = LoggerFactory.getLogger(DynamicValueRegistryTez.class);
@@ -68,6 +71,8 @@ public class DynamicValueRegistryTez implements DynamicValueRegistry {
   static final NullValue NULL_VALUE = new NullValue();
 
   protected Map<String, Object> values = new ConcurrentHashMap<>();
+  private final Map<String, Lock> sourceLocks = new ConcurrentHashMap<>();
+  private final Set<String> readSources = ConcurrentHashMap.newKeySet();
 
   public DynamicValueRegistryTez() {
   }
@@ -94,56 +99,80 @@ public class DynamicValueRegistryTez implements DynamicValueRegistry {
     }
   }
 
+  /**
+   * Reads the runtime values of each input source. On LLAP the tasks of a query share this registry, so the first
+   * task of a vertex on a daemon reads a source and the other tasks of the vertex use its values without fetching
+   * the source again: a runtime value can be a large bloom filter, which every task would otherwise fetch from its
+   * one producer. A source is read once per DAG, as the registry can outlive one: a DAG is identified within its
+   * application, and a query re-executed after its AM was lost numbers its DAGs from 1 again in another one.
+   */
   @Override
   public void init(RegistryConf conf) throws Exception {
     RegistryConfTez rct = (RegistryConfTez) conf;
 
-    for (String inputSourceName : rct.baseWork.getInputSourceToRuntimeValuesInfo().keySet()) {
-      LOG.info("Runtime value source: " + inputSourceName);
-
-      LogicalInput runtimeValueInput = rct.inputs.get(inputSourceName);
-      RuntimeValuesInfo runtimeValuesInfo = rct.baseWork.getInputSourceToRuntimeValuesInfo().get(inputSourceName);
-
-      // Setup deserializer/obj inspectors for the incoming data source
-      AbstractSerDe serDe = ReflectionUtils.newInstance(runtimeValuesInfo.getTableDesc().getSerDeClass(), null);
-      serDe.initialize(rct.conf, runtimeValuesInfo.getTableDesc().getProperties(), null);
-      ObjectInspector inspector = serDe.getObjectInspector();
-
-      // Set up col expressions for the dynamic values using this input
-      List<ExprNodeEvaluator> colExprEvaluators = new ArrayList<ExprNodeEvaluator>();
-      for (ExprNodeDesc expr : runtimeValuesInfo.getColExprs()) {
-        ExprNodeEvaluator exprEval = ExprNodeEvaluatorFactory.get(expr, null);
-        exprEval.initialize(inspector);
-        colExprEvaluators.add(exprEval);
-      }
-
-      runtimeValueInput.start();
-      List<Input> inputList = new ArrayList<Input>();
-      inputList.add(runtimeValueInput);
-      rct.processorContext.waitForAllInputsReady(inputList);
-
-      KeyValueReader kvReader = (KeyValueReader) runtimeValueInput.getReader();
-      long rowCount = 0;
-      while (kvReader.next()) {
-        Object row = serDe.deserialize((Writable) kvReader.getCurrentValue());
-        rowCount++;
-        for (int colIdx = 0; colIdx < colExprEvaluators.size(); ++colIdx) {
-          // Read each expression and save it to the value registry
-          ExprNodeEvaluator eval = colExprEvaluators.get(colIdx);
-          Object val = eval.evaluate(row);
-          setValue(runtimeValuesInfo.getDynamicValueIDs().get(colIdx), val);
+    for (Map.Entry<String, RuntimeValuesInfo> source : rct.baseWork.getInputSourceToRuntimeValuesInfo().entrySet()) {
+      String key = rct.processorContext.getApplicationId() + ":" + rct.processorContext.getDagIdentifier() + ":"
+          + rct.baseWork.getName() + ":" + source.getKey();
+      Lock lock = sourceLocks.computeIfAbsent(key, k -> new ReentrantLock());
+      lock.lockInterruptibly();
+      try {
+        if (readSources.contains(key)) {
+          LOG.info("Runtime value source: {} (already read)", source.getKey());
+        } else {
+          read(rct, source.getKey(), source.getValue());
+          readSources.add(key);
         }
+      } finally {
+        lock.unlock();
       }
-      // For now, expecting a single row (min/max, aggregated bloom filter), or no rows
-      if (rowCount == 0) {
-        LOG.debug("No input rows from " + inputSourceName + ", filling dynamic values with nulls");
-        for (int colIdx = 0; colIdx < colExprEvaluators.size(); ++colIdx) {
-          ExprNodeEvaluator eval = colExprEvaluators.get(colIdx);
-          setValue(runtimeValuesInfo.getDynamicValueIDs().get(colIdx), null);
-        }
-      } else if (rowCount > 1) {
-        throw new IllegalStateException("Expected 0 or 1 rows from " + inputSourceName + ", got " + rowCount);
+    }
+  }
+
+  private void read(RegistryConfTez rct, String inputSourceName, RuntimeValuesInfo runtimeValuesInfo)
+      throws Exception {
+    LOG.info("Runtime value source: " + inputSourceName);
+
+    LogicalInput runtimeValueInput = rct.inputs.get(inputSourceName);
+
+    // Setup deserializer/obj inspectors for the incoming data source
+    AbstractSerDe serDe = ReflectionUtils.newInstance(runtimeValuesInfo.getTableDesc().getSerDeClass(), null);
+    serDe.initialize(rct.conf, runtimeValuesInfo.getTableDesc().getProperties(), null);
+    ObjectInspector inspector = serDe.getObjectInspector();
+
+    // Set up col expressions for the dynamic values using this input
+    List<ExprNodeEvaluator> colExprEvaluators = new ArrayList<ExprNodeEvaluator>();
+    for (ExprNodeDesc expr : runtimeValuesInfo.getColExprs()) {
+      ExprNodeEvaluator exprEval = ExprNodeEvaluatorFactory.get(expr, null);
+      exprEval.initialize(inspector);
+      colExprEvaluators.add(exprEval);
+    }
+
+    runtimeValueInput.start();
+    List<Input> inputList = new ArrayList<Input>();
+    inputList.add(runtimeValueInput);
+    rct.processorContext.waitForAllInputsReady(inputList);
+
+    KeyValueReader kvReader = (KeyValueReader) runtimeValueInput.getReader();
+    long rowCount = 0;
+    while (kvReader.next()) {
+      Object row = serDe.deserialize((Writable) kvReader.getCurrentValue());
+      rowCount++;
+      for (int colIdx = 0; colIdx < colExprEvaluators.size(); ++colIdx) {
+        // Read each expression and save it to the value registry
+        ExprNodeEvaluator eval = colExprEvaluators.get(colIdx);
+        Object val = eval.evaluate(row);
+        setValue(runtimeValuesInfo.getDynamicValueIDs().get(colIdx), val);
       }
+    }
+    // For now, expecting a single row (min/max, aggregated bloom filter), or no rows
+    if (rowCount == 0) {
+      LOG.debug("No input rows from " + inputSourceName + ", filling dynamic values with nulls");
+      for (int colIdx = 0; colIdx < colExprEvaluators.size(); ++colIdx) {
+        ExprNodeEvaluator eval = colExprEvaluators.get(colIdx);
+        setValue(runtimeValuesInfo.getDynamicValueIDs().get(colIdx), null);
+      }
+    } else if (rowCount > 1) {
+      throw new IllegalStateException("Expected 0 or 1 rows from " + inputSourceName + ", got " + rowCount);
     }
   }
 }
