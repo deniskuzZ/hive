@@ -365,6 +365,22 @@ public class QBParseInfo {
     return destToGroupby.get(clause);
   }
 
+  /**
+   * Whether the GROUP BY of the clause is map-side only (see {@code HiveParser.TOK_PARTIAL_GROUPBY}).
+   */
+  public boolean isPartialGroupByForClause(String clause) {
+    ASTNode groupBy = destToGroupby.get(clause);
+    return groupBy != null && groupBy.getType() == HiveParser.TOK_PARTIAL_GROUPBY;
+  }
+
+  /**
+   * Whether the GROUP BY of the clause merges partial results (see {@code HiveParser.TOK_MERGE_GROUPBY}).
+   */
+  public boolean isMergeGroupByForClause(String clause) {
+    ASTNode groupBy = destToGroupby.get(clause);
+    return groupBy != null && groupBy.getType() == HiveParser.TOK_MERGE_GROUPBY;
+  }
+
   public Set<String> getDestRollups() {
     return destRollups;
   }

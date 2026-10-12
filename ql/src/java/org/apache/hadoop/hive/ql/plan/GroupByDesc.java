@@ -64,6 +64,8 @@ public class GroupByDesc extends AbstractOperatorDesc {
 
   // no hash aggregations for group by
   private boolean bucketGroup;
+  // map-side hash aggregation with no shuffle and no merge; an aggregation above merges its results
+  private boolean partialOnly;
   // reduce-side aggregation of an unsorted shuffle: a hash aggregation holding every group of its partition
   private boolean unsortedInput;
 
@@ -274,6 +276,16 @@ public class GroupByDesc extends AbstractOperatorDesc {
     this.bucketGroup = bucketGroup;
   }
 
+  @Explain(displayName = "partialOnly", displayOnlyOnTrue = true)
+  @Signature
+  public boolean isPartialOnly() {
+    return partialOnly;
+  }
+
+  public void setPartialOnly(boolean partialOnly) {
+    this.partialOnly = partialOnly;
+  }
+
   @Explain(displayName = "unsortedInput", displayOnlyOnTrue = true)
   public boolean isUnsortedInput() {
     return unsortedInput;
@@ -374,6 +386,7 @@ public class GroupByDesc extends AbstractOperatorDesc {
         this.groupByMemoryUsage, this.memoryThreshold, this.minReductionHashAggr, this.minReductionHashAggrLowerBound,
         this.hashAggrFlushPercent, listGroupingSets, this.groupingSetsPresent,
         this.groupingSetPosition, this.isDistinct);
+    clone.setPartialOnly(partialOnly);
     clone.setUnsortedInput(unsortedInput);
     return clone;
   }
