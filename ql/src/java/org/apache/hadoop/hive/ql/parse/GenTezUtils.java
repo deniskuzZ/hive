@@ -696,6 +696,9 @@ public class GenTezUtils {
           return EdgeType.CUSTOM_SIMPLE_EDGE;
         }
       }
+      if (reduceWork.getReducer() instanceof GroupByOperator groupBy && groupBy.getConf().isUnsortedInput()) {
+        return EdgeType.CUSTOM_SIMPLE_EDGE;
+      }
     }
     if (!reduceSinkOperator.getConf().isOrdering()) {
       //if no sort keys are specified, use an edge that does not sort

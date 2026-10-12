@@ -104,6 +104,7 @@ import org.apache.hadoop.hive.ql.metadata.HiveException;
 import org.apache.hadoop.hive.ql.parse.SemanticException;
 import org.apache.hadoop.hive.ql.plan.BaseWork;
 import org.apache.hadoop.hive.ql.plan.FileSinkDesc;
+import org.apache.hadoop.hive.ql.plan.GroupByDesc;
 import org.apache.hadoop.hive.ql.plan.MapWork;
 import org.apache.hadoop.hive.ql.plan.MergeJoinWork;
 import org.apache.hadoop.hive.ql.plan.OperatorDesc;
@@ -465,6 +466,9 @@ public class DagUtils {
     }
 
     case CUSTOM_SIMPLE_EDGE:
+      if (isUnsortedGroupBy(work)) {
+        setupAutoReducerParallelism(edgeProp, w);
+      }
       mergeInputClass = ConcatenatedMergedKeyValueInput.class;
       break;
 
@@ -525,7 +529,11 @@ public class DagUtils {
       break;
     }
     case CUSTOM_SIMPLE_EDGE: {
-      setupQuickStart(edgeProp, w);
+      if (isUnsortedGroupBy(work) && edgeProp.isAutoReduce()) {
+        setupAutoReducerParallelism(edgeProp, w);
+      } else {
+        setupQuickStart(edgeProp, w);
+      }
       break;
     }
 
@@ -1667,6 +1675,15 @@ public class DagUtils {
       desc.setUserPayload(payload);
       v.setVertexManagerPlugin(desc);
     }
+  }
+
+  /**
+   * A GROUP BY over an unsorted shuffle aggregates whatever partitions a task reads, so auto-reduce may merge the
+   * partitions of its unsorted edge.
+   */
+  private static boolean isUnsortedGroupBy(BaseWork work) {
+    return work instanceof ReduceWork reduceWork && reduceWork.getReducer().getConf() instanceof GroupByDesc groupBy
+        && groupBy.isUnsortedInput();
   }
 
   private void setupQuickStart(TezEdgeProperty edgeProp, Vertex v)
