@@ -163,7 +163,7 @@ public class ConvertJoinMapJoin implements SemanticNodeProcessor {
     }
     LOG.info("Estimated number of buckets " + numBuckets);
     MapJoinConversion mapJoinConversion =
-        getMapJoinConversion(joinOp, context, numBuckets, false, maxJoinMemory, true);
+        getMapJoinConversion(joinOp, context, numBuckets, maxJoinMemory, true);
     if (mapJoinConversion == null) {
       Object retval = checkAndConvertSMBJoin(context, joinOp, tezBucketJoinProcCtx);
       if (retval == null) {
@@ -192,7 +192,7 @@ public class ConvertJoinMapJoin implements SemanticNodeProcessor {
     // check if we can convert to map join no bucket scaling.
     LOG.info("Convert to non-bucketed map join");
     if (numBuckets != 1) {
-      mapJoinConversion = getMapJoinConversion(joinOp, context, 1, false, maxJoinMemory, true);
+      mapJoinConversion = getMapJoinConversion(joinOp, context, 1, maxJoinMemory, true);
     }
     if (mapJoinConversion == null) {
       // we are just converting to a common merge join operator. The shuffle
@@ -1068,30 +1068,6 @@ public class ConvertJoinMapJoin implements SemanticNodeProcessor {
     return false;
   }
 
-  private boolean hasOuterJoin(JoinOperator joinOp) throws SemanticException {
-    boolean hasOuter = false;
-    for (JoinCondDesc joinCondDesc : joinOp.getConf().getConds()) {
-      switch (joinCondDesc.getType()) {
-        case JoinDesc.INNER_JOIN:
-        case JoinDesc.LEFT_SEMI_JOIN:
-        case JoinDesc.ANTI_JOIN:
-        case JoinDesc.UNIQUE_JOIN:
-          hasOuter = false;
-          break;
-
-        case JoinDesc.FULL_OUTER_JOIN:
-        case JoinDesc.LEFT_OUTER_JOIN:
-        case JoinDesc.RIGHT_OUTER_JOIN:
-          hasOuter = true;
-          break;
-
-        default:
-          throw new SemanticException("Unknown join type " + joinCondDesc.getType());
-      }
-    }
-    return hasOuter;
-  }
-
   private boolean isCrossProduct(JoinOperator joinOp) {
     ExprNodeDesc[][] joinExprs = joinOp.getConf().getJoinKeys();
     if (joinExprs != null) {
@@ -1152,32 +1128,16 @@ public class ConvertJoinMapJoin implements SemanticNodeProcessor {
    * @param context optimization context
    * @param buckets bucket count for Bucket Map Join conversion consideration or reduce count
    * for Dynamic Hash Join conversion consideration
-   * @param skipJoinTypeChecks whether to skip join type checking
    * @param maxSize size threshold for Map Join conversion
    * @param checkMapJoinThresholds whether to check thresholds to convert to Map Join
    * @return returns big table position or -1 if it cannot be determined
    * @throws SemanticException
    */
   public MapJoinConversion getMapJoinConversion(JoinOperator joinOp, OptimizeTezProcContext context,
-      int buckets, boolean skipJoinTypeChecks, long maxSize, boolean checkMapJoinThresholds)
+      int buckets, long maxSize, boolean checkMapJoinThresholds)
               throws SemanticException {
     JoinDesc joinDesc = joinOp.getConf();
     JoinCondDesc[] conds = joinDesc.getConds();
-    if (!skipJoinTypeChecks) {
-      /*
-       * HIVE-9038: Join tests fail in tez when we have more than 1 join on the same key and there is
-       * an outer join down the join tree that requires filterTag. We disable this conversion to map
-       * join here now. We need to emulate the behavior of HashTableSinkOperator as in MR or create a
-       * new operation to be able to support this. This seems like a corner case enough to special
-       * case this for now.
-       */
-      if (conds.length > 1) {
-        if (hasOuterJoin(joinOp)) {
-          return null;
-        }
-      }
-    }
-
     // Assume.
     boolean isFullOuterEnabledForDynamicPartitionHashJoin = false;
     boolean isFullOuterEnabledForMapJoin = false;
@@ -1324,7 +1284,7 @@ public class ConvertJoinMapJoin implements SemanticNodeProcessor {
     // only allow cross product in map joins if build side is 'small'
     boolean cartesianProductEdgeEnabled =
       HiveConf.getBoolVar(context.conf, HiveConf.ConfVars.TEZ_CARTESIAN_PRODUCT_EDGE_ENABLED);
-    if (cartesianProductEdgeEnabled && !hasOuterJoin(joinOp) && isCrossProduct(joinOp)) {
+    if (cartesianProductEdgeEnabled && joinOp.getConf().isNoOuterJoin() && isCrossProduct(joinOp)) {
       for (int i = 0 ; i < joinOp.getParentOperators().size(); i ++) {
         if (i != bigTablePosition) {
           Statistics parentStats = joinOp.getParentOperators().get(i).getStatistics();
@@ -1636,7 +1596,7 @@ public class ConvertJoinMapJoin implements SemanticNodeProcessor {
     int numReducers = estimateNumBuckets(joinOp, false);
     LOG.info("Try dynamic partitioned hash join with estimated " + numReducers + " reducers");
     MapJoinConversion mapJoinConversion =
-        getMapJoinConversion(joinOp, context, numReducers, false, maxJoinMemory, false);
+        getMapJoinConversion(joinOp, context, numReducers, maxJoinMemory, false);
     if (mapJoinConversion != null) {
       if (mapJoinConversion.getIsFullOuterJoin() &&
           !mapJoinConversion.getIsFullOuterEnabledForDynamicPartitionHashJoin()) {
@@ -1698,7 +1658,7 @@ public class ConvertJoinMapJoin implements SemanticNodeProcessor {
       throws SemanticException {
     MapJoinConversion mapJoinConversion =
         getMapJoinConversion(
-            joinOp, context, estimateNumBuckets(joinOp, false), true, Long.MAX_VALUE, false);
+            joinOp, context, estimateNumBuckets(joinOp, false), Long.MAX_VALUE, false);
     final int pos;
     if (mapJoinConversion == null || mapJoinConversion.getBigTablePos() == -1) {
       LOG.info("Could not get a valid join position. Defaulting to position 0");
