@@ -19,6 +19,8 @@
 
 package org.apache.hadoop.hive.ql.exec.vector.expressions.aggregates;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
@@ -34,6 +36,7 @@ import org.apache.hadoop.hive.ql.exec.vector.VectorAggregationBufferRow;
 import org.apache.hadoop.hive.ql.exec.vector.VectorAggregationDesc;
 import org.apache.hadoop.hive.ql.exec.vector.VectorizedRowBatch;
 import org.apache.hadoop.hive.ql.metadata.HiveException;
+import org.apache.hadoop.hive.ql.udf.generic.SparseBloomFilter;
 import org.apache.hadoop.hive.ql.udf.generic.GenericUDAFBloomFilter.GenericUDAFBloomFilterEvaluator;
 import org.apache.hadoop.hive.ql.udf.generic.GenericUDAFEvaluator.Mode;
 import org.apache.hive.common.util.BloomKFilter;
@@ -58,12 +61,16 @@ public class VectorUDAFBloomFilterMerge extends VectorAggregateExpression {
     private static final long serialVersionUID = 1L;
 
     byte[] bfBytes;
+    private final long expectedEntries;
+    // the partial results that are sparse add their hashes here, merged into bfBytes at the end
+    private BloomKFilter fromSparse;
     private ExecutorService executor;
     private int numThreads;
     private BloomFilterMergeWorker[] workers;
     private AtomicBoolean aborted = new AtomicBoolean(false);
 
     public Aggregation(long expectedEntries, int numThreads) {
+      this.expectedEntries = expectedEntries;
       bfBytes = BloomKFilter.getInitialBytes(expectedEntries);
 
       if (numThreads < 0) {
@@ -83,6 +90,33 @@ public class VectorUDAFBloomFilterMerge extends VectorAggregateExpression {
     public void reset() {
       // Do not change the initial bytes which contain NumHashFunctions/NumBits!
       Arrays.fill(bfBytes, BloomKFilter.START_OF_SERIALIZED_LONGS, bfBytes.length, (byte) 0);
+      fromSparse = null;
+    }
+
+    void addSparse(byte[] bytes, int start, int length) {
+      if (fromSparse == null) {
+        fromSparse = BloomKFilter.build(expectedEntries);
+      }
+      SparseBloomFilter.addTo(fromSparse, bytes, start, length);
+    }
+
+    byte[] result() throws IOException {
+      if (fromSparse != null) {
+        ByteArrayOutputStream out = new ByteArrayOutputStream(bfBytes.length);
+        BloomKFilter.serialize(out, fromSparse);
+        byte[] sparseBytes = out.toByteArray();
+        BloomKFilter.mergeBloomFilterBytes(bfBytes, 0, bfBytes.length, sparseBytes, 0, sparseBytes.length);
+        fromSparse = null;
+      }
+      return bfBytes;
+    }
+
+    private void merge(byte[] bytes, int start, int length) {
+      if (SparseBloomFilter.isSparse(bytes, start, length)) {
+        addSparse(bytes, start, length);
+      } else {
+        splitVectorAcrossWorkers(workers, bytes, start, length);
+      }
     }
 
     public void mergeBloomFilterBytesFromInputColumn(BytesColumnVector inputColumn,
@@ -95,20 +129,20 @@ public class VectorUDAFBloomFilterMerge extends VectorAggregateExpression {
       for (int j = 0; j < batchSize; j++) {
         if (!selectedInUse) {
           if (inputColumn.noNulls) {
-            splitVectorAcrossWorkers(workers, inputColumn.vector[j], inputColumn.start[j],
+            merge(inputColumn.vector[j], inputColumn.start[j],
                 inputColumn.length[j]);
           } else if (!inputColumn.isNull[j]) {
-            splitVectorAcrossWorkers(workers, inputColumn.vector[j], inputColumn.start[j],
+            merge(inputColumn.vector[j], inputColumn.start[j],
                 inputColumn.length[j]);
           }
         } else if (inputColumn.noNulls) {
           int i = selected[j];
-          splitVectorAcrossWorkers(workers, inputColumn.vector[i], inputColumn.start[i],
+          merge(inputColumn.vector[i], inputColumn.start[i],
               inputColumn.length[i]);
         } else {
           int i = selected[j];
           if (!inputColumn.isNull[i]) {
-            splitVectorAcrossWorkers(workers, inputColumn.vector[i], inputColumn.start[i],
+            merge(inputColumn.vector[i], inputColumn.start[i],
                 inputColumn.length[i]);
           }
         }
@@ -572,6 +606,10 @@ public class VectorUDAFBloomFilterMerge extends VectorAggregateExpression {
     // BloomFilter.mergeBloomFilterBytes() does a simple byte ORing
     // which should be faster than deserialize/merge.
     BytesColumnVector inputColumn = (BytesColumnVector) columnVector;
+    if (SparseBloomFilter.isSparse(inputColumn.vector[i], inputColumn.start[i], inputColumn.length[i])) {
+      myagg.addSparse(inputColumn.vector[i], inputColumn.start[i], inputColumn.length[i]);
+      return;
+    }
     BloomKFilter.mergeBloomFilterBytes(myagg.bfBytes, 0, myagg.bfBytes.length,
         inputColumn.vector[i], inputColumn.start[i], inputColumn.length[i]);
   }
@@ -601,7 +639,12 @@ public class VectorUDAFBloomFilterMerge extends VectorAggregateExpression {
     outputColVector.isNull[batchIndex] = false;
 
     Aggregation bfAgg = (Aggregation) agg;
-    outputColVector.setVal(batchIndex, bfAgg.bfBytes, 0, bfAgg.bfBytes.length);
+    try {
+      byte[] bytes = bfAgg.result();
+      outputColVector.setVal(batchIndex, bytes, 0, bytes.length);
+    } catch (IOException e) {
+      throw new HiveException("Error encountered while serializing bloomfilter", e);
+    }
   }
 
   /**
