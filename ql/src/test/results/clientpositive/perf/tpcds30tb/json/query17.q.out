@@ -1404,449 +1404,6 @@
         "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveTableScan",
         "table": [
           "default",
-          "store_returns"
-        ],
-        "table:alias": "store_returns",
-        "inputs": [],
-        "rowCount": 8332595709,
-        "avgRowSize": 249,
-        "rowType": {
-          "fields": [
-            {
-              "type": "BIGINT",
-              "nullable": true,
-              "name": "sr_return_time_sk"
-            },
-            {
-              "type": "BIGINT",
-              "nullable": false,
-              "name": "sr_item_sk"
-            },
-            {
-              "type": "BIGINT",
-              "nullable": true,
-              "name": "sr_customer_sk"
-            },
-            {
-              "type": "BIGINT",
-              "nullable": true,
-              "name": "sr_cdemo_sk"
-            },
-            {
-              "type": "BIGINT",
-              "nullable": true,
-              "name": "sr_hdemo_sk"
-            },
-            {
-              "type": "BIGINT",
-              "nullable": true,
-              "name": "sr_addr_sk"
-            },
-            {
-              "type": "BIGINT",
-              "nullable": true,
-              "name": "sr_store_sk"
-            },
-            {
-              "type": "BIGINT",
-              "nullable": true,
-              "name": "sr_reason_sk"
-            },
-            {
-              "type": "BIGINT",
-              "nullable": false,
-              "name": "sr_ticket_number"
-            },
-            {
-              "type": "INTEGER",
-              "nullable": true,
-              "name": "sr_return_quantity"
-            },
-            {
-              "type": "DECIMAL",
-              "nullable": true,
-              "precision": 7,
-              "scale": 2,
-              "name": "sr_return_amt"
-            },
-            {
-              "type": "DECIMAL",
-              "nullable": true,
-              "precision": 7,
-              "scale": 2,
-              "name": "sr_return_tax"
-            },
-            {
-              "type": "DECIMAL",
-              "nullable": true,
-              "precision": 7,
-              "scale": 2,
-              "name": "sr_return_amt_inc_tax"
-            },
-            {
-              "type": "DECIMAL",
-              "nullable": true,
-              "precision": 7,
-              "scale": 2,
-              "name": "sr_fee"
-            },
-            {
-              "type": "DECIMAL",
-              "nullable": true,
-              "precision": 7,
-              "scale": 2,
-              "name": "sr_return_ship_cost"
-            },
-            {
-              "type": "DECIMAL",
-              "nullable": true,
-              "precision": 7,
-              "scale": 2,
-              "name": "sr_refunded_cash"
-            },
-            {
-              "type": "DECIMAL",
-              "nullable": true,
-              "precision": 7,
-              "scale": 2,
-              "name": "sr_reversed_charge"
-            },
-            {
-              "type": "DECIMAL",
-              "nullable": true,
-              "precision": 7,
-              "scale": 2,
-              "name": "sr_store_credit"
-            },
-            {
-              "type": "DECIMAL",
-              "nullable": true,
-              "precision": 7,
-              "scale": 2,
-              "name": "sr_net_loss"
-            },
-            {
-              "type": "BIGINT",
-              "nullable": true,
-              "name": "sr_returned_date_sk"
-            },
-            {
-              "type": "BIGINT",
-              "nullable": true,
-              "name": "BLOCK__OFFSET__INSIDE__FILE"
-            },
-            {
-              "type": "VARCHAR",
-              "nullable": true,
-              "precision": 2147483647,
-              "name": "INPUT__FILE__NAME"
-            },
-            {
-              "fields": [
-                {
-                  "type": "BIGINT",
-                  "nullable": true,
-                  "name": "writeid"
-                },
-                {
-                  "type": "INTEGER",
-                  "nullable": true,
-                  "name": "bucketid"
-                },
-                {
-                  "type": "BIGINT",
-                  "nullable": true,
-                  "name": "rowid"
-                }
-              ],
-              "nullable": true,
-              "name": "ROW__ID"
-            },
-            {
-              "type": "BOOLEAN",
-              "nullable": true,
-              "name": "ROW__IS__DELETED"
-            }
-          ],
-          "nullable": false
-        },
-        "partitionColumns": [
-          "sr_returned_date_sk"
-        ],
-        "colStats": [
-          {
-            "name": "sr_item_sk",
-            "ndv": 462000,
-            "minValue": 1,
-            "maxValue": 462000
-          },
-          {
-            "name": "sr_customer_sk",
-            "ndv": 78525965,
-            "minValue": 1,
-            "maxValue": 80000000
-          },
-          {
-            "name": "sr_ticket_number",
-            "ndv": 5065526774,
-            "minValue": 1,
-            "maxValue": 7200000000
-          },
-          {
-            "name": "sr_return_quantity",
-            "ndv": 101,
-            "minValue": 1,
-            "maxValue": 100
-          },
-          {
-            "name": "sr_returned_date_sk",
-            "ndv": 2003,
-            "minValue": 2450820,
-            "maxValue": 2452822
-          },
-          {
-            "name": "sr_return_time_sk",
-            "ndv": 32389,
-            "minValue": 28799,
-            "maxValue": 61199
-          },
-          {
-            "name": "sr_cdemo_sk",
-            "ndv": 1920801,
-            "minValue": 1,
-            "maxValue": 1920800
-          },
-          {
-            "name": "sr_hdemo_sk",
-            "ndv": 7201,
-            "minValue": 1,
-            "maxValue": 7200
-          },
-          {
-            "name": "sr_addr_sk",
-            "ndv": 40000001,
-            "minValue": 1,
-            "maxValue": 40000000
-          },
-          {
-            "name": "sr_store_sk",
-            "ndv": 870,
-            "minValue": 1,
-            "maxValue": 1702
-          },
-          {
-            "name": "sr_reason_sk",
-            "ndv": 73,
-            "minValue": 1,
-            "maxValue": 72
-          },
-          {
-            "name": "sr_return_amt",
-            "ndv": 715216,
-            "minValue": 0,
-            "maxValue": 19643
-          },
-          {
-            "name": "sr_return_tax",
-            "ndv": 141365,
-            "minValue": 0,
-            "maxValue": 1714.37
-          },
-          {
-            "name": "sr_return_amt_inc_tax",
-            "ndv": 1520430,
-            "minValue": 0,
-            "maxValue": 21018.01
-          },
-          {
-            "name": "sr_fee",
-            "ndv": 9408,
-            "minValue": 0.5,
-            "maxValue": 100
-          },
-          {
-            "name": "sr_return_ship_cost",
-            "ndv": 363000,
-            "minValue": 0,
-            "maxValue": 9975
-          },
-          {
-            "name": "sr_refunded_cash",
-            "ndv": 1187970,
-            "minValue": 0,
-            "maxValue": 18413.33
-          },
-          {
-            "name": "sr_reversed_charge",
-            "ndv": 924833,
-            "minValue": 0,
-            "maxValue": 18104.5
-          },
-          {
-            "name": "sr_store_credit",
-            "ndv": 935681,
-            "minValue": 0,
-            "maxValue": 17792.48
-          },
-          {
-            "name": "sr_net_loss",
-            "ndv": 848797,
-            "minValue": 0.5,
-            "maxValue": 11008.17
-          }
-        ]
-      },
-      {
-        "id": "11",
-        "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveFilter",
-        "condition": {
-          "op": {
-            "name": "AND",
-            "kind": "AND",
-            "syntax": "BINARY"
-          },
-          "operands": [
-            {
-              "op": {
-                "name": "IS NOT NULL",
-                "kind": "IS_NOT_NULL",
-                "syntax": "POSTFIX"
-              },
-              "operands": [
-                {
-                  "input": 2,
-                  "name": "$2"
-                }
-              ]
-            },
-            {
-              "op": {
-                "name": "IS NOT NULL",
-                "kind": "IS_NOT_NULL",
-                "syntax": "POSTFIX"
-              },
-              "operands": [
-                {
-                  "input": 19,
-                  "name": "$19"
-                }
-              ]
-            }
-          ]
-        },
-        "rowCount": 6.749402524290001E9
-      },
-      {
-        "id": "12",
-        "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveProject",
-        "fields": [
-          "sr_item_sk",
-          "sr_customer_sk",
-          "sr_ticket_number",
-          "sr_return_quantity",
-          "sr_returned_date_sk"
-        ],
-        "exprs": [
-          {
-            "input": 1,
-            "name": "$1"
-          },
-          {
-            "input": 2,
-            "name": "$2"
-          },
-          {
-            "input": 8,
-            "name": "$8"
-          },
-          {
-            "input": 9,
-            "name": "$9"
-          },
-          {
-            "input": 19,
-            "name": "$19"
-          }
-        ],
-        "rowCount": 6.749402524290001E9
-      },
-      {
-        "id": "13",
-        "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveJoin",
-        "condition": {
-          "op": {
-            "name": "AND",
-            "kind": "AND",
-            "syntax": "BINARY"
-          },
-          "operands": [
-            {
-              "op": {
-                "name": "=",
-                "kind": "EQUALS",
-                "syntax": "BINARY"
-              },
-              "operands": [
-                {
-                  "input": 0,
-                  "name": "$0"
-                },
-                {
-                  "input": 6,
-                  "name": "$6"
-                }
-              ]
-            },
-            {
-              "op": {
-                "name": "=",
-                "kind": "EQUALS",
-                "syntax": "BINARY"
-              },
-              "operands": [
-                {
-                  "input": 1,
-                  "name": "$1"
-                },
-                {
-                  "input": 7,
-                  "name": "$7"
-                }
-              ]
-            },
-            {
-              "op": {
-                "name": "=",
-                "kind": "EQUALS",
-                "syntax": "BINARY"
-              },
-              "operands": [
-                {
-                  "input": 3,
-                  "name": "$3"
-                },
-                {
-                  "input": 8,
-                  "name": "$8"
-                }
-              ]
-            }
-          ]
-        },
-        "joinType": "inner",
-        "algorithm": "none",
-        "cost": "not available",
-        "inputs": [
-          "9",
-          "12"
-        ],
-        "rowCount": 1370180724878525696
-      },
-      {
-        "id": "14",
-        "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveTableScan",
-        "table": [
-          "default",
           "date_dim"
         ],
         "table:alias": "d1",
@@ -2196,7 +1753,7 @@
         ]
       },
       {
-        "id": "15",
+        "id": "11",
         "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveFilter",
         "condition": {
           "op": {
@@ -2222,7 +1779,7 @@
         "rowCount": 10957.35
       },
       {
-        "id": "16",
+        "id": "12",
         "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveProject",
         "fields": [
           "d_date_sk"
@@ -2236,7 +1793,7 @@
         "rowCount": 10957.35
       },
       {
-        "id": "17",
+        "id": "13",
         "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveJoin",
         "condition": {
           "op": {
@@ -2246,8 +1803,8 @@
           },
           "operands": [
             {
-              "input": 11,
-              "name": "$11"
+              "input": 6,
+              "name": "$6"
             },
             {
               "input": 5,
@@ -2259,13 +1816,384 @@
         "algorithm": "none",
         "cost": "not available",
         "inputs": [
-          "13",
-          "16"
+          "9",
+          "12"
         ],
-        "rowCount": 2.252032464862157E21
+        "rowCount": 9.886339954926145E13
       },
       {
-        "id": "18",
+        "id": "14",
+        "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveTableScan",
+        "table": [
+          "default",
+          "store_returns"
+        ],
+        "table:alias": "store_returns",
+        "inputs": [],
+        "rowCount": 8332595709,
+        "avgRowSize": 249,
+        "rowType": {
+          "fields": [
+            {
+              "type": "BIGINT",
+              "nullable": true,
+              "name": "sr_return_time_sk"
+            },
+            {
+              "type": "BIGINT",
+              "nullable": false,
+              "name": "sr_item_sk"
+            },
+            {
+              "type": "BIGINT",
+              "nullable": true,
+              "name": "sr_customer_sk"
+            },
+            {
+              "type": "BIGINT",
+              "nullable": true,
+              "name": "sr_cdemo_sk"
+            },
+            {
+              "type": "BIGINT",
+              "nullable": true,
+              "name": "sr_hdemo_sk"
+            },
+            {
+              "type": "BIGINT",
+              "nullable": true,
+              "name": "sr_addr_sk"
+            },
+            {
+              "type": "BIGINT",
+              "nullable": true,
+              "name": "sr_store_sk"
+            },
+            {
+              "type": "BIGINT",
+              "nullable": true,
+              "name": "sr_reason_sk"
+            },
+            {
+              "type": "BIGINT",
+              "nullable": false,
+              "name": "sr_ticket_number"
+            },
+            {
+              "type": "INTEGER",
+              "nullable": true,
+              "name": "sr_return_quantity"
+            },
+            {
+              "type": "DECIMAL",
+              "nullable": true,
+              "precision": 7,
+              "scale": 2,
+              "name": "sr_return_amt"
+            },
+            {
+              "type": "DECIMAL",
+              "nullable": true,
+              "precision": 7,
+              "scale": 2,
+              "name": "sr_return_tax"
+            },
+            {
+              "type": "DECIMAL",
+              "nullable": true,
+              "precision": 7,
+              "scale": 2,
+              "name": "sr_return_amt_inc_tax"
+            },
+            {
+              "type": "DECIMAL",
+              "nullable": true,
+              "precision": 7,
+              "scale": 2,
+              "name": "sr_fee"
+            },
+            {
+              "type": "DECIMAL",
+              "nullable": true,
+              "precision": 7,
+              "scale": 2,
+              "name": "sr_return_ship_cost"
+            },
+            {
+              "type": "DECIMAL",
+              "nullable": true,
+              "precision": 7,
+              "scale": 2,
+              "name": "sr_refunded_cash"
+            },
+            {
+              "type": "DECIMAL",
+              "nullable": true,
+              "precision": 7,
+              "scale": 2,
+              "name": "sr_reversed_charge"
+            },
+            {
+              "type": "DECIMAL",
+              "nullable": true,
+              "precision": 7,
+              "scale": 2,
+              "name": "sr_store_credit"
+            },
+            {
+              "type": "DECIMAL",
+              "nullable": true,
+              "precision": 7,
+              "scale": 2,
+              "name": "sr_net_loss"
+            },
+            {
+              "type": "BIGINT",
+              "nullable": true,
+              "name": "sr_returned_date_sk"
+            },
+            {
+              "type": "BIGINT",
+              "nullable": true,
+              "name": "BLOCK__OFFSET__INSIDE__FILE"
+            },
+            {
+              "type": "VARCHAR",
+              "nullable": true,
+              "precision": 2147483647,
+              "name": "INPUT__FILE__NAME"
+            },
+            {
+              "fields": [
+                {
+                  "type": "BIGINT",
+                  "nullable": true,
+                  "name": "writeid"
+                },
+                {
+                  "type": "INTEGER",
+                  "nullable": true,
+                  "name": "bucketid"
+                },
+                {
+                  "type": "BIGINT",
+                  "nullable": true,
+                  "name": "rowid"
+                }
+              ],
+              "nullable": true,
+              "name": "ROW__ID"
+            },
+            {
+              "type": "BOOLEAN",
+              "nullable": true,
+              "name": "ROW__IS__DELETED"
+            }
+          ],
+          "nullable": false
+        },
+        "partitionColumns": [
+          "sr_returned_date_sk"
+        ],
+        "colStats": [
+          {
+            "name": "sr_item_sk",
+            "ndv": 462000,
+            "minValue": 1,
+            "maxValue": 462000
+          },
+          {
+            "name": "sr_customer_sk",
+            "ndv": 78525965,
+            "minValue": 1,
+            "maxValue": 80000000
+          },
+          {
+            "name": "sr_ticket_number",
+            "ndv": 5065526774,
+            "minValue": 1,
+            "maxValue": 7200000000
+          },
+          {
+            "name": "sr_return_quantity",
+            "ndv": 101,
+            "minValue": 1,
+            "maxValue": 100
+          },
+          {
+            "name": "sr_returned_date_sk",
+            "ndv": 2003,
+            "minValue": 2450820,
+            "maxValue": 2452822
+          },
+          {
+            "name": "sr_return_time_sk",
+            "ndv": 32389,
+            "minValue": 28799,
+            "maxValue": 61199
+          },
+          {
+            "name": "sr_cdemo_sk",
+            "ndv": 1920801,
+            "minValue": 1,
+            "maxValue": 1920800
+          },
+          {
+            "name": "sr_hdemo_sk",
+            "ndv": 7201,
+            "minValue": 1,
+            "maxValue": 7200
+          },
+          {
+            "name": "sr_addr_sk",
+            "ndv": 40000001,
+            "minValue": 1,
+            "maxValue": 40000000
+          },
+          {
+            "name": "sr_store_sk",
+            "ndv": 870,
+            "minValue": 1,
+            "maxValue": 1702
+          },
+          {
+            "name": "sr_reason_sk",
+            "ndv": 73,
+            "minValue": 1,
+            "maxValue": 72
+          },
+          {
+            "name": "sr_return_amt",
+            "ndv": 715216,
+            "minValue": 0,
+            "maxValue": 19643
+          },
+          {
+            "name": "sr_return_tax",
+            "ndv": 141365,
+            "minValue": 0,
+            "maxValue": 1714.37
+          },
+          {
+            "name": "sr_return_amt_inc_tax",
+            "ndv": 1520430,
+            "minValue": 0,
+            "maxValue": 21018.01
+          },
+          {
+            "name": "sr_fee",
+            "ndv": 9408,
+            "minValue": 0.5,
+            "maxValue": 100
+          },
+          {
+            "name": "sr_return_ship_cost",
+            "ndv": 363000,
+            "minValue": 0,
+            "maxValue": 9975
+          },
+          {
+            "name": "sr_refunded_cash",
+            "ndv": 1187970,
+            "minValue": 0,
+            "maxValue": 18413.33
+          },
+          {
+            "name": "sr_reversed_charge",
+            "ndv": 924833,
+            "minValue": 0,
+            "maxValue": 18104.5
+          },
+          {
+            "name": "sr_store_credit",
+            "ndv": 935681,
+            "minValue": 0,
+            "maxValue": 17792.48
+          },
+          {
+            "name": "sr_net_loss",
+            "ndv": 848797,
+            "minValue": 0.5,
+            "maxValue": 11008.17
+          }
+        ]
+      },
+      {
+        "id": "15",
+        "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveFilter",
+        "condition": {
+          "op": {
+            "name": "AND",
+            "kind": "AND",
+            "syntax": "BINARY"
+          },
+          "operands": [
+            {
+              "op": {
+                "name": "IS NOT NULL",
+                "kind": "IS_NOT_NULL",
+                "syntax": "POSTFIX"
+              },
+              "operands": [
+                {
+                  "input": 2,
+                  "name": "$2"
+                }
+              ]
+            },
+            {
+              "op": {
+                "name": "IS NOT NULL",
+                "kind": "IS_NOT_NULL",
+                "syntax": "POSTFIX"
+              },
+              "operands": [
+                {
+                  "input": 19,
+                  "name": "$19"
+                }
+              ]
+            }
+          ]
+        },
+        "rowCount": 6.749402524290001E9
+      },
+      {
+        "id": "16",
+        "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveProject",
+        "fields": [
+          "sr_item_sk",
+          "sr_customer_sk",
+          "sr_ticket_number",
+          "sr_return_quantity",
+          "sr_returned_date_sk"
+        ],
+        "exprs": [
+          {
+            "input": 1,
+            "name": "$1"
+          },
+          {
+            "input": 2,
+            "name": "$2"
+          },
+          {
+            "input": 8,
+            "name": "$8"
+          },
+          {
+            "input": 9,
+            "name": "$9"
+          },
+          {
+            "input": 19,
+            "name": "$19"
+          }
+        ],
+        "rowCount": 6.749402524290001E9
+      },
+      {
+        "id": "17",
         "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveTableScan",
         "table": [
           "default",
@@ -2618,7 +2546,7 @@
         ]
       },
       {
-        "id": "19",
+        "id": "18",
         "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveFilter",
         "condition": {
           "op": {
@@ -2660,7 +2588,7 @@
         "rowCount": 18262.25
       },
       {
-        "id": "20",
+        "id": "19",
         "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveProject",
         "fields": [
           "d_date_sk"
@@ -2674,7 +2602,7 @@
         "rowCount": 18262.25
       },
       {
-        "id": "21",
+        "id": "20",
         "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveJoin",
         "condition": {
           "op": {
@@ -2684,12 +2612,12 @@
           },
           "operands": [
             {
-              "input": 10,
-              "name": "$10"
+              "input": 4,
+              "name": "$4"
             },
             {
-              "input": 12,
-              "name": "$12"
+              "input": 5,
+              "name": "$5"
             }
           ]
         },
@@ -2697,13 +2625,124 @@
         "algorithm": "none",
         "cost": "not available",
         "inputs": [
-          "17",
-          "20"
+          "16",
+          "19"
         ],
-        "rowCount": 6.169076982214338E24
+        "rowCount": 1.8488891437382258E13
+      },
+      {
+        "id": "21",
+        "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveProject",
+        "fields": [
+          "sr_item_sk",
+          "sr_customer_sk",
+          "sr_ticket_number",
+          "sr_return_quantity",
+          "sr_returned_date_sk",
+          "d_date_sk"
+        ],
+        "exprs": [
+          {
+            "input": 0,
+            "name": "$0"
+          },
+          {
+            "input": 1,
+            "name": "$1"
+          },
+          {
+            "input": 2,
+            "name": "$2"
+          },
+          {
+            "input": 3,
+            "name": "$3"
+          },
+          {
+            "input": 4,
+            "name": "$4"
+          },
+          {
+            "input": 5,
+            "name": "$5"
+          }
+        ],
+        "rowCount": 1.8488891437382258E13
       },
       {
         "id": "22",
+        "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveJoin",
+        "condition": {
+          "op": {
+            "name": "AND",
+            "kind": "AND",
+            "syntax": "BINARY"
+          },
+          "operands": [
+            {
+              "op": {
+                "name": "=",
+                "kind": "EQUALS",
+                "syntax": "BINARY"
+              },
+              "operands": [
+                {
+                  "input": 1,
+                  "name": "$1"
+                },
+                {
+                  "input": 8,
+                  "name": "$8"
+                }
+              ]
+            },
+            {
+              "op": {
+                "name": "=",
+                "kind": "EQUALS",
+                "syntax": "BINARY"
+              },
+              "operands": [
+                {
+                  "input": 0,
+                  "name": "$0"
+                },
+                {
+                  "input": 7,
+                  "name": "$7"
+                }
+              ]
+            },
+            {
+              "op": {
+                "name": "=",
+                "kind": "EQUALS",
+                "syntax": "BINARY"
+              },
+              "operands": [
+                {
+                  "input": 3,
+                  "name": "$3"
+                },
+                {
+                  "input": 9,
+                  "name": "$9"
+                }
+              ]
+            }
+          ]
+        },
+        "joinType": "inner",
+        "algorithm": "none",
+        "cost": "not available",
+        "inputs": [
+          "13",
+          "21"
+        ],
+        "rowCount": 6.169076982214339E24
+      },
+      {
+        "id": "23",
         "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveProject",
         "fields": [
           "ss_item_sk",
@@ -2712,12 +2751,12 @@
           "ss_ticket_number",
           "ss_quantity",
           "ss_sold_date_sk",
+          "d_date_sk",
           "sr_item_sk",
           "sr_customer_sk",
           "sr_ticket_number",
           "sr_return_quantity",
           "sr_returned_date_sk",
-          "d_date_sk",
           "d_date_sk0"
         ],
         "exprs": [
@@ -2774,10 +2813,10 @@
             "name": "$12"
           }
         ],
-        "rowCount": 6.169076982214338E24
+        "rowCount": 6.169076982214339E24
       },
       {
-        "id": "23",
+        "id": "24",
         "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveJoin",
         "condition": {
           "op": {
@@ -2794,8 +2833,8 @@
               },
               "operands": [
                 {
-                  "input": 12,
-                  "name": "$12"
+                  "input": 13,
+                  "name": "$13"
                 },
                 {
                   "input": 0,
@@ -2811,8 +2850,8 @@
               },
               "operands": [
                 {
-                  "input": 11,
-                  "name": "$11"
+                  "input": 12,
+                  "name": "$12"
                 },
                 {
                   "input": 1,
@@ -2827,12 +2866,12 @@
         "cost": "not available",
         "inputs": [
           "6",
-          "22"
+          "23"
         ],
-        "rowCount": 1.3245041473241243E37
+        "rowCount": 1.3245041473241247E37
       },
       {
-        "id": "24",
+        "id": "25",
         "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveTableScan",
         "table": [
           "default",
@@ -3193,7 +3232,7 @@
         ]
       },
       {
-        "id": "25",
+        "id": "26",
         "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveProject",
         "fields": [
           "s_store_sk",
@@ -3212,7 +3251,7 @@
         "rowCount": 1704
       },
       {
-        "id": "26",
+        "id": "27",
         "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveJoin",
         "condition": {
           "op": {
@@ -3235,13 +3274,13 @@
         "algorithm": "none",
         "cost": "not available",
         "inputs": [
-          "23",
-          "25"
+          "24",
+          "26"
         ],
-        "rowCount": 3.385432600560462E39
+        "rowCount": 3.385432600560463E39
       },
       {
-        "id": "27",
+        "id": "28",
         "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveTableScan",
         "table": [
           "default",
@@ -3531,7 +3570,7 @@
         ]
       },
       {
-        "id": "28",
+        "id": "29",
         "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveProject",
         "fields": [
           "i_item_sk",
@@ -3555,7 +3594,7 @@
         "rowCount": 462000
       },
       {
-        "id": "29",
+        "id": "30",
         "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveJoin",
         "condition": {
           "op": {
@@ -3578,13 +3617,13 @@
         "algorithm": "none",
         "cost": "not available",
         "inputs": [
-          "26",
-          "28"
+          "27",
+          "29"
         ],
-        "rowCount": 2.3461047921884E44
+        "rowCount": 2.3461047921884004E44
       },
       {
-        "id": "30",
+        "id": "31",
         "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveProject",
         "fields": [
           "$f0",
@@ -3618,8 +3657,8 @@
             "name": "$9"
           },
           {
-            "input": 14,
-            "name": "$14"
+            "input": 15,
+            "name": "$15"
           },
           {
             "input": 2,
@@ -3693,8 +3732,8 @@
             },
             "operands": [
               {
-                "input": 14,
-                "name": "$14"
+                "input": 15,
+                "name": "$15"
               }
             ],
             "type": {
@@ -3717,8 +3756,8 @@
                 },
                 "operands": [
                   {
-                    "input": 14,
-                    "name": "$14"
+                    "input": 15,
+                    "name": "$15"
                   }
                 ],
                 "type": {
@@ -3734,8 +3773,8 @@
                 },
                 "operands": [
                   {
-                    "input": 14,
-                    "name": "$14"
+                    "input": 15,
+                    "name": "$15"
                   }
                 ],
                 "type": {
@@ -3806,10 +3845,10 @@
             ]
           }
         ],
-        "rowCount": 2.3461047921884E44
+        "rowCount": 2.3461047921884004E44
       },
       {
-        "id": "31",
+        "id": "32",
         "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveAggregate",
         "group": [
           0,
@@ -4058,10 +4097,10 @@
             "name": null
           }
         ],
-        "rowCount": 2.3461047921884E43
+        "rowCount": 2.3461047921884004E43
       },
       {
-        "id": "32",
+        "id": "33",
         "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveProject",
         "fields": [
           "i_item_id",
@@ -5156,10 +5195,10 @@
             ]
           }
         ],
-        "rowCount": 2.3461047921884E43
+        "rowCount": 2.3461047921884004E43
       },
       {
-        "id": "33",
+        "id": "34",
         "relOp": "org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveSortLimit",
         "collation": [
           {
