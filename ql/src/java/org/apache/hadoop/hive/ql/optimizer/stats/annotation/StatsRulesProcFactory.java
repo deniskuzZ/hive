@@ -2039,15 +2039,10 @@ public class StatsRulesProcFactory {
             perAttrDVs.clear();
           }
 
-          if (numAttr > 1 && conf.getBoolVar(HiveConf.ConfVars.HIVE_STATS_CORRELATED_MULTI_KEY_JOINS)) {
-            denom = Collections.max(distinctVals);
-            distinctUnmatched = denom - ndvsUnmatched.get(distinctVals.indexOf(denom));
-          } else {
-            // To avoid denominator getting larger and aggressively reducing
-            // number of rows, we will ease out denominator.
-            denom = StatsUtils.addWithExpDecay(distinctVals);
-            distinctUnmatched = denom - StatsUtils.addWithExpDecay(ndvsUnmatched);
-          }
+          double independenceFactor = StatsUtils.getMultiKeyJoinIndependenceFactor(conf,
+              HiveConf.ConfVars.HIVE_STATS_CORRELATED_MULTI_KEY_JOINS);
+          denom = StatsUtils.combineDistinctValues(distinctVals, independenceFactor);
+          distinctUnmatched = denom - StatsUtils.combineDistinctValues(ndvsUnmatched, independenceFactor);
         }
 
         // Update NDV of joined columns to be min(V(R,y), V(S,y))
@@ -2243,11 +2238,8 @@ public class StatsRulesProcFactory {
       if (distinctVals.isEmpty()) {
         distinctVal = 2L;
       } else {
-        if (joinKeys.size() > 1 && conf.getBoolVar(HiveConf.ConfVars.HIVE_STATS_CORRELATED_MULTI_KEY_JOINS)) {
-          distinctVal = Collections.max(distinctVals);
-        } else {
-          distinctVal = StatsUtils.addWithExpDecay(distinctVals);
-        }
+        distinctVal = StatsUtils.combineDistinctValues(distinctVals,
+            StatsUtils.getMultiKeyJoinIndependenceFactor(conf, HiveConf.ConfVars.HIVE_STATS_CORRELATED_MULTI_KEY_JOINS));
       }
       // If we have a greater number of unmatched values than number of distinct values,
       // we just return the number of rows in the input as we can assume there are no
