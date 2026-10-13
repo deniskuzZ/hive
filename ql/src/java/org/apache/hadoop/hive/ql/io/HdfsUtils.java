@@ -56,6 +56,15 @@ public class HdfsUtils {
 
   public static Object getFileId(FileSystem fileSystem, Path path,
       boolean allowSynthetic, boolean checkDefaultFs, boolean forceSyntheticIds) throws IOException {
+    return getFileId(fileSystem, path, allowSynthetic, checkDefaultFs, forceSyntheticIds, null);
+  }
+
+  /**
+   * Returns the file ID as {@link #getFileId(FileSystem, Path, boolean, boolean, boolean)} does; a synthetic one is
+   * made from the given status of the file, when there is one, rather than from a status call.
+   */
+  public static Object getFileId(FileSystem fileSystem, Path path, boolean allowSynthetic, boolean checkDefaultFs,
+      boolean forceSyntheticIds, FileStatus status) throws IOException {
     if (!forceSyntheticIds && fileSystem instanceof DistributedFileSystem) {
       DistributedFileSystem dfs = (DistributedFileSystem) fileSystem;
       if ((!checkDefaultFs) || isDefaultFs(dfs)) {
@@ -68,7 +77,7 @@ public class HdfsUtils {
         + fileSystem.getClass().getSimpleName() + "; returning null");
       return null;
     }
-    FileStatus fs = fileSystem.getFileStatus(path);
+    FileStatus fs = status != null ? status : fileSystem.getFileStatus(path);
     return new SyntheticFileId(path, fs.getLen(), fs.getModificationTime());
   }
 
