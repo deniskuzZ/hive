@@ -37,6 +37,7 @@ import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileRange;
 import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Options;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hive.common.io.Allocator;
 import org.apache.hadoop.hive.common.io.Allocator.BufferObjectFactory;
@@ -62,6 +63,7 @@ import org.apache.hadoop.hive.llap.io.decode.ParquetEncodedDataConsumer;
 import org.apache.hadoop.hive.ql.io.HdfsUtils;
 import org.apache.hadoop.hive.ql.io.IOConstants;
 import org.apache.hadoop.hive.ql.io.SyntheticFileId;
+import org.apache.hadoop.hive.ql.io.parquet.ParquetFileSplit;
 import org.apache.hadoop.hive.ql.io.orc.encoded.CacheChunk;
 import org.apache.hadoop.hive.ql.io.parquet.read.DataWritableReadSupport;
 import org.apache.hadoop.hive.ql.io.parquet.vector.ParquetFooterInputFromCache;
@@ -151,7 +153,8 @@ public class ParquetEncodedDataReader extends CallableWithNdc<Void>
   public ParquetMetadata readFooter() throws IOException {
     fileKey = SyntheticFileId.fromJobConf(jobConf);
     if (fileKey == null) {
-      fileKey = LlapHiveUtils.createFileIdUsingFS(path.getFileSystem(jobConf), path, daemonConf);
+      FileStatus listed = split instanceof ParquetFileSplit parquetSplit ? parquetSplit.getFileStatus() : null;
+      fileKey = LlapHiveUtils.createFileIdUsingFS(path.getFileSystem(jobConf), path, daemonConf, listed);
     }
     if (fileKey != null) {
       cacheTag = VectorizedParquetRecordReader.cacheTagOfParquetFile(path, daemonConf, jobConf);
@@ -509,7 +512,14 @@ public class ParquetEncodedDataReader extends CallableWithNdc<Void>
    * the inode path has no scheme. Package-private so a test can observe the read pattern.
    */
   FSDataInputStream openFile(FileSystem fs) throws IOException {
-    return fs.open(HdfsUtils.getFileIdPath(path, fileKey, daemonConf));
+    Path filePath = HdfsUtils.getFileIdPath(path, fileKey, daemonConf);
+    if (split instanceof ParquetFileSplit parquetSplit) {
+      // the known length spares the file system a status call on open (an S3 HEAD)
+      return FutureIO.awaitFuture(fs.openFile(filePath)
+          .opt(Options.OpenFileOptions.FS_OPTION_OPENFILE_LENGTH, parquetSplit.getFileLength())
+          .build());
+    }
+    return fs.open(filePath);
   }
 
   /** Lets the allocator abandon a wait for memory once the fragment is cancelled. */
