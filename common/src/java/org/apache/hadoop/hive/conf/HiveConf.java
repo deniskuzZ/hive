@@ -1807,9 +1807,8 @@ public class HiveConf extends Configuration {
     HIVE_CBO_SHOW_WARNINGS("hive.cbo.show.warnings", true,
          "Toggle display of CBO warnings like missing column stats"),
     HIVE_CBO_STATS_CORRELATED_MULTI_KEY_JOINS("hive.cbo.stats.correlated.multi.key.joins", true,
-        "When CBO estimates output rows for a join involving multiple columns, the default behavior assumes" +
-            "the columns are independent. Setting this flag to true will cause the estimator to assume" +
-            "the columns are correlated."),
+        "Deprecated: use hive.stats.multi.key.joins.independence.factor. Setting this flag to false makes CBO\n" +
+            "estimate the output rows of a join on several keys with the independence factor 0.5."),
     HIVE_CARDINALITY_PRESERVING_JOIN_OPTIMIZATION_FACTOR("hive.cardinality.preserving.join.optimization.factor", 1.0f,
         "Original plan cost multiplier for rewriting when query has tables joined multiple time on primary/unique key and " +
             "projected the majority of columns from these table. This optimization trims fields at root of tree and " +
@@ -2901,9 +2900,14 @@ public class HiveConf extends Configuration {
         "In the absence of column statistics, this factor determines the amount of rows that flows out\n" +
         "of JOIN operator."),
     HIVE_STATS_CORRELATED_MULTI_KEY_JOINS("hive.stats.correlated.multi.key.joins", true,
-        "When estimating output rows for a join involving multiple columns, the default behavior assumes" +
-        "the columns are independent. Setting this flag to true will cause the estimator to assume" +
-        "the columns are correlated."),
+        "Deprecated: use hive.stats.multi.key.joins.independence.factor. Setting this flag to false makes the\n" +
+        "physical planner estimate the output rows of a join on several keys with the independence factor 0.5."),
+    HIVE_STATS_MULTI_KEY_JOINS_INDEPENDENCE_FACTOR("hive.stats.multi.key.joins.independence.factor", 0.25f,
+        new RangeValidator(0.0f, 1.0f),
+        "How independent CBO and the physical planner assume the keys of a join on several keys to be when they\n" +
+        "estimate its output rows. The distinct value counts of the keys, largest first, combine into the distinct\n" +
+        "value count of the join key as ndv1 * ndv2^f * ndv3^(f^2) * ...: 0 assumes the keys fully correlated (the\n" +
+        "largest count alone), 1 fully independent (the product of the counts). Trino uses 0.25."),
     HIVE_STATS_RANGE_SELECTIVITY_UNIFORM_DISTRIBUTION("hive.stats.filter.range.uniform", true,
         "When estimating output rows from a condition, if a range predicate is applied over a column and the\n" +
         "minimum and maximum values for that column are available, assume uniform distribution of values\n" +
