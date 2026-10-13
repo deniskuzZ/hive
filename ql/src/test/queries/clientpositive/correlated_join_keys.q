@@ -31,4 +31,7 @@ explain select count(*) from customer_address_n0 a join customer_address_n0 b on
 set hive.stats.correlated.multi.key.joins=true;
 explain select count(*) from customer_address_n0 a join customer_address_n0 b on (a.ca_zip = b.ca_zip and a.ca_state = b.ca_state);
 
+set hive.stats.multi.key.joins.independence.factor=0.25;
+explain select count(*) from customer_address_n0 a join customer_address_n0 b on (a.ca_zip = b.ca_zip and a.ca_state = b.ca_state);
+
 drop table customer_address_n0;
