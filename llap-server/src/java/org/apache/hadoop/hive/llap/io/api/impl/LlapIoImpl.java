@@ -33,8 +33,8 @@ import javax.annotation.Nullable;
 import javax.management.ObjectName;
 
 import org.apache.hadoop.fs.FSDataInputStream;
-import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Options;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hive.common.io.CacheTag;
 import org.apache.hadoop.hive.common.io.encoded.MemoryBufferOrBuffers;
@@ -89,6 +89,7 @@ import org.apache.hadoop.hive.llap.metrics.LlapDaemonCacheMetrics;
 import org.apache.hadoop.hive.llap.metrics.LlapDaemonIOMetrics;
 import org.apache.hadoop.hive.llap.metrics.MetricsUtils;
 import org.apache.hadoop.hive.ql.exec.vector.VectorizedRowBatch;
+import org.apache.hadoop.hive.ql.io.SyntheticFileId;
 import org.apache.hadoop.hive.ql.io.LlapCacheOnlyInputFormatInterface;
 import org.apache.hadoop.hive.ql.io.orc.OrcSplit;
 import org.apache.hadoop.hive.ql.io.orc.encoded.IoTrace;
@@ -606,8 +607,9 @@ public class LlapIoImpl implements LlapIo<VectorizedRowBatch>, LlapIoDebugDump {
       }
 
       final FileSystem fs = path.getFileSystem(conf);
-      final FileStatus stat = fs.getFileStatus(path);
-      final long length = stat.getLen();
+      // A synthetic file key is the file's path, length and modification time: no status call for the length.
+      final long length = fileKey instanceof SyntheticFileId syntheticId ? syntheticId.getLength()
+          : fs.getFileStatus(path).getLen();
       final int trailerSize = ParquetFooterInputFromCache.FOOTER_LENGTH_SIZE + ParquetFileWriter.MAGIC.length;
       // The checks of ParquetFileReader.readFooter, before anything is cached.
       if (length < ParquetFileWriter.MAGIC.length + trailerSize) {
@@ -616,8 +618,9 @@ public class LlapIoImpl implements LlapIo<VectorizedRowBatch>, LlapIoDebugDump {
 
       // To avoid reading the footer twice, we will cache it first and then read from cache.
       // Parquet calls protobuf methods directly on the stream and we can't get bytes after the fact.
-      // The status spares S3A the HEAD that open() issues to learn the length.
-      FSDataInputStream in = FutureIO.awaitFuture(fs.openFile(path).withFileStatus(stat).build());
+      // The length spares S3A the HEAD that open() issues to learn it.
+      FSDataInputStream in = FutureIO.awaitFuture(
+          fs.openFile(path).opt(Options.OpenFileOptions.FS_OPTION_OPENFILE_LENGTH, length).build());
       try (SeekableInputStream stream = HadoopStreams.wrap(in)) {
         int tailLength = (int) Math.min(length, FOOTER_READ_BYTES);
         byte[] tail = new byte[tailLength];

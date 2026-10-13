@@ -47,12 +47,14 @@ import java.util.function.Predicate;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
-import org.apache.hadoop.fs.impl.OpenFileParameters;
-import org.apache.hadoop.fs.RawLocalFileSystem;
+import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileRange;
 import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Options;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.RawLocalFileSystem;
 import org.apache.hadoop.fs.StreamCapabilities;
+import org.apache.hadoop.fs.impl.OpenFileParameters;
 import org.apache.hadoop.hive.common.io.Allocator;
 import org.apache.hadoop.hive.common.io.Allocator.BufferObjectFactory;
 import org.apache.hadoop.hive.common.io.CacheTag;
@@ -105,6 +107,7 @@ import org.apache.hadoop.hive.ql.io.IOConstants;
 import org.apache.hadoop.hive.ql.io.LlapCacheOnlyInputFormatInterface;
 import org.apache.hadoop.hive.ql.io.orc.encoded.CacheChunk;
 import org.apache.hadoop.hive.ql.io.orc.encoded.Consumer;
+import org.apache.hadoop.hive.ql.io.parquet.ParquetFileSplit;
 import org.apache.hadoop.hive.ql.io.parquet.read.DataWritableReadSupport;
 import org.apache.hadoop.hive.ql.io.parquet.serde.ArrayWritableObjectInspector;
 import org.apache.hadoop.hive.ql.io.parquet.vector.ParquetFooterInputFromCache;
@@ -1406,18 +1409,89 @@ public class TestParquetEncodedDataReader {
     return out;
   }
 
-  /** A local file system that counts the positions read from Parquet files, one request each on an object store. */
+  /**
+   * A split that carries the status of its file from the listing is identified, its footer read on a cache miss and
+   * the file opened without a status call (an S3 HEAD each); a split without it still asks the file system.
+   */
+  @Test
+  public void testListedFileStatusSparesStatusCalls() throws Exception {
+    JobConf job = jobConf(COLUMNS, TYPES, 0);
+    job.set("fs.file.impl", CountingFileSystem.class.getName());
+    job.setBoolean("fs.file.impl.disable.cache", true);
+    FileSystem localFs = FileSystem.getLocal(daemonConf);
+
+    // a file of its own, so its footer is not in the cache yet
+    Path listedFile = new Path(tmpDir.toString(), "listed.parquet");
+    localFs.copyFromLocalFile(false, true, file, listedFile);
+    FileStatus status = localFs.getFileStatus(listedFile);
+    ParquetFileSplit listed = new ParquetFileSplit(listedFile, 0, status.getLen(), null, status);
+    for (String pass : new String[] {"footer cache miss", "footer cache hit"}) {
+      CountingFileSystem.reset();
+      ParquetEncodedDataReader reader = newReader(job, listed);
+      reader.readFooter();
+      assertEquals(pass, 0, CountingFileSystem.STATUS_CALLS.get());
+      reader.openFile(listedFile.getFileSystem(job)).close();
+      assertEquals(pass, String.valueOf(status.getLen()), CountingFileSystem.openLength);
+    }
+
+    Path plainFile = new Path(tmpDir.toString(), "plain.parquet");
+    localFs.copyFromLocalFile(false, true, file, plainFile);
+    CountingFileSystem.reset();
+    ParquetEncodedDataReader reader = newReader(job, new FileSplit(plainFile, 0, fileLength, (String[]) null));
+    reader.readFooter();
+    assertTrue(CountingFileSystem.STATUS_CALLS.get() > 0);
+    reader.openFile(plainFile.getFileSystem(job)).close();
+    assertNull(CountingFileSystem.openLength);
+  }
+
+  private ParquetEncodedDataReader newReader(JobConf job, FileSplit split) throws IOException {
+    QueryFragmentCounters counters = new QueryFragmentCounters(job, new TezCounters());
+    ParquetEncodedDataConsumer edc = new ParquetEncodedDataConsumer(new CapturingConsumer(),
+        includes(ColumnProjectionUtils.getReadColumnIDs(job)), counters, IO_METRICS, job);
+    return new ParquetEncodedDataReader(ledger, ledger, daemonConf, job, split, edc, counters);
+  }
+
+  /**
+   * A local file system that counts the status calls on Parquet files and the positions read from them, one request
+   * each on an object store, and records how they were opened.
+   */
   public static class CountingFileSystem extends RawLocalFileSystem {
+    static final AtomicInteger STATUS_CALLS = new AtomicInteger();
     static final AtomicInteger SEEKS = new AtomicInteger();
+    /** The length option of the last openFile, null when the file was last opened by open(). */
+    static volatile String openLength;
 
     static void reset() {
+      STATUS_CALLS.set(0);
       SEEKS.set(0);
+      openLength = null;
+    }
+
+    @Override
+    public FileStatus getFileStatus(Path path) throws IOException {
+      if (path.getName().endsWith(".parquet")) {
+        STATUS_CALLS.incrementAndGet();
+      }
+      return super.getFileStatus(path);
+    }
+
+    @Override
+    public FSDataInputStream open(Path path, int bufferSize) throws IOException {
+      openLength = null;
+      // open() of the raw local file system asks for the status itself; not the reader's call
+      int calls = STATUS_CALLS.get();
+      FSDataInputStream in = super.open(path, bufferSize);
+      STATUS_CALLS.set(calls);
+      return in;
     }
 
     @Override
     protected CompletableFuture<FSDataInputStream> openFileWithOptions(Path path, OpenFileParameters parameters)
         throws IOException {
-      return super.openFileWithOptions(path, parameters).thenApply(stream -> new FSDataInputStream(stream) {
+      String length = parameters.getOptions().get(Options.OpenFileOptions.FS_OPTION_OPENFILE_LENGTH);
+      CompletableFuture<FSDataInputStream> in = super.openFileWithOptions(path, parameters);
+      openLength = length;
+      return in.thenApply(stream -> new FSDataInputStream(stream) {
         @Override
         public void seek(long position) throws IOException {
           SEEKS.incrementAndGet();
