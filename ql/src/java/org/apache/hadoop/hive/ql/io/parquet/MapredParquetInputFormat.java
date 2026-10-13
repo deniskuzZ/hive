@@ -21,7 +21,9 @@ package org.apache.hadoop.hive.ql.io.parquet;
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -51,6 +53,8 @@ import org.apache.hadoop.hive.ql.io.parquet.read.ParquetRecordReaderWrapper;
 import org.apache.hadoop.io.ArrayWritable;
 import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.mapred.FileInputFormat;
+import org.apache.hadoop.mapred.FileSplit;
+import org.apache.hadoop.mapred.InputSplit;
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.RecordReader;
 import org.apache.hadoop.mapred.Reporter;
@@ -142,6 +146,46 @@ public class MapredParquetInputFormat extends FileInputFormat<NullWritable, Arra
       }
     }
     return result;
+  }
+
+  /**
+   * Splits the files as FileInputFormat does, each split carrying the length and modification time of its file from
+   * the listing ({@link ParquetFileSplit}), so a reader needs no status call on the file.
+   */
+  @Override
+  public InputSplit[] getSplits(JobConf job, int numSplits) throws IOException {
+    FileStatus[] files = listStatus(job);
+    Map<Path, FileStatus> statuses = new HashMap<>();
+    for (FileStatus file : files) {
+      statuses.put(file.getPath(), file);
+    }
+    return new FileInputFormat<NullWritable, ArrayWritable>() {
+      @Override
+      protected FileStatus[] listStatus(JobConf conf) {
+        return files;
+      }
+
+      @Override
+      protected boolean isSplitable(FileSystem fs, Path file) {
+        return MapredParquetInputFormat.this.isSplitable(fs, file);
+      }
+
+      @Override
+      protected FileSplit makeSplit(Path file, long start, long length, String[] hosts) {
+        return new ParquetFileSplit(file, start, length, hosts, statuses.get(file));
+      }
+
+      @Override
+      protected FileSplit makeSplit(Path file, long start, long length, String[] hosts, String[] inMemoryHosts) {
+        return new ParquetFileSplit(file, start, length, hosts, inMemoryHosts, statuses.get(file));
+      }
+
+      @Override
+      public RecordReader<NullWritable, ArrayWritable> getRecordReader(InputSplit split, JobConf conf,
+          Reporter reporter) {
+        throw new UnsupportedOperationException("splits only");
+      }
+    }.getSplits(job, numSplits);
   }
 
   @SuppressWarnings({ "unchecked", "rawtypes" })
