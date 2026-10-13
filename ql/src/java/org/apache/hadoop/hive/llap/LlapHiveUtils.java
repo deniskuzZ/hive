@@ -24,6 +24,7 @@ import java.util.Map;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hive.common.io.CacheTag;
@@ -164,7 +165,16 @@ public final class LlapHiveUtils {
    * @throws IOException
    */
   public static Object createFileIdUsingFS(FileSystem fs, Path path, Configuration daemonConf) throws IOException {
-    if (LOG.isDebugEnabled()) {
+    return createFileIdUsingFS(fs, path, daemonConf, null);
+  }
+
+  /**
+   * Determines the fileID as {@link #createFileIdUsingFS(FileSystem, Path, Configuration)} does; a synthetic one is
+   * made from the given status of the file, when there is one, rather than from a status call.
+   */
+  public static Object createFileIdUsingFS(FileSystem fs, Path path, Configuration daemonConf, FileStatus status)
+      throws IOException {
+    if (status == null && LOG.isDebugEnabled()) {
       LOG.debug("Will invoke HdfsUtils.getFileId - this is costly on cloud file systems. " +
           "Turn on TRACE level logging to show call trace.");
       if (LOG.isTraceEnabled()) {
@@ -175,7 +185,7 @@ public final class LlapHiveUtils {
     boolean checkDefaultFs = HiveConf.getBoolVar(daemonConf, HiveConf.ConfVars.LLAP_CACHE_DEFAULT_FS_FILE_ID);
     boolean forceSynthetic = !HiveConf.getBoolVar(daemonConf, HiveConf.ConfVars.LLAP_IO_USE_FILEID_PATH);
 
-    return HdfsUtils.getFileId(fs, path, allowSynthetic, checkDefaultFs, forceSynthetic);
+    return HdfsUtils.getFileId(fs, path, allowSynthetic, checkDefaultFs, forceSynthetic, status);
   }
 
 }

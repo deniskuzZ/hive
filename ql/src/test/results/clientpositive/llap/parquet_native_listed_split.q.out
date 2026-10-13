@@ -1,0 +1,67 @@
+PREHOOK: query: create table pnls stored as parquet as
+select cint, cbigint, cdouble, cstring1, ctimestamp1, cboolean1 from alltypesorc
+PREHOOK: type: CREATETABLE_AS_SELECT
+PREHOOK: Input: default@alltypesorc
+PREHOOK: Output: database:default
+PREHOOK: Output: default@pnls
+POSTHOOK: query: create table pnls stored as parquet as
+select cint, cbigint, cdouble, cstring1, ctimestamp1, cboolean1 from alltypesorc
+POSTHOOK: type: CREATETABLE_AS_SELECT
+POSTHOOK: Input: default@alltypesorc
+POSTHOOK: Output: database:default
+POSTHOOK: Output: default@pnls
+POSTHOOK: Lineage: pnls.cbigint SIMPLE [(alltypesorc)alltypesorc.FieldSchema(name:cbigint, type:bigint, comment:null), ]
+POSTHOOK: Lineage: pnls.cboolean1 SIMPLE [(alltypesorc)alltypesorc.FieldSchema(name:cboolean1, type:boolean, comment:null), ]
+POSTHOOK: Lineage: pnls.cdouble SIMPLE [(alltypesorc)alltypesorc.FieldSchema(name:cdouble, type:double, comment:null), ]
+POSTHOOK: Lineage: pnls.cint SIMPLE [(alltypesorc)alltypesorc.FieldSchema(name:cint, type:int, comment:null), ]
+POSTHOOK: Lineage: pnls.cstring1 SIMPLE [(alltypesorc)alltypesorc.FieldSchema(name:cstring1, type:string, comment:null), ]
+POSTHOOK: Lineage: pnls.ctimestamp1 SIMPLE [(alltypesorc)alltypesorc.FieldSchema(name:ctimestamp1, type:timestamp, comment:null), ]
+PREHOOK: query: select count(*), sum(hash(cint, cbigint, cdouble, cstring1, ctimestamp1, cboolean1)) from pnls
+PREHOOK: type: QUERY
+PREHOOK: Input: default@pnls
+#### A masked pattern was here ####
+POSTHOOK: query: select count(*), sum(hash(cint, cbigint, cdouble, cstring1, ctimestamp1, cboolean1)) from pnls
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@pnls
+#### A masked pattern was here ####
+12288	-154739640856
+PREHOOK: query: select cboolean1, count(*), sum(cbigint), min(cstring1), max(cdouble) from pnls group by cboolean1 order by cboolean1
+PREHOOK: type: QUERY
+PREHOOK: Input: default@pnls
+#### A masked pattern was here ####
+POSTHOOK: query: select cboolean1, count(*), sum(cbigint), min(cstring1), max(cdouble) from pnls group by cboolean1 order by cboolean1
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@pnls
+#### A masked pattern was here ####
+false	3036	-782584716127	0042l0d5rPD6sMlJ7Ue0q	9763215.5639
+true	6138	-938593067737	006bb3K	9763215.5639
+NULL	3114	22717755455	NULL	15601.0
+PREHOOK: query: select count(*), sum(hash(cint, cbigint, cdouble, cstring1, ctimestamp1, cboolean1)) from pnls
+PREHOOK: type: QUERY
+PREHOOK: Input: default@pnls
+#### A masked pattern was here ####
+POSTHOOK: query: select count(*), sum(hash(cint, cbigint, cdouble, cstring1, ctimestamp1, cboolean1)) from pnls
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@pnls
+#### A masked pattern was here ####
+12288	-154739640856
+PREHOOK: query: select cboolean1, count(*), sum(cbigint), min(cstring1), max(cdouble) from pnls group by cboolean1 order by cboolean1
+PREHOOK: type: QUERY
+PREHOOK: Input: default@pnls
+#### A masked pattern was here ####
+POSTHOOK: query: select cboolean1, count(*), sum(cbigint), min(cstring1), max(cdouble) from pnls group by cboolean1 order by cboolean1
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@pnls
+#### A masked pattern was here ####
+false	3036	-782584716127	0042l0d5rPD6sMlJ7Ue0q	9763215.5639
+true	6138	-938593067737	006bb3K	9763215.5639
+NULL	3114	22717755455	NULL	15601.0
+PREHOOK: query: select count(*), sum(hash(cint, cbigint, cdouble, cstring1, ctimestamp1, cboolean1)) from pnls
+PREHOOK: type: QUERY
+PREHOOK: Input: default@pnls
+#### A masked pattern was here ####
+POSTHOOK: query: select count(*), sum(hash(cint, cbigint, cdouble, cstring1, ctimestamp1, cboolean1)) from pnls
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@pnls
+#### A masked pattern was here ####
+12288	-154739640856
