@@ -32,7 +32,7 @@ STAGE PLANS:
                       outputColumnNames: _col1, _col2
                       input vertices:
                         1 Map 5
-                      Statistics: Num rows: 321094889 Data size: 3527549756 Basic stats: COMPLETE Column stats: COMPLETE
+                      Statistics: Num rows: 321094889 Data size: 3788916240 Basic stats: COMPLETE Column stats: COMPLETE
                       Map Join Operator
                         condition map:
                              Inner Join 0 to 1
@@ -42,7 +42,7 @@ STAGE PLANS:
                         outputColumnNames: _col2, _col5, _col6, _col7, _col8
                         input vertices:
                           1 Map 6
-                        Statistics: Num rows: 321094889 Data size: 125864702465 Basic stats: COMPLETE Column stats: COMPLETE
+                        Statistics: Num rows: 321094889 Data size: 126126068949 Basic stats: COMPLETE Column stats: COMPLETE
                         Reduce Output Operator
                           key expressions: _col8 (type: char(50))
                           null sort order: z
