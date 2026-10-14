@@ -37,7 +37,7 @@ STAGE PLANS:
                         outputColumnNames: _col0, _col1, _col3, _col5, _col6, _col7
                         input vertices:
                           1 Map 6
-                        Statistics: Num rows: 15840066266 Data size: 2202441686776 Basic stats: COMPLETE Column stats: COMPLETE
+                        Statistics: Num rows: 15840066266 Data size: 2214627300056 Basic stats: COMPLETE Column stats: COMPLETE
                         Map Join Operator
                           condition map:
                                Inner Join 0 to 1

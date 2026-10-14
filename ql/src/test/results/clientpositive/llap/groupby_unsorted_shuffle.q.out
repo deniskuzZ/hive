@@ -1,0 +1,3407 @@
+PREHOOK: query: create table gu_fact (k1 int, k2 int, s string, v int, d decimal(7,2), x double)
+PREHOOK: type: CREATETABLE
+PREHOOK: Output: database:default
+PREHOOK: Output: default@gu_fact
+POSTHOOK: query: create table gu_fact (k1 int, k2 int, s string, v int, d decimal(7,2), x double)
+POSTHOOK: type: CREATETABLE
+POSTHOOK: Output: database:default
+POSTHOOK: Output: default@gu_fact
+PREHOOK: query: create table gu_fact2 (k1 int, k2 int)
+PREHOOK: type: CREATETABLE
+PREHOOK: Output: database:default
+PREHOOK: Output: default@gu_fact2
+POSTHOOK: query: create table gu_fact2 (k1 int, k2 int)
+POSTHOOK: type: CREATETABLE
+POSTHOOK: Output: database:default
+POSTHOOK: Output: default@gu_fact2
+PREHOOK: query: insert into gu_fact select
+  if(pos % 41 = 0, null, pos % 17), pos % 23, if(pos % 29 = 0, null, concat('s', pos % 31)),
+  if(pos % 11 = 0, null, pos % 7), cast(pos % 50 * 1.25 as decimal(7,2)), pos % 13 * 0.5
+from (select posexplode(split(space(3999), ' '))) t
+PREHOOK: type: QUERY
+PREHOOK: Input: _dummy_database@_dummy_table
+PREHOOK: Output: default@gu_fact
+POSTHOOK: query: insert into gu_fact select
+  if(pos % 41 = 0, null, pos % 17), pos % 23, if(pos % 29 = 0, null, concat('s', pos % 31)),
+  if(pos % 11 = 0, null, pos % 7), cast(pos % 50 * 1.25 as decimal(7,2)), pos % 13 * 0.5
+from (select posexplode(split(space(3999), ' '))) t
+POSTHOOK: type: QUERY
+POSTHOOK: Input: _dummy_database@_dummy_table
+POSTHOOK: Output: default@gu_fact
+POSTHOOK: Lineage: gu_fact.d SCRIPT []
+POSTHOOK: Lineage: gu_fact.k1 SCRIPT []
+POSTHOOK: Lineage: gu_fact.k2 SCRIPT []
+POSTHOOK: Lineage: gu_fact.s SCRIPT []
+POSTHOOK: Lineage: gu_fact.v SCRIPT []
+POSTHOOK: Lineage: gu_fact.x SCRIPT []
+PREHOOK: query: insert into gu_fact2 select if(pos % 37 = 0, null, pos % 19), pos % 29
+from (select posexplode(split(space(2999), ' '))) t
+PREHOOK: type: QUERY
+PREHOOK: Input: _dummy_database@_dummy_table
+PREHOOK: Output: default@gu_fact2
+POSTHOOK: query: insert into gu_fact2 select if(pos % 37 = 0, null, pos % 19), pos % 29
+from (select posexplode(split(space(2999), ' '))) t
+POSTHOOK: type: QUERY
+POSTHOOK: Input: _dummy_database@_dummy_table
+POSTHOOK: Output: default@gu_fact2
+POSTHOOK: Lineage: gu_fact2.k1 SCRIPT []
+POSTHOOK: Lineage: gu_fact2.k2 SCRIPT []
+PREHOOK: query: explain
+select k2, sum(c), sum(sv), max(mx), min(mn), sum(cv)
+from (select k1, k2, count(*) c, sum(v) sv, max(d) mx, min(s) mn, count(v) cv
+      from gu_fact group by k1, k2) t
+group by k2
+PREHOOK: type: QUERY
+PREHOOK: Input: default@gu_fact
+#### A masked pattern was here ####
+POSTHOOK: query: explain
+select k2, sum(c), sum(sv), max(mx), min(mn), sum(cv)
+from (select k1, k2, count(*) c, sum(v) sv, max(d) mx, min(s) mn, count(v) cv
+      from gu_fact group by k1, k2) t
+group by k2
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@gu_fact
+#### A masked pattern was here ####
+STAGE DEPENDENCIES:
+  Stage-1 is a root stage
+  Stage-0 depends on stages: Stage-1
+
+STAGE PLANS:
+  Stage: Stage-1
+    Tez
+#### A masked pattern was here ####
+      Edges:
+        Reducer 2 <- Map 1 (CUSTOM_SIMPLE_EDGE)
+        Reducer 3 <- Reducer 2 (SIMPLE_EDGE)
+#### A masked pattern was here ####
+      Vertices:
+        Map 1 
+            Map Operator Tree:
+                TableScan
+                  alias: gu_fact
+                  Statistics: Num rows: 4000 Data size: 830241 Basic stats: COMPLETE Column stats: COMPLETE
+                  Select Operator
+                    expressions: k1 (type: int), k2 (type: int), s (type: string), v (type: int), d (type: decimal(7,2))
+                    outputColumnNames: k1, k2, s, v, d
+                    Statistics: Num rows: 4000 Data size: 830241 Basic stats: COMPLETE Column stats: COMPLETE
+                    Group By Operator
+                      aggregations: count(), sum(v), max(d), min(s), count(v)
+                      keys: k2 (type: int), k1 (type: int)
+                      minReductionHashAggr: 0.97574997
+                      mode: hash
+                      outputColumnNames: _col0, _col1, _col2, _col3, _col4, _col5, _col6
+                      Statistics: Num rows: 414 Data size: 135756 Basic stats: COMPLETE Column stats: COMPLETE
+                      Reduce Output Operator
+                        key expressions: _col0 (type: int), _col1 (type: int)
+                        null sort order: zz
+                        sort order: ++
+                        Map-reduce partition columns: _col0 (type: int), _col1 (type: int)
+                        Statistics: Num rows: 414 Data size: 135756 Basic stats: COMPLETE Column stats: COMPLETE
+                        value expressions: _col2 (type: bigint), _col3 (type: bigint), _col4 (type: decimal(7,2)), _col5 (type: string), _col6 (type: bigint)
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Reducer 2 
+            Execution mode: vectorized, llap
+            Reduce Operator Tree:
+              Group By Operator
+                aggregations: count(VALUE._col0), sum(VALUE._col1), max(VALUE._col2), min(VALUE._col3), count(VALUE._col4)
+                keys: KEY._col0 (type: int), KEY._col1 (type: int)
+                mode: mergepartial
+                outputColumnNames: _col0, _col1, _col2, _col3, _col4, _col5, _col6
+                Statistics: Num rows: 414 Data size: 135756 Basic stats: COMPLETE Column stats: COMPLETE
+                unsortedInput: true
+                Select Operator
+                  expressions: _col0 (type: int), _col2 (type: bigint), _col3 (type: bigint), _col4 (type: decimal(7,2)), _col5 (type: string), _col6 (type: bigint)
+                  outputColumnNames: _col1, _col2, _col3, _col4, _col5, _col6
+                  Statistics: Num rows: 414 Data size: 135756 Basic stats: COMPLETE Column stats: COMPLETE
+                  Group By Operator
+                    aggregations: sum(_col2), sum(_col3), max(_col4), min(_col5), sum(_col6)
+                    keys: _col1 (type: int)
+                    minReductionHashAggr: 0.9444444
+                    mode: hash
+                    outputColumnNames: _col0, _col1, _col2, _col3, _col4, _col5
+                    Statistics: Num rows: 23 Data size: 7452 Basic stats: COMPLETE Column stats: COMPLETE
+                    Reduce Output Operator
+                      key expressions: _col0 (type: int)
+                      null sort order: z
+                      sort order: +
+                      Map-reduce partition columns: _col0 (type: int)
+                      Statistics: Num rows: 23 Data size: 7452 Basic stats: COMPLETE Column stats: COMPLETE
+                      value expressions: _col1 (type: bigint), _col2 (type: bigint), _col3 (type: decimal(7,2)), _col4 (type: string), _col5 (type: bigint)
+        Reducer 3 
+            Execution mode: vectorized, llap
+            Reduce Operator Tree:
+              Group By Operator
+                aggregations: sum(VALUE._col0), sum(VALUE._col1), max(VALUE._col2), min(VALUE._col3), sum(VALUE._col4)
+                keys: KEY._col0 (type: int)
+                mode: mergepartial
+                outputColumnNames: _col0, _col1, _col2, _col3, _col4, _col5
+                Statistics: Num rows: 23 Data size: 7452 Basic stats: COMPLETE Column stats: COMPLETE
+                File Output Operator
+                  compressed: false
+                  Statistics: Num rows: 23 Data size: 7452 Basic stats: COMPLETE Column stats: COMPLETE
+                  table:
+                      input format: org.apache.hadoop.mapred.SequenceFileInputFormat
+                      output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
+                      serde: org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe
+
+  Stage: Stage-0
+    Fetch Operator
+      limit: -1
+      Processor Tree:
+        ListSink
+
+PREHOOK: query: explain
+select k2, sum(c), sum(sv), max(mx), min(mn), sum(cv)
+from (select k1, k2, count(*) c, sum(v) sv, max(d) mx, min(s) mn, count(v) cv
+      from gu_fact group by k1, k2) t
+group by k2
+PREHOOK: type: QUERY
+PREHOOK: Input: default@gu_fact
+#### A masked pattern was here ####
+POSTHOOK: query: explain
+select k2, sum(c), sum(sv), max(mx), min(mn), sum(cv)
+from (select k1, k2, count(*) c, sum(v) sv, max(d) mx, min(s) mn, count(v) cv
+      from gu_fact group by k1, k2) t
+group by k2
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@gu_fact
+#### A masked pattern was here ####
+STAGE DEPENDENCIES:
+  Stage-1 is a root stage
+  Stage-0 depends on stages: Stage-1
+
+STAGE PLANS:
+  Stage: Stage-1
+    Tez
+#### A masked pattern was here ####
+      Edges:
+        Reducer 2 <- Map 1 (SIMPLE_EDGE)
+        Reducer 3 <- Reducer 2 (SIMPLE_EDGE)
+#### A masked pattern was here ####
+      Vertices:
+        Map 1 
+            Map Operator Tree:
+                TableScan
+                  alias: gu_fact
+                  Statistics: Num rows: 4000 Data size: 830241 Basic stats: COMPLETE Column stats: COMPLETE
+                  Select Operator
+                    expressions: k1 (type: int), k2 (type: int), s (type: string), v (type: int), d (type: decimal(7,2))
+                    outputColumnNames: k1, k2, s, v, d
+                    Statistics: Num rows: 4000 Data size: 830241 Basic stats: COMPLETE Column stats: COMPLETE
+                    Group By Operator
+                      aggregations: count(), sum(v), max(d), min(s), count(v)
+                      keys: k2 (type: int), k1 (type: int)
+                      minReductionHashAggr: 0.97574997
+                      mode: hash
+                      outputColumnNames: _col0, _col1, _col2, _col3, _col4, _col5, _col6
+                      Statistics: Num rows: 414 Data size: 135756 Basic stats: COMPLETE Column stats: COMPLETE
+                      Reduce Output Operator
+                        key expressions: _col0 (type: int), _col1 (type: int)
+                        null sort order: zz
+                        sort order: ++
+                        Map-reduce partition columns: _col0 (type: int), _col1 (type: int)
+                        Statistics: Num rows: 414 Data size: 135756 Basic stats: COMPLETE Column stats: COMPLETE
+                        value expressions: _col2 (type: bigint), _col3 (type: bigint), _col4 (type: decimal(7,2)), _col5 (type: string), _col6 (type: bigint)
+            Execution mode: llap
+            LLAP IO: all inputs
+        Reducer 2 
+            Execution mode: llap
+            Reduce Operator Tree:
+              Group By Operator
+                aggregations: count(VALUE._col0), sum(VALUE._col1), max(VALUE._col2), min(VALUE._col3), count(VALUE._col4)
+                keys: KEY._col0 (type: int), KEY._col1 (type: int)
+                mode: mergepartial
+                outputColumnNames: _col0, _col1, _col2, _col3, _col4, _col5, _col6
+                Statistics: Num rows: 414 Data size: 135756 Basic stats: COMPLETE Column stats: COMPLETE
+                Select Operator
+                  expressions: _col0 (type: int), _col2 (type: bigint), _col3 (type: bigint), _col4 (type: decimal(7,2)), _col5 (type: string), _col6 (type: bigint)
+                  outputColumnNames: _col1, _col2, _col3, _col4, _col5, _col6
+                  Statistics: Num rows: 414 Data size: 135756 Basic stats: COMPLETE Column stats: COMPLETE
+                  Group By Operator
+                    aggregations: sum(_col2), sum(_col3), max(_col4), min(_col5), sum(_col6)
+                    keys: _col1 (type: int)
+                    minReductionHashAggr: 0.9444444
+                    mode: hash
+                    outputColumnNames: _col0, _col1, _col2, _col3, _col4, _col5
+                    Statistics: Num rows: 23 Data size: 7452 Basic stats: COMPLETE Column stats: COMPLETE
+                    Reduce Output Operator
+                      key expressions: _col0 (type: int)
+                      null sort order: z
+                      sort order: +
+                      Map-reduce partition columns: _col0 (type: int)
+                      Statistics: Num rows: 23 Data size: 7452 Basic stats: COMPLETE Column stats: COMPLETE
+                      value expressions: _col1 (type: bigint), _col2 (type: bigint), _col3 (type: decimal(7,2)), _col4 (type: string), _col5 (type: bigint)
+        Reducer 3 
+            Execution mode: llap
+            Reduce Operator Tree:
+              Group By Operator
+                aggregations: sum(VALUE._col0), sum(VALUE._col1), max(VALUE._col2), min(VALUE._col3), sum(VALUE._col4)
+                keys: KEY._col0 (type: int)
+                mode: mergepartial
+                outputColumnNames: _col0, _col1, _col2, _col3, _col4, _col5
+                Statistics: Num rows: 23 Data size: 7452 Basic stats: COMPLETE Column stats: COMPLETE
+                File Output Operator
+                  compressed: false
+                  Statistics: Num rows: 23 Data size: 7452 Basic stats: COMPLETE Column stats: COMPLETE
+                  table:
+                      input format: org.apache.hadoop.mapred.SequenceFileInputFormat
+                      output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
+                      serde: org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe
+
+  Stage: Stage-0
+    Fetch Operator
+      limit: -1
+      Processor Tree:
+        ListSink
+
+PREHOOK: query: select k2, sum(c), sum(sv), max(mx), min(mn), sum(cv)
+from (select k1, k2, count(*) c, sum(v) sv, max(d) mx, min(s) mn, count(v) cv
+      from gu_fact group by k1, k2) t
+group by k2
+PREHOOK: type: QUERY
+PREHOOK: Input: default@gu_fact
+#### A masked pattern was here ####
+POSTHOOK: query: select k2, sum(c), sum(sv), max(mx), min(mn), sum(cv)
+from (select k1, k2, count(*) c, sum(v) sv, max(d) mx, min(s) mn, count(v) cv
+      from gu_fact group by k1, k2) t
+group by k2
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@gu_fact
+#### A masked pattern was here ####
+0	174	477	61.25	s0	158
+1	174	477	61.25	s0	159
+10	174	471	61.25	s0	158
+11	174	472	61.25	s0	158
+12	174	476	61.25	s0	159
+13	174	476	61.25	s0	159
+14	174	473	61.25	s0	158
+15	174	474	61.25	s0	158
+16	174	482	61.25	s0	158
+17	174	476	61.25	s0	158
+18	174	470	61.25	s0	158
+19	174	471	61.25	s0	158
+2	174	477	61.25	s0	159
+20	174	472	61.25	s0	158
+21	173	470	61.25	s0	157
+22	173	470	61.25	s0	157
+3	174	471	61.25	s0	158
+4	174	472	61.25	s0	158
+5	174	473	61.25	s0	158
+6	174	474	61.25	s0	158
+7	174	475	61.25	s0	158
+8	174	476	61.25	s0	158
+9	174	477	61.25	s0	158
+PREHOOK: query: select k2, sum(c), sum(sv), max(mx), min(mn), sum(cv)
+from (select k1, k2, count(*) c, sum(v) sv, max(d) mx, min(s) mn, count(v) cv
+      from gu_fact group by k1, k2) t
+group by k2
+PREHOOK: type: QUERY
+PREHOOK: Input: default@gu_fact
+#### A masked pattern was here ####
+POSTHOOK: query: select k2, sum(c), sum(sv), max(mx), min(mn), sum(cv)
+from (select k1, k2, count(*) c, sum(v) sv, max(d) mx, min(s) mn, count(v) cv
+      from gu_fact group by k1, k2) t
+group by k2
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@gu_fact
+#### A masked pattern was here ####
+0	174	477	61.25	s0	158
+1	174	477	61.25	s0	159
+10	174	471	61.25	s0	158
+11	174	472	61.25	s0	158
+12	174	476	61.25	s0	159
+13	174	476	61.25	s0	159
+14	174	473	61.25	s0	158
+15	174	474	61.25	s0	158
+16	174	482	61.25	s0	158
+17	174	476	61.25	s0	158
+18	174	470	61.25	s0	158
+19	174	471	61.25	s0	158
+2	174	477	61.25	s0	159
+20	174	472	61.25	s0	158
+21	173	470	61.25	s0	157
+22	173	470	61.25	s0	157
+3	174	471	61.25	s0	158
+4	174	472	61.25	s0	158
+5	174	473	61.25	s0	158
+6	174	474	61.25	s0	158
+7	174	475	61.25	s0	158
+8	174	476	61.25	s0	158
+9	174	477	61.25	s0	158
+PREHOOK: query: select k2, sum(c), sum(sv), max(mx), min(mn), sum(cv)
+from (select k1, k2, count(*) c, sum(v) sv, max(d) mx, min(s) mn, count(v) cv
+      from gu_fact group by k1, k2) t
+group by k2
+PREHOOK: type: QUERY
+PREHOOK: Input: default@gu_fact
+#### A masked pattern was here ####
+POSTHOOK: query: select k2, sum(c), sum(sv), max(mx), min(mn), sum(cv)
+from (select k1, k2, count(*) c, sum(v) sv, max(d) mx, min(s) mn, count(v) cv
+      from gu_fact group by k1, k2) t
+group by k2
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@gu_fact
+#### A masked pattern was here ####
+0	174	477	61.25	s0	158
+1	174	477	61.25	s0	159
+10	174	471	61.25	s0	158
+11	174	472	61.25	s0	158
+12	174	476	61.25	s0	159
+13	174	476	61.25	s0	159
+14	174	473	61.25	s0	158
+15	174	474	61.25	s0	158
+16	174	482	61.25	s0	158
+17	174	476	61.25	s0	158
+18	174	470	61.25	s0	158
+19	174	471	61.25	s0	158
+2	174	477	61.25	s0	159
+20	174	472	61.25	s0	158
+21	173	470	61.25	s0	157
+22	173	470	61.25	s0	157
+3	174	471	61.25	s0	158
+4	174	472	61.25	s0	158
+5	174	473	61.25	s0	158
+6	174	474	61.25	s0	158
+7	174	475	61.25	s0	158
+8	174	476	61.25	s0	158
+9	174	477	61.25	s0	158
+PREHOOK: query: select k2, sum(c), sum(sv), max(mx), min(mn), sum(cv)
+from (select k1, k2, count(*) c, sum(v) sv, max(d) mx, min(s) mn, count(v) cv
+      from gu_fact group by k1, k2) t
+group by k2
+PREHOOK: type: QUERY
+PREHOOK: Input: default@gu_fact
+#### A masked pattern was here ####
+POSTHOOK: query: select k2, sum(c), sum(sv), max(mx), min(mn), sum(cv)
+from (select k1, k2, count(*) c, sum(v) sv, max(d) mx, min(s) mn, count(v) cv
+      from gu_fact group by k1, k2) t
+group by k2
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@gu_fact
+#### A masked pattern was here ####
+0	174	477	61.25	s0	158
+1	174	477	61.25	s0	159
+10	174	471	61.25	s0	158
+11	174	472	61.25	s0	158
+12	174	476	61.25	s0	159
+13	174	476	61.25	s0	159
+14	174	473	61.25	s0	158
+15	174	474	61.25	s0	158
+16	174	482	61.25	s0	158
+17	174	476	61.25	s0	158
+18	174	470	61.25	s0	158
+19	174	471	61.25	s0	158
+2	174	477	61.25	s0	159
+20	174	472	61.25	s0	158
+21	173	470	61.25	s0	157
+22	173	470	61.25	s0	157
+3	174	471	61.25	s0	158
+4	174	472	61.25	s0	158
+5	174	473	61.25	s0	158
+6	174	474	61.25	s0	158
+7	174	475	61.25	s0	158
+8	174	476	61.25	s0	158
+9	174	477	61.25	s0	158
+PREHOOK: query: explain
+select k2, count(*), round(sum(a), 10), round(sum(sd), 10), sum(ad)
+from (select k1, k2, avg(x) a, stddev_samp(x) sd, avg(d) ad from gu_fact group by k1, k2) t
+group by k2
+PREHOOK: type: QUERY
+PREHOOK: Input: default@gu_fact
+#### A masked pattern was here ####
+POSTHOOK: query: explain
+select k2, count(*), round(sum(a), 10), round(sum(sd), 10), sum(ad)
+from (select k1, k2, avg(x) a, stddev_samp(x) sd, avg(d) ad from gu_fact group by k1, k2) t
+group by k2
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@gu_fact
+#### A masked pattern was here ####
+STAGE DEPENDENCIES:
+  Stage-1 is a root stage
+  Stage-0 depends on stages: Stage-1
+
+STAGE PLANS:
+  Stage: Stage-1
+    Tez
+#### A masked pattern was here ####
+      Edges:
+        Reducer 2 <- Map 1 (CUSTOM_SIMPLE_EDGE)
+        Reducer 3 <- Reducer 2 (SIMPLE_EDGE)
+#### A masked pattern was here ####
+      Vertices:
+        Map 1 
+            Map Operator Tree:
+                TableScan
+                  alias: gu_fact
+                  Statistics: Num rows: 4000 Data size: 511612 Basic stats: COMPLETE Column stats: COMPLETE
+                  Select Operator
+                    expressions: k1 (type: int), k2 (type: int), x (type: double), d (type: decimal(7,2)), (x * x) (type: double)
+                    outputColumnNames: _col0, _col1, _col2, _col3, _col4
+                    Statistics: Num rows: 4000 Data size: 511612 Basic stats: COMPLETE Column stats: COMPLETE
+                    Group By Operator
+                      aggregations: sum(_col2), count(_col2), sum(_col4), sum(_col3), count(_col3)
+                      keys: _col1 (type: int), _col0 (type: int)
+                      minReductionHashAggr: 0.97574997
+                      mode: hash
+                      outputColumnNames: _col0, _col1, _col2, _col3, _col4, _col5, _col6
+                      Statistics: Num rows: 414 Data size: 62892 Basic stats: COMPLETE Column stats: COMPLETE
+                      Reduce Output Operator
+                        key expressions: _col0 (type: int), _col1 (type: int)
+                        null sort order: zz
+                        sort order: ++
+                        Map-reduce partition columns: _col0 (type: int), _col1 (type: int)
+                        Statistics: Num rows: 414 Data size: 62892 Basic stats: COMPLETE Column stats: COMPLETE
+                        value expressions: _col2 (type: double), _col3 (type: bigint), _col4 (type: double), _col5 (type: decimal(17,2)), _col6 (type: bigint)
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Reducer 2 
+            Execution mode: vectorized, llap
+            Reduce Operator Tree:
+              Group By Operator
+                aggregations: sum(VALUE._col0), count(VALUE._col1), sum(VALUE._col2), sum(VALUE._col3), count(VALUE._col4)
+                keys: KEY._col0 (type: int), KEY._col1 (type: int)
+                mode: mergepartial
+                outputColumnNames: _col0, _col1, _col2, _col3, _col4, _col5, _col6
+                Statistics: Num rows: 414 Data size: 62892 Basic stats: COMPLETE Column stats: COMPLETE
+                unsortedInput: true
+                Select Operator
+                  expressions: _col0 (type: int), (_col2 / _col3) (type: double), power((greatest(0,(_col4 - ((_col2 * _col2) / _col3))) / if((_col3 = 1L), null, (_col3 - 1))), 0.5) (type: double), CAST( (_col5 / _col6) AS decimal(11,6)) (type: decimal(11,6))
+                  outputColumnNames: _col0, _col1, _col2, _col3
+                  Statistics: Num rows: 414 Data size: 62892 Basic stats: COMPLETE Column stats: COMPLETE
+                  Group By Operator
+                    aggregations: count(), sum(_col1), sum(_col2), sum(_col3)
+                    keys: _col0 (type: int)
+                    minReductionHashAggr: 0.9444444
+                    mode: hash
+                    outputColumnNames: _col0, _col1, _col2, _col3, _col4
+                    Statistics: Num rows: 23 Data size: 3220 Basic stats: COMPLETE Column stats: COMPLETE
+                    Reduce Output Operator
+                      key expressions: _col0 (type: int)
+                      null sort order: z
+                      sort order: +
+                      Map-reduce partition columns: _col0 (type: int)
+                      Statistics: Num rows: 23 Data size: 3220 Basic stats: COMPLETE Column stats: COMPLETE
+                      value expressions: _col1 (type: bigint), _col2 (type: double), _col3 (type: double), _col4 (type: decimal(21,6))
+        Reducer 3 
+            Execution mode: vectorized, llap
+            Reduce Operator Tree:
+              Group By Operator
+                aggregations: count(VALUE._col0), sum(VALUE._col1), sum(VALUE._col2), sum(VALUE._col3)
+                keys: KEY._col0 (type: int)
+                mode: mergepartial
+                outputColumnNames: _col0, _col1, _col2, _col3, _col4
+                Statistics: Num rows: 23 Data size: 3220 Basic stats: COMPLETE Column stats: COMPLETE
+                Select Operator
+                  expressions: _col0 (type: int), _col1 (type: bigint), round(_col2, 10) (type: double), round(_col3, 10) (type: double), _col4 (type: decimal(21,6))
+                  outputColumnNames: _col0, _col1, _col2, _col3, _col4
+                  Statistics: Num rows: 23 Data size: 3220 Basic stats: COMPLETE Column stats: COMPLETE
+                  File Output Operator
+                    compressed: false
+                    Statistics: Num rows: 23 Data size: 3220 Basic stats: COMPLETE Column stats: COMPLETE
+                    table:
+                        input format: org.apache.hadoop.mapred.SequenceFileInputFormat
+                        output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
+                        serde: org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe
+
+  Stage: Stage-0
+    Fetch Operator
+      limit: -1
+      Processor Tree:
+        ListSink
+
+PREHOOK: query: select k2, count(*), round(sum(a), 10), round(sum(sd), 10), sum(ad)
+from (select k1, k2, avg(x) a, stddev_samp(x) sd, avg(d) ad from gu_fact group by k1, k2) t
+group by k2
+PREHOOK: type: QUERY
+PREHOOK: Input: default@gu_fact
+#### A masked pattern was here ####
+POSTHOOK: query: select k2, count(*), round(sum(a), 10), round(sum(sd), 10), sum(ad)
+from (select k1, k2, avg(x) a, stddev_samp(x) sd, avg(d) ad from gu_fact group by k1, k2) t
+group by k2
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@gu_fact
+#### A masked pattern was here ####
+0	18	53.0419191919	34.156258982	553.699495
+1	18	53.7891414141	34.649095891	546.885101
+10	18	54.4247474747	34.434064732	552.208333
+11	18	54.0863636364	34.4476429012	554.523990
+12	18	53.3141414141	34.1565467721	557.460857
+13	18	53.9570707071	34.3027241178	544.816918
+14	18	53.9646464646	34.4221354749	553.075757
+15	18	53.7111111111	34.2854687601	552.319443
+16	18	53.6876262626	34.2664510149	557.188131
+17	18	54.5934343434	34.24378773	542.518940
+18	18	54.154040404	34.2100060092	552.537878
+19	18	53.4707070707	34.1702873732	553.309343
+2	18	54.4383838384	34.2273757167	554.114900
+20	18	54.0830808081	34.4523410474	545.314394
+21	18	54.6762626263	34.0107978201	552.910353
+22	18	53.6590909091	34.2732563199	545.852273
+3	18	53.7550505051	34.2379755788	552.676768
+4	18	53.2833333333	34.2431064619	551.686869
+5	18	54.2214646465	34.2384814454	551.972223
+6	18	54.197979798	34.2283804166	546.424243
+7	18	53.9404040404	34.3114596622	562.655304
+8	18	53.9060606061	34.1388412714	548.150254
+9	18	54.5949494949	33.9870437797	554.351010
+PREHOOK: query: select k2, count(*), round(sum(a), 10), round(sum(sd), 10), sum(ad)
+from (select k1, k2, avg(x) a, stddev_samp(x) sd, avg(d) ad from gu_fact group by k1, k2) t
+group by k2
+PREHOOK: type: QUERY
+PREHOOK: Input: default@gu_fact
+#### A masked pattern was here ####
+POSTHOOK: query: select k2, count(*), round(sum(a), 10), round(sum(sd), 10), sum(ad)
+from (select k1, k2, avg(x) a, stddev_samp(x) sd, avg(d) ad from gu_fact group by k1, k2) t
+group by k2
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@gu_fact
+#### A masked pattern was here ####
+0	18	53.0419191919	34.156258982	553.699495
+1	18	53.7891414141	34.649095891	546.885101
+10	18	54.4247474747	34.434064732	552.208333
+11	18	54.0863636364	34.4476429012	554.523990
+12	18	53.3141414141	34.1565467721	557.460857
+13	18	53.9570707071	34.3027241178	544.816918
+14	18	53.9646464646	34.4221354749	553.075757
+15	18	53.7111111111	34.2854687601	552.319443
+16	18	53.6876262626	34.2664510149	557.188131
+17	18	54.5934343434	34.24378773	542.518940
+18	18	54.154040404	34.2100060092	552.537878
+19	18	53.4707070707	34.1702873732	553.309343
+2	18	54.4383838384	34.2273757167	554.114900
+20	18	54.0830808081	34.4523410474	545.314394
+21	18	54.6762626263	34.0107978201	552.910353
+22	18	53.6590909091	34.2732563199	545.852273
+3	18	53.7550505051	34.2379755788	552.676768
+4	18	53.2833333333	34.2431064619	551.686869
+5	18	54.2214646465	34.2384814454	551.972223
+6	18	54.197979798	34.2283804166	546.424243
+7	18	53.9404040404	34.3114596622	562.655304
+8	18	53.9060606061	34.1388412714	548.150254
+9	18	54.5949494949	33.9870437797	554.351010
+PREHOOK: query: select k2, count(*), round(sum(a), 10), round(sum(sd), 10), sum(ad)
+from (select k1, k2, avg(x) a, stddev_samp(x) sd, avg(d) ad from gu_fact group by k1, k2) t
+group by k2
+PREHOOK: type: QUERY
+PREHOOK: Input: default@gu_fact
+#### A masked pattern was here ####
+POSTHOOK: query: select k2, count(*), round(sum(a), 10), round(sum(sd), 10), sum(ad)
+from (select k1, k2, avg(x) a, stddev_samp(x) sd, avg(d) ad from gu_fact group by k1, k2) t
+group by k2
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@gu_fact
+#### A masked pattern was here ####
+0	18	53.0419191919	34.156258982	553.699495
+1	18	53.7891414141	34.649095891	546.885101
+10	18	54.4247474747	34.434064732	552.208333
+11	18	54.0863636364	34.4476429012	554.523990
+12	18	53.3141414141	34.1565467721	557.460857
+13	18	53.9570707071	34.3027241178	544.816918
+14	18	53.9646464646	34.4221354749	553.075757
+15	18	53.7111111111	34.2854687601	552.319443
+16	18	53.6876262626	34.2664510149	557.188131
+17	18	54.5934343434	34.24378773	542.518940
+18	18	54.154040404	34.2100060092	552.537878
+19	18	53.4707070707	34.1702873732	553.309343
+2	18	54.4383838384	34.2273757167	554.114900
+20	18	54.0830808081	34.4523410474	545.314394
+21	18	54.6762626263	34.0107978201	552.910353
+22	18	53.6590909091	34.2732563199	545.852273
+3	18	53.7550505051	34.2379755788	552.676768
+4	18	53.2833333333	34.2431064619	551.686869
+5	18	54.2214646465	34.2384814454	551.972223
+6	18	54.197979798	34.2283804166	546.424243
+7	18	53.9404040404	34.3114596622	562.655304
+8	18	53.9060606061	34.1388412714	548.150254
+9	18	54.5949494949	33.9870437797	554.351010
+PREHOOK: query: select k2, count(*), round(sum(a), 10), round(sum(sd), 10), sum(ad)
+from (select k1, k2, avg(x) a, stddev_samp(x) sd, avg(d) ad from gu_fact group by k1, k2) t
+group by k2
+PREHOOK: type: QUERY
+PREHOOK: Input: default@gu_fact
+#### A masked pattern was here ####
+POSTHOOK: query: select k2, count(*), round(sum(a), 10), round(sum(sd), 10), sum(ad)
+from (select k1, k2, avg(x) a, stddev_samp(x) sd, avg(d) ad from gu_fact group by k1, k2) t
+group by k2
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@gu_fact
+#### A masked pattern was here ####
+0	18	53.0419191919	34.156258982	553.699495
+1	18	53.7891414141	34.649095891	546.885101
+10	18	54.4247474747	34.434064732	552.208333
+11	18	54.0863636364	34.4476429012	554.523990
+12	18	53.3141414141	34.1565467721	557.460857
+13	18	53.9570707071	34.3027241178	544.816918
+14	18	53.9646464646	34.4221354749	553.075757
+15	18	53.7111111111	34.2854687601	552.319443
+16	18	53.6876262626	34.2664510149	557.188131
+17	18	54.5934343434	34.24378773	542.518940
+18	18	54.154040404	34.2100060092	552.537878
+19	18	53.4707070707	34.1702873732	553.309343
+2	18	54.4383838384	34.2273757167	554.114900
+20	18	54.0830808081	34.4523410474	545.314394
+21	18	54.6762626263	34.0107978201	552.910353
+22	18	53.6590909091	34.2732563199	545.852273
+3	18	53.7550505051	34.2379755788	552.676768
+4	18	53.2833333333	34.2431064619	551.686869
+5	18	54.2214646465	34.2384814454	551.972223
+6	18	54.197979798	34.2283804166	546.424243
+7	18	53.9404040404	34.3114596622	562.655304
+8	18	53.9060606061	34.1388412714	548.150254
+9	18	54.5949494949	33.9870437797	554.351010
+PREHOOK: query: explain
+select count(*), count(s), sum(c)
+from (select s, count(*) c from gu_fact group by s) t
+PREHOOK: type: QUERY
+PREHOOK: Input: default@gu_fact
+#### A masked pattern was here ####
+POSTHOOK: query: explain
+select count(*), count(s), sum(c)
+from (select s, count(*) c from gu_fact group by s) t
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@gu_fact
+#### A masked pattern was here ####
+STAGE DEPENDENCIES:
+  Stage-1 is a root stage
+  Stage-0 depends on stages: Stage-1
+
+STAGE PLANS:
+  Stage: Stage-1
+    Tez
+#### A masked pattern was here ####
+      Edges:
+        Reducer 2 <- Map 1 (CUSTOM_SIMPLE_EDGE)
+        Reducer 3 <- Reducer 2 (CUSTOM_SIMPLE_EDGE)
+#### A masked pattern was here ####
+      Vertices:
+        Map 1 
+            Map Operator Tree:
+                TableScan
+                  alias: gu_fact
+                  Statistics: Num rows: 4000 Data size: 336081 Basic stats: COMPLETE Column stats: COMPLETE
+                  Select Operator
+                    expressions: s (type: string)
+                    outputColumnNames: s
+                    Statistics: Num rows: 4000 Data size: 336081 Basic stats: COMPLETE Column stats: COMPLETE
+                    Group By Operator
+                      aggregations: count()
+                      keys: s (type: string)
+                      minReductionHashAggr: 0.99
+                      mode: hash
+                      outputColumnNames: _col0, _col1
+                      Statistics: Num rows: 32 Data size: 3040 Basic stats: COMPLETE Column stats: COMPLETE
+                      Reduce Output Operator
+                        key expressions: _col0 (type: string)
+                        null sort order: z
+                        sort order: +
+                        Map-reduce partition columns: _col0 (type: string)
+                        Statistics: Num rows: 32 Data size: 3040 Basic stats: COMPLETE Column stats: COMPLETE
+                        value expressions: _col1 (type: bigint)
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Reducer 2 
+            Execution mode: vectorized, llap
+            Reduce Operator Tree:
+              Group By Operator
+                aggregations: count(VALUE._col0)
+                keys: KEY._col0 (type: string)
+                mode: mergepartial
+                outputColumnNames: _col0, _col1
+                Statistics: Num rows: 32 Data size: 3040 Basic stats: COMPLETE Column stats: COMPLETE
+                unsortedInput: true
+                Group By Operator
+                  aggregations: count(), count(_col0), sum(_col1)
+                  minReductionHashAggr: 0.96875
+                  mode: hash
+                  outputColumnNames: _col0, _col1, _col2
+                  Statistics: Num rows: 1 Data size: 24 Basic stats: COMPLETE Column stats: COMPLETE
+                  Reduce Output Operator
+                    null sort order: 
+                    sort order: 
+                    Statistics: Num rows: 1 Data size: 24 Basic stats: COMPLETE Column stats: COMPLETE
+                    value expressions: _col0 (type: bigint), _col1 (type: bigint), _col2 (type: bigint)
+        Reducer 3 
+            Execution mode: vectorized, llap
+            Reduce Operator Tree:
+              Group By Operator
+                aggregations: count(VALUE._col0), count(VALUE._col1), sum(VALUE._col2)
+                mode: mergepartial
+                outputColumnNames: _col0, _col1, _col2
+                Statistics: Num rows: 1 Data size: 24 Basic stats: COMPLETE Column stats: COMPLETE
+                File Output Operator
+                  compressed: false
+                  Statistics: Num rows: 1 Data size: 24 Basic stats: COMPLETE Column stats: COMPLETE
+                  table:
+                      input format: org.apache.hadoop.mapred.SequenceFileInputFormat
+                      output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
+                      serde: org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe
+
+  Stage: Stage-0
+    Fetch Operator
+      limit: -1
+      Processor Tree:
+        ListSink
+
+PREHOOK: query: select count(*), count(s), sum(c)
+from (select s, count(*) c from gu_fact group by s) t
+PREHOOK: type: QUERY
+PREHOOK: Input: default@gu_fact
+#### A masked pattern was here ####
+POSTHOOK: query: select count(*), count(s), sum(c)
+from (select s, count(*) c from gu_fact group by s) t
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@gu_fact
+#### A masked pattern was here ####
+32	31	4000
+PREHOOK: query: select count(*), count(s), sum(c)
+from (select s, count(*) c from gu_fact group by s) t
+PREHOOK: type: QUERY
+PREHOOK: Input: default@gu_fact
+#### A masked pattern was here ####
+POSTHOOK: query: select count(*), count(s), sum(c)
+from (select s, count(*) c from gu_fact group by s) t
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@gu_fact
+#### A masked pattern was here ####
+32	31	4000
+PREHOOK: query: select count(*), count(s), sum(c)
+from (select s, count(*) c from gu_fact group by s) t
+PREHOOK: type: QUERY
+PREHOOK: Input: default@gu_fact
+#### A masked pattern was here ####
+POSTHOOK: query: select count(*), count(s), sum(c)
+from (select s, count(*) c from gu_fact group by s) t
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@gu_fact
+#### A masked pattern was here ####
+32	31	4000
+PREHOOK: query: select count(*), count(s), sum(c)
+from (select s, count(*) c from gu_fact group by s) t
+PREHOOK: type: QUERY
+PREHOOK: Input: default@gu_fact
+#### A masked pattern was here ####
+POSTHOOK: query: select count(*), count(s), sum(c)
+from (select s, count(*) c from gu_fact group by s) t
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@gu_fact
+#### A masked pattern was here ####
+32	31	4000
+PREHOOK: query: explain
+with a as (select k1, k2 from gu_fact group by k1, k2),
+     b as (select k1, k2 from gu_fact2 group by k1, k2)
+select sum(case when a.k1 is not null and b.k1 is null then 1 else 0 end),
+       sum(case when a.k1 is null and b.k1 is not null then 1 else 0 end),
+       sum(case when a.k1 is not null and b.k1 is not null then 1 else 0 end)
+from a full outer join b on (a.k1 = b.k1 and a.k2 = b.k2)
+PREHOOK: type: QUERY
+PREHOOK: Input: default@gu_fact
+PREHOOK: Input: default@gu_fact2
+#### A masked pattern was here ####
+POSTHOOK: query: explain
+with a as (select k1, k2 from gu_fact group by k1, k2),
+     b as (select k1, k2 from gu_fact2 group by k1, k2)
+select sum(case when a.k1 is not null and b.k1 is null then 1 else 0 end),
+       sum(case when a.k1 is null and b.k1 is not null then 1 else 0 end),
+       sum(case when a.k1 is not null and b.k1 is not null then 1 else 0 end)
+from a full outer join b on (a.k1 = b.k1 and a.k2 = b.k2)
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@gu_fact
+POSTHOOK: Input: default@gu_fact2
+#### A masked pattern was here ####
+STAGE DEPENDENCIES:
+  Stage-1 is a root stage
+  Stage-0 depends on stages: Stage-1
+
+STAGE PLANS:
+  Stage: Stage-1
+    Tez
+#### A masked pattern was here ####
+      Edges:
+        Reducer 2 <- Map 1 (CUSTOM_SIMPLE_EDGE)
+        Reducer 3 <- Reducer 2 (SIMPLE_EDGE), Reducer 6 (SIMPLE_EDGE)
+        Reducer 4 <- Reducer 3 (CUSTOM_SIMPLE_EDGE)
+        Reducer 6 <- Map 5 (CUSTOM_SIMPLE_EDGE)
+#### A masked pattern was here ####
+      Vertices:
+        Map 1 
+            Map Operator Tree:
+                TableScan
+                  alias: gu_fact
+                  Statistics: Num rows: 4000 Data size: 31612 Basic stats: COMPLETE Column stats: COMPLETE
+                  Select Operator
+                    expressions: k1 (type: int), k2 (type: int)
+                    outputColumnNames: k1, k2
+                    Statistics: Num rows: 4000 Data size: 31612 Basic stats: COMPLETE Column stats: COMPLETE
+                    Group By Operator
+                      keys: k1 (type: int), k2 (type: int)
+                      minReductionHashAggr: 0.97574997
+                      mode: hash
+                      outputColumnNames: _col0, _col1
+                      Statistics: Num rows: 414 Data size: 3276 Basic stats: COMPLETE Column stats: COMPLETE
+                      Reduce Output Operator
+                        key expressions: _col0 (type: int), _col1 (type: int)
+                        null sort order: zz
+                        sort order: ++
+                        Map-reduce partition columns: _col0 (type: int), _col1 (type: int)
+                        Statistics: Num rows: 414 Data size: 3276 Basic stats: COMPLETE Column stats: COMPLETE
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Map 5 
+            Map Operator Tree:
+                TableScan
+                  alias: gu_fact2
+                  Statistics: Num rows: 3000 Data size: 23676 Basic stats: COMPLETE Column stats: COMPLETE
+                  Select Operator
+                    expressions: k1 (type: int), k2 (type: int)
+                    outputColumnNames: k1, k2
+                    Statistics: Num rows: 3000 Data size: 23676 Basic stats: COMPLETE Column stats: COMPLETE
+                    Group By Operator
+                      keys: k1 (type: int), k2 (type: int)
+                      minReductionHashAggr: 0.957
+                      mode: hash
+                      outputColumnNames: _col0, _col1
+                      Statistics: Num rows: 580 Data size: 4580 Basic stats: COMPLETE Column stats: COMPLETE
+                      Reduce Output Operator
+                        key expressions: _col0 (type: int), _col1 (type: int)
+                        null sort order: zz
+                        sort order: ++
+                        Map-reduce partition columns: _col0 (type: int), _col1 (type: int)
+                        Statistics: Num rows: 580 Data size: 4580 Basic stats: COMPLETE Column stats: COMPLETE
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Reducer 2 
+            Execution mode: vectorized, llap
+            Reduce Operator Tree:
+              Group By Operator
+                keys: KEY._col0 (type: int), KEY._col1 (type: int)
+                mode: mergepartial
+                outputColumnNames: _col0, _col1
+                Statistics: Num rows: 414 Data size: 3276 Basic stats: COMPLETE Column stats: COMPLETE
+                unsortedInput: true
+                Reduce Output Operator
+                  key expressions: _col0 (type: int), _col1 (type: int)
+                  null sort order: zz
+                  sort order: ++
+                  Map-reduce partition columns: _col0 (type: int), _col1 (type: int)
+                  Statistics: Num rows: 414 Data size: 3276 Basic stats: COMPLETE Column stats: COMPLETE
+        Reducer 3 
+            Execution mode: llap
+            Reduce Operator Tree:
+              Merge Join Operator
+                condition map:
+                     Full Outer Join 0 to 1
+                keys:
+                  0 _col0 (type: int), _col1 (type: int)
+                  1 _col0 (type: int), _col1 (type: int)
+                outputColumnNames: _col0, _col2
+                Statistics: Num rows: 4295 Data size: 31544 Basic stats: COMPLETE Column stats: COMPLETE
+                Select Operator
+                  expressions: if((_col2 is null and _col0 is not null), 1, 0) (type: int), if((_col0 is null and _col2 is not null), 1, 0) (type: int), if((_col0 is not null and _col2 is not null), 1, 0) (type: int)
+                  outputColumnNames: _col0, _col1, _col2
+                  Statistics: Num rows: 4295 Data size: 31544 Basic stats: COMPLETE Column stats: COMPLETE
+                  Group By Operator
+                    aggregations: sum(_col0), sum(_col1), sum(_col2)
+                    minReductionHashAggr: 0.99
+                    mode: hash
+                    outputColumnNames: _col0, _col1, _col2
+                    Statistics: Num rows: 1 Data size: 24 Basic stats: COMPLETE Column stats: COMPLETE
+                    Reduce Output Operator
+                      null sort order: 
+                      sort order: 
+                      Statistics: Num rows: 1 Data size: 24 Basic stats: COMPLETE Column stats: COMPLETE
+                      value expressions: _col0 (type: bigint), _col1 (type: bigint), _col2 (type: bigint)
+        Reducer 4 
+            Execution mode: vectorized, llap
+            Reduce Operator Tree:
+              Group By Operator
+                aggregations: sum(VALUE._col0), sum(VALUE._col1), sum(VALUE._col2)
+                mode: mergepartial
+                outputColumnNames: _col0, _col1, _col2
+                Statistics: Num rows: 1 Data size: 24 Basic stats: COMPLETE Column stats: COMPLETE
+                File Output Operator
+                  compressed: false
+                  Statistics: Num rows: 1 Data size: 24 Basic stats: COMPLETE Column stats: COMPLETE
+                  table:
+                      input format: org.apache.hadoop.mapred.SequenceFileInputFormat
+                      output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
+                      serde: org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe
+        Reducer 6 
+            Execution mode: vectorized, llap
+            Reduce Operator Tree:
+              Group By Operator
+                keys: KEY._col0 (type: int), KEY._col1 (type: int)
+                mode: mergepartial
+                outputColumnNames: _col0, _col1
+                Statistics: Num rows: 580 Data size: 4580 Basic stats: COMPLETE Column stats: COMPLETE
+                unsortedInput: true
+                Reduce Output Operator
+                  key expressions: _col0 (type: int), _col1 (type: int)
+                  null sort order: zz
+                  sort order: ++
+                  Map-reduce partition columns: _col0 (type: int), _col1 (type: int)
+                  Statistics: Num rows: 580 Data size: 4580 Basic stats: COMPLETE Column stats: COMPLETE
+
+  Stage: Stage-0
+    Fetch Operator
+      limit: -1
+      Processor Tree:
+        ListSink
+
+PREHOOK: query: with a as (select k1, k2 from gu_fact group by k1, k2),
+     b as (select k1, k2 from gu_fact2 group by k1, k2)
+select sum(case when a.k1 is not null and b.k1 is null then 1 else 0 end),
+       sum(case when a.k1 is null and b.k1 is not null then 1 else 0 end),
+       sum(case when a.k1 is not null and b.k1 is not null then 1 else 0 end)
+from a full outer join b on (a.k1 = b.k1 and a.k2 = b.k2)
+PREHOOK: type: QUERY
+PREHOOK: Input: default@gu_fact
+PREHOOK: Input: default@gu_fact2
+#### A masked pattern was here ####
+POSTHOOK: query: with a as (select k1, k2 from gu_fact group by k1, k2),
+     b as (select k1, k2 from gu_fact2 group by k1, k2)
+select sum(case when a.k1 is not null and b.k1 is null then 1 else 0 end),
+       sum(case when a.k1 is null and b.k1 is not null then 1 else 0 end),
+       sum(case when a.k1 is not null and b.k1 is not null then 1 else 0 end)
+from a full outer join b on (a.k1 = b.k1 and a.k2 = b.k2)
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@gu_fact
+POSTHOOK: Input: default@gu_fact2
+#### A masked pattern was here ####
+0	160	391
+PREHOOK: query: with a as (select k1, k2 from gu_fact group by k1, k2),
+     b as (select k1, k2 from gu_fact2 group by k1, k2)
+select sum(case when a.k1 is not null and b.k1 is null then 1 else 0 end),
+       sum(case when a.k1 is null and b.k1 is not null then 1 else 0 end),
+       sum(case when a.k1 is not null and b.k1 is not null then 1 else 0 end)
+from a full outer join b on (a.k1 = b.k1 and a.k2 = b.k2)
+PREHOOK: type: QUERY
+PREHOOK: Input: default@gu_fact
+PREHOOK: Input: default@gu_fact2
+#### A masked pattern was here ####
+POSTHOOK: query: with a as (select k1, k2 from gu_fact group by k1, k2),
+     b as (select k1, k2 from gu_fact2 group by k1, k2)
+select sum(case when a.k1 is not null and b.k1 is null then 1 else 0 end),
+       sum(case when a.k1 is null and b.k1 is not null then 1 else 0 end),
+       sum(case when a.k1 is not null and b.k1 is not null then 1 else 0 end)
+from a full outer join b on (a.k1 = b.k1 and a.k2 = b.k2)
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@gu_fact
+POSTHOOK: Input: default@gu_fact2
+#### A masked pattern was here ####
+0	160	391
+PREHOOK: query: with a as (select k1, k2 from gu_fact group by k1, k2),
+     b as (select k1, k2 from gu_fact2 group by k1, k2)
+select sum(case when a.k1 is not null and b.k1 is null then 1 else 0 end),
+       sum(case when a.k1 is null and b.k1 is not null then 1 else 0 end),
+       sum(case when a.k1 is not null and b.k1 is not null then 1 else 0 end)
+from a full outer join b on (a.k1 = b.k1 and a.k2 = b.k2)
+PREHOOK: type: QUERY
+PREHOOK: Input: default@gu_fact
+PREHOOK: Input: default@gu_fact2
+#### A masked pattern was here ####
+POSTHOOK: query: with a as (select k1, k2 from gu_fact group by k1, k2),
+     b as (select k1, k2 from gu_fact2 group by k1, k2)
+select sum(case when a.k1 is not null and b.k1 is null then 1 else 0 end),
+       sum(case when a.k1 is null and b.k1 is not null then 1 else 0 end),
+       sum(case when a.k1 is not null and b.k1 is not null then 1 else 0 end)
+from a full outer join b on (a.k1 = b.k1 and a.k2 = b.k2)
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@gu_fact
+POSTHOOK: Input: default@gu_fact2
+#### A masked pattern was here ####
+0	160	391
+PREHOOK: query: with a as (select k1, k2 from gu_fact group by k1, k2),
+     b as (select k1, k2 from gu_fact2 group by k1, k2)
+select sum(case when a.k1 is not null and b.k1 is null then 1 else 0 end),
+       sum(case when a.k1 is null and b.k1 is not null then 1 else 0 end),
+       sum(case when a.k1 is not null and b.k1 is not null then 1 else 0 end)
+from a full outer join b on (a.k1 = b.k1 and a.k2 = b.k2)
+PREHOOK: type: QUERY
+PREHOOK: Input: default@gu_fact
+PREHOOK: Input: default@gu_fact2
+#### A masked pattern was here ####
+POSTHOOK: query: with a as (select k1, k2 from gu_fact group by k1, k2),
+     b as (select k1, k2 from gu_fact2 group by k1, k2)
+select sum(case when a.k1 is not null and b.k1 is null then 1 else 0 end),
+       sum(case when a.k1 is null and b.k1 is not null then 1 else 0 end),
+       sum(case when a.k1 is not null and b.k1 is not null then 1 else 0 end)
+from a full outer join b on (a.k1 = b.k1 and a.k2 = b.k2)
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@gu_fact
+POSTHOOK: Input: default@gu_fact2
+#### A masked pattern was here ####
+0	160	391
+PREHOOK: query: explain
+select count(*), sum(k1), sum(k2)
+from (select k1, k2 from gu_fact union select k1, k2 from gu_fact2) t
+PREHOOK: type: QUERY
+PREHOOK: Input: default@gu_fact
+PREHOOK: Input: default@gu_fact2
+#### A masked pattern was here ####
+POSTHOOK: query: explain
+select count(*), sum(k1), sum(k2)
+from (select k1, k2 from gu_fact union select k1, k2 from gu_fact2) t
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@gu_fact
+POSTHOOK: Input: default@gu_fact2
+#### A masked pattern was here ####
+STAGE DEPENDENCIES:
+  Stage-1 is a root stage
+  Stage-0 depends on stages: Stage-1
+
+STAGE PLANS:
+  Stage: Stage-1
+    Tez
+#### A masked pattern was here ####
+      Edges:
+        Map 1 <- Union 2 (CONTAINS)
+        Map 5 <- Union 2 (CONTAINS)
+        Reducer 3 <- Union 2 (CUSTOM_SIMPLE_EDGE)
+        Reducer 4 <- Reducer 3 (CUSTOM_SIMPLE_EDGE)
+#### A masked pattern was here ####
+      Vertices:
+        Map 1 
+            Map Operator Tree:
+                TableScan
+                  alias: gu_fact
+                  Statistics: Num rows: 4000 Data size: 31612 Basic stats: COMPLETE Column stats: COMPLETE
+                  Select Operator
+                    expressions: k1 (type: int), k2 (type: int)
+                    outputColumnNames: _col0, _col1
+                    Statistics: Num rows: 4000 Data size: 31612 Basic stats: COMPLETE Column stats: COMPLETE
+                    Group By Operator
+                      keys: _col0 (type: int), _col1 (type: int)
+                      minReductionHashAggr: 0.98157144
+                      mode: hash
+                      outputColumnNames: _col0, _col1
+                      Statistics: Num rows: 580 Data size: 4552 Basic stats: COMPLETE Column stats: COMPLETE
+                      Reduce Output Operator
+                        key expressions: _col0 (type: int), _col1 (type: int)
+                        null sort order: zz
+                        sort order: ++
+                        Map-reduce partition columns: _col0 (type: int), _col1 (type: int)
+                        Statistics: Num rows: 580 Data size: 4552 Basic stats: COMPLETE Column stats: COMPLETE
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Map 5 
+            Map Operator Tree:
+                TableScan
+                  alias: gu_fact2
+                  Statistics: Num rows: 3000 Data size: 23676 Basic stats: COMPLETE Column stats: COMPLETE
+                  Select Operator
+                    expressions: k1 (type: int), k2 (type: int)
+                    outputColumnNames: _col0, _col1
+                    Statistics: Num rows: 3000 Data size: 23676 Basic stats: COMPLETE Column stats: COMPLETE
+                    Group By Operator
+                      keys: _col0 (type: int), _col1 (type: int)
+                      minReductionHashAggr: 0.98157144
+                      mode: hash
+                      outputColumnNames: _col0, _col1
+                      Statistics: Num rows: 580 Data size: 4552 Basic stats: COMPLETE Column stats: COMPLETE
+                      Reduce Output Operator
+                        key expressions: _col0 (type: int), _col1 (type: int)
+                        null sort order: zz
+                        sort order: ++
+                        Map-reduce partition columns: _col0 (type: int), _col1 (type: int)
+                        Statistics: Num rows: 580 Data size: 4552 Basic stats: COMPLETE Column stats: COMPLETE
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Reducer 3 
+            Execution mode: vectorized, llap
+            Reduce Operator Tree:
+              Group By Operator
+                keys: KEY._col0 (type: int), KEY._col1 (type: int)
+                mode: mergepartial
+                outputColumnNames: _col0, _col1
+                Statistics: Num rows: 580 Data size: 4552 Basic stats: COMPLETE Column stats: COMPLETE
+                unsortedInput: true
+                Group By Operator
+                  aggregations: count(), sum(_col0), sum(_col1)
+                  minReductionHashAggr: 0.99
+                  mode: hash
+                  outputColumnNames: _col0, _col1, _col2
+                  Statistics: Num rows: 1 Data size: 24 Basic stats: COMPLETE Column stats: COMPLETE
+                  Reduce Output Operator
+                    null sort order: 
+                    sort order: 
+                    Statistics: Num rows: 1 Data size: 24 Basic stats: COMPLETE Column stats: COMPLETE
+                    value expressions: _col0 (type: bigint), _col1 (type: bigint), _col2 (type: bigint)
+        Reducer 4 
+            Execution mode: vectorized, llap
+            Reduce Operator Tree:
+              Group By Operator
+                aggregations: count(VALUE._col0), sum(VALUE._col1), sum(VALUE._col2)
+                mode: mergepartial
+                outputColumnNames: _col0, _col1, _col2
+                Statistics: Num rows: 1 Data size: 24 Basic stats: COMPLETE Column stats: COMPLETE
+                File Output Operator
+                  compressed: false
+                  Statistics: Num rows: 1 Data size: 24 Basic stats: COMPLETE Column stats: COMPLETE
+                  table:
+                      input format: org.apache.hadoop.mapred.SequenceFileInputFormat
+                      output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
+                      serde: org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe
+        Union 2 
+            Vertex: Union 2
+
+  Stage: Stage-0
+    Fetch Operator
+      limit: -1
+      Processor Tree:
+        ListSink
+
+PREHOOK: query: select count(*), sum(k1), sum(k2)
+from (select k1, k2 from gu_fact union select k1, k2 from gu_fact2) t
+PREHOOK: type: QUERY
+PREHOOK: Input: default@gu_fact
+PREHOOK: Input: default@gu_fact2
+#### A masked pattern was here ####
+POSTHOOK: query: select count(*), sum(k1), sum(k2)
+from (select k1, k2 from gu_fact union select k1, k2 from gu_fact2) t
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@gu_fact
+POSTHOOK: Input: default@gu_fact2
+#### A masked pattern was here ####
+580	4959	8120
+PREHOOK: query: select count(*), sum(k1), sum(k2)
+from (select k1, k2 from gu_fact union select k1, k2 from gu_fact2) t
+PREHOOK: type: QUERY
+PREHOOK: Input: default@gu_fact
+PREHOOK: Input: default@gu_fact2
+#### A masked pattern was here ####
+POSTHOOK: query: select count(*), sum(k1), sum(k2)
+from (select k1, k2 from gu_fact union select k1, k2 from gu_fact2) t
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@gu_fact
+POSTHOOK: Input: default@gu_fact2
+#### A masked pattern was here ####
+580	4959	8120
+PREHOOK: query: select count(*), sum(k1), sum(k2)
+from (select k1, k2 from gu_fact union select k1, k2 from gu_fact2) t
+PREHOOK: type: QUERY
+PREHOOK: Input: default@gu_fact
+PREHOOK: Input: default@gu_fact2
+#### A masked pattern was here ####
+POSTHOOK: query: select count(*), sum(k1), sum(k2)
+from (select k1, k2 from gu_fact union select k1, k2 from gu_fact2) t
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@gu_fact
+POSTHOOK: Input: default@gu_fact2
+#### A masked pattern was here ####
+580	4959	8120
+PREHOOK: query: select count(*), sum(k1), sum(k2)
+from (select k1, k2 from gu_fact union select k1, k2 from gu_fact2) t
+PREHOOK: type: QUERY
+PREHOOK: Input: default@gu_fact
+PREHOOK: Input: default@gu_fact2
+#### A masked pattern was here ####
+POSTHOOK: query: select count(*), sum(k1), sum(k2)
+from (select k1, k2 from gu_fact union select k1, k2 from gu_fact2) t
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@gu_fact
+POSTHOOK: Input: default@gu_fact2
+#### A masked pattern was here ####
+580	4959	8120
+PREHOOK: query: explain
+select k1, k2, c
+from (select k1, k2, count(*) c from gu_fact group by k1, k2) t
+order by c desc, k1, k2
+limit 5
+PREHOOK: type: QUERY
+PREHOOK: Input: default@gu_fact
+#### A masked pattern was here ####
+POSTHOOK: query: explain
+select k1, k2, c
+from (select k1, k2, count(*) c from gu_fact group by k1, k2) t
+order by c desc, k1, k2
+limit 5
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@gu_fact
+#### A masked pattern was here ####
+STAGE DEPENDENCIES:
+  Stage-1 is a root stage
+  Stage-0 depends on stages: Stage-1
+
+STAGE PLANS:
+  Stage: Stage-1
+    Tez
+#### A masked pattern was here ####
+      Edges:
+        Reducer 2 <- Map 1 (CUSTOM_SIMPLE_EDGE)
+        Reducer 3 <- Reducer 2 (SIMPLE_EDGE)
+#### A masked pattern was here ####
+      Vertices:
+        Map 1 
+            Map Operator Tree:
+                TableScan
+                  alias: gu_fact
+                  Statistics: Num rows: 4000 Data size: 31612 Basic stats: COMPLETE Column stats: COMPLETE
+                  Select Operator
+                    expressions: k1 (type: int), k2 (type: int)
+                    outputColumnNames: k1, k2
+                    Statistics: Num rows: 4000 Data size: 31612 Basic stats: COMPLETE Column stats: COMPLETE
+                    Group By Operator
+                      aggregations: count()
+                      keys: k1 (type: int), k2 (type: int)
+                      minReductionHashAggr: 0.97574997
+                      mode: hash
+                      outputColumnNames: _col0, _col1, _col2
+                      Statistics: Num rows: 414 Data size: 6588 Basic stats: COMPLETE Column stats: COMPLETE
+                      Reduce Output Operator
+                        key expressions: _col0 (type: int), _col1 (type: int)
+                        null sort order: zz
+                        sort order: ++
+                        Map-reduce partition columns: _col0 (type: int), _col1 (type: int)
+                        Statistics: Num rows: 414 Data size: 6588 Basic stats: COMPLETE Column stats: COMPLETE
+                        value expressions: _col2 (type: bigint)
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Reducer 2 
+            Execution mode: vectorized, llap
+            Reduce Operator Tree:
+              Group By Operator
+                aggregations: count(VALUE._col0)
+                keys: KEY._col0 (type: int), KEY._col1 (type: int)
+                mode: mergepartial
+                outputColumnNames: _col0, _col1, _col2
+                Statistics: Num rows: 414 Data size: 6588 Basic stats: COMPLETE Column stats: COMPLETE
+                unsortedInput: true
+                Top N Key Operator
+                  sort order: -++
+                  keys: _col2 (type: bigint), _col0 (type: int), _col1 (type: int)
+                  null sort order: azz
+                  Statistics: Num rows: 414 Data size: 6588 Basic stats: COMPLETE Column stats: COMPLETE
+                  top n: 5
+                  Reduce Output Operator
+                    key expressions: _col2 (type: bigint), _col0 (type: int), _col1 (type: int)
+                    null sort order: azz
+                    sort order: -++
+                    Statistics: Num rows: 414 Data size: 6588 Basic stats: COMPLETE Column stats: COMPLETE
+        Reducer 3 
+            Execution mode: vectorized, llap
+            Reduce Operator Tree:
+              Select Operator
+                expressions: KEY.reducesinkkey1 (type: int), KEY.reducesinkkey2 (type: int), KEY.reducesinkkey0 (type: bigint)
+                outputColumnNames: _col0, _col1, _col2
+                Statistics: Num rows: 414 Data size: 6548 Basic stats: COMPLETE Column stats: COMPLETE
+                Limit
+                  Number of rows: 5
+                  Statistics: Num rows: 5 Data size: 80 Basic stats: COMPLETE Column stats: COMPLETE
+                  File Output Operator
+                    compressed: false
+                    Statistics: Num rows: 5 Data size: 80 Basic stats: COMPLETE Column stats: COMPLETE
+                    table:
+                        input format: org.apache.hadoop.mapred.SequenceFileInputFormat
+                        output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
+                        serde: org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe
+
+  Stage: Stage-0
+    Fetch Operator
+      limit: 5
+      Processor Tree:
+        ListSink
+
+PREHOOK: query: select k1, k2, c
+from (select k1, k2, count(*) c from gu_fact group by k1, k2) t
+order by c desc, k1, k2
+limit 5
+PREHOOK: type: QUERY
+PREHOOK: Input: default@gu_fact
+#### A masked pattern was here ####
+POSTHOOK: query: select k1, k2, c
+from (select k1, k2, count(*) c from gu_fact group by k1, k2) t
+order by c desc, k1, k2
+limit 5
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@gu_fact
+#### A masked pattern was here ####
+0	11	11
+0	16	11
+0	17	11
+0	22	11
+1	0	11
+PREHOOK: query: select k1, k2, c
+from (select k1, k2, count(*) c from gu_fact group by k1, k2) t
+order by c desc, k1, k2
+limit 5
+PREHOOK: type: QUERY
+PREHOOK: Input: default@gu_fact
+#### A masked pattern was here ####
+POSTHOOK: query: select k1, k2, c
+from (select k1, k2, count(*) c from gu_fact group by k1, k2) t
+order by c desc, k1, k2
+limit 5
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@gu_fact
+#### A masked pattern was here ####
+0	11	11
+0	16	11
+0	17	11
+0	22	11
+1	0	11
+PREHOOK: query: select k1, k2, c
+from (select k1, k2, count(*) c from gu_fact group by k1, k2) t
+order by c desc, k1, k2
+limit 5
+PREHOOK: type: QUERY
+PREHOOK: Input: default@gu_fact
+#### A masked pattern was here ####
+POSTHOOK: query: select k1, k2, c
+from (select k1, k2, count(*) c from gu_fact group by k1, k2) t
+order by c desc, k1, k2
+limit 5
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@gu_fact
+#### A masked pattern was here ####
+0	11	11
+0	16	11
+0	17	11
+0	22	11
+1	0	11
+PREHOOK: query: select k1, k2, c
+from (select k1, k2, count(*) c from gu_fact group by k1, k2) t
+order by c desc, k1, k2
+limit 5
+PREHOOK: type: QUERY
+PREHOOK: Input: default@gu_fact
+#### A masked pattern was here ####
+POSTHOOK: query: select k1, k2, c
+from (select k1, k2, count(*) c from gu_fact group by k1, k2) t
+order by c desc, k1, k2
+limit 5
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@gu_fact
+#### A masked pattern was here ####
+0	11	11
+0	16	11
+0	17	11
+0	22	11
+1	0	11
+PREHOOK: query: explain
+select k1, k2, c, sum(c) over (partition by k1 order by k2) running
+from (select k1, k2, count(*) c from gu_fact group by k1, k2) t
+PREHOOK: type: QUERY
+PREHOOK: Input: default@gu_fact
+#### A masked pattern was here ####
+POSTHOOK: query: explain
+select k1, k2, c, sum(c) over (partition by k1 order by k2) running
+from (select k1, k2, count(*) c from gu_fact group by k1, k2) t
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@gu_fact
+#### A masked pattern was here ####
+STAGE DEPENDENCIES:
+  Stage-1 is a root stage
+  Stage-0 depends on stages: Stage-1
+
+STAGE PLANS:
+  Stage: Stage-1
+    Tez
+#### A masked pattern was here ####
+      Edges:
+        Reducer 2 <- Map 1 (SIMPLE_EDGE)
+#### A masked pattern was here ####
+      Vertices:
+        Map 1 
+            Map Operator Tree:
+                TableScan
+                  alias: gu_fact
+                  Statistics: Num rows: 4000 Data size: 31612 Basic stats: COMPLETE Column stats: COMPLETE
+                  Select Operator
+                    expressions: k1 (type: int), k2 (type: int)
+                    outputColumnNames: k1, k2
+                    Statistics: Num rows: 4000 Data size: 31612 Basic stats: COMPLETE Column stats: COMPLETE
+                    Group By Operator
+                      aggregations: count()
+                      keys: k1 (type: int), k2 (type: int)
+                      minReductionHashAggr: 0.97574997
+                      mode: hash
+                      outputColumnNames: _col0, _col1, _col2
+                      Statistics: Num rows: 414 Data size: 6588 Basic stats: COMPLETE Column stats: COMPLETE
+                      Reduce Output Operator
+                        key expressions: _col0 (type: int), _col1 (type: int)
+                        null sort order: az
+                        sort order: ++
+                        Map-reduce partition columns: _col0 (type: int)
+                        Statistics: Num rows: 414 Data size: 6588 Basic stats: COMPLETE Column stats: COMPLETE
+                        value expressions: _col2 (type: bigint)
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Reducer 2 
+            Execution mode: llap
+            Reduce Operator Tree:
+              Group By Operator
+                aggregations: count(VALUE._col0)
+                keys: KEY._col0 (type: int), KEY._col1 (type: int)
+                mode: mergepartial
+                outputColumnNames: _col0, _col1, _col2
+                Statistics: Num rows: 414 Data size: 6588 Basic stats: COMPLETE Column stats: COMPLETE
+                Select Operator
+                  expressions: _col0 (type: int), _col1 (type: int), _col2 (type: bigint)
+                  outputColumnNames: _col0, _col1, _col2
+                  PTF Operator
+                    Function definitions:
+                        Input definition
+                          input alias: ptf_0
+                          output shape: _col0: int, _col1: int, _col2: bigint
+                          type: WINDOWING
+                        Windowing table definition
+                          input alias: ptf_1
+                          name: windowingtablefunction
+                          order by: _col1 ASC NULLS LAST
+                          partition by: _col0
+                          raw input shape:
+                          window functions:
+                              window function definition
+                                alias: sum_window_0
+                                arguments: _col2
+                                name: sum
+                                window function: GenericUDAFSumLong
+                                window frame: RANGE PRECEDING(MAX)~CURRENT
+                    Statistics: Num rows: 414 Data size: 6588 Basic stats: COMPLETE Column stats: COMPLETE
+                    Select Operator
+                      expressions: _col0 (type: int), _col1 (type: int), _col2 (type: bigint), sum_window_0 (type: bigint)
+                      outputColumnNames: _col0, _col1, _col2, _col3
+                      Statistics: Num rows: 414 Data size: 9860 Basic stats: COMPLETE Column stats: COMPLETE
+                      File Output Operator
+                        compressed: false
+                        Statistics: Num rows: 414 Data size: 9860 Basic stats: COMPLETE Column stats: COMPLETE
+                        table:
+                            input format: org.apache.hadoop.mapred.SequenceFileInputFormat
+                            output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
+                            serde: org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe
+
+  Stage: Stage-0
+    Fetch Operator
+      limit: -1
+      Processor Tree:
+        ListSink
+
+PREHOOK: query: select k1, k2, c, sum(c) over (partition by k1 order by k2) running
+from (select k1, k2, count(*) c from gu_fact group by k1, k2) t
+PREHOOK: type: QUERY
+PREHOOK: Input: default@gu_fact
+#### A masked pattern was here ####
+POSTHOOK: query: select k1, k2, c, sum(c) over (partition by k1 order by k2) running
+from (select k1, k2, count(*) c from gu_fact group by k1, k2) t
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@gu_fact
+#### A masked pattern was here ####
+0	0	10	10
+0	1	10	20
+0	10	10	109
+0	11	11	120
+0	12	9	129
+0	13	10	139
+0	14	9	148
+0	15	10	158
+0	16	11	169
+0	17	11	180
+0	18	10	190
+0	19	10	200
+0	2	10	30
+0	20	10	210
+0	21	9	219
+0	22	11	230
+0	3	10	40
+0	4	10	50
+0	5	10	60
+0	6	10	70
+0	7	9	79
+0	8	10	89
+0	9	10	99
+1	0	11	11
+1	1	11	22
+1	10	9	110
+1	11	10	120
+1	12	10	130
+1	13	10	140
+1	14	10	150
+1	15	10	160
+1	16	10	170
+1	17	11	181
+1	18	11	192
+1	19	9	201
+1	2	10	32
+1	20	10	211
+1	21	9	220
+1	22	10	230
+1	3	9	41
+1	4	10	51
+1	5	9	60
+1	6	11	71
+1	7	10	81
+1	8	10	91
+1	9	10	101
+10	0	10	10
+10	1	10	20
+10	10	10	111
+10	11	10	121
+10	12	9	130
+10	13	10	140
+10	14	10	150
+10	15	11	161
+10	16	10	171
+10	17	9	180
+10	18	10	190
+10	19	9	199
+10	2	10	30
+10	20	10	209
+10	21	11	220
+10	22	10	230
+10	3	9	39
+10	4	11	50
+10	5	10	60
+10	6	10	70
+10	7	10	80
+10	8	10	90
+10	9	11	101
+11	0	10	10
+11	1	9	19
+11	10	10	108
+11	11	11	119
+11	12	10	129
+11	13	10	139
+11	14	10	149
+11	15	9	158
+11	16	11	169
+11	17	9	178
+11	18	10	188
+11	19	10	198
+11	2	10	29
+11	20	10	208
+11	21	10	218
+11	22	11	229
+11	3	9	38
+11	4	10	48
+11	5	11	59
+11	6	10	69
+11	7	10	79
+11	8	9	88
+11	9	10	98
+12	0	11	11
+12	1	9	20
+12	10	10	109
+12	11	11	120
+12	12	11	131
+12	13	9	140
+12	14	10	150
+12	15	9	159
+12	16	10	169
+12	17	11	180
+12	18	10	190
+12	19	10	200
+12	2	10	30
+12	20	10	210
+12	21	10	220
+12	22	9	229
+12	3	10	40
+12	4	10	50
+12	5	10	60
+12	6	10	70
+12	7	10	80
+12	8	9	89
+12	9	10	99
+13	0	10	10
+13	1	11	21
+13	10	10	110
+13	11	10	120
+13	12	11	131
+13	13	10	141
+13	14	10	151
+13	15	10	161
+13	16	10	171
+13	17	10	181
+13	18	11	192
+13	19	10	202
+13	2	10	31
+13	20	9	211
+13	21	10	221
+13	22	9	230
+13	3	10	41
+13	4	9	50
+13	5	10	60
+13	6	9	69
+13	7	11	80
+13	8	10	90
+13	9	10	100
+14	0	10	10
+14	1	10	20
+14	10	10	110
+14	11	9	119
+14	12	10	129
+14	13	10	139
+14	14	11	150
+14	15	10	160
+14	16	10	170
+14	17	10	180
+14	18	9	189
+14	19	11	200
+14	2	10	30
+14	20	9	209
+14	21	10	219
+14	22	10	229
+14	3	10	40
+14	4	9	49
+14	5	10	59
+14	6	10	69
+14	7	10	79
+14	8	11	90
+14	9	10	100
+15	0	9	9
+15	1	10	19
+15	10	10	109
+15	11	9	118
+15	12	10	128
+15	13	10	138
+15	14	11	149
+15	15	11	160
+15	16	9	169
+15	17	10	179
+15	18	9	188
+15	19	10	198
+15	2	9	28
+15	20	11	209
+15	21	10	219
+15	22	10	229
+15	3	11	39
+15	4	10	49
+15	5	10	59
+15	6	10	69
+15	7	10	79
+15	8	10	89
+15	9	10	99
+16	0	9	9
+16	1	10	19
+16	10	11	109
+16	11	10	119
+16	12	10	129
+16	13	10	139
+16	14	9	148
+16	15	11	159
+16	16	10	169
+16	17	10	179
+16	18	10	189
+16	19	10	199
+16	2	10	29
+16	20	10	209
+16	21	10	219
+16	22	10	229
+16	3	10	39
+16	4	11	50
+16	5	10	60
+16	6	10	70
+16	7	9	79
+16	8	10	89
+16	9	9	98
+2	0	10	10
+2	1	10	20
+2	10	9	109
+2	11	10	119
+2	12	10	129
+2	13	11	140
+2	14	10	150
+2	15	10	160
+2	16	10	170
+2	17	9	179
+2	18	11	190
+2	19	10	200
+2	2	11	31
+2	20	10	210
+2	21	10	220
+2	22	10	230
+2	3	9	40
+2	4	10	50
+2	5	10	60
+2	6	10	70
+2	7	11	81
+2	8	9	90
+2	9	10	100
+3	0	10	10
+3	1	9	19
+3	10	10	111
+3	11	10	121
+3	12	10	131
+3	13	10	141
+3	14	11	152
+3	15	9	161
+3	16	10	171
+3	17	9	180
+3	18	10	190
+3	19	11	201
+3	2	11	30
+3	20	11	212
+3	21	10	222
+3	22	9	231
+3	3	11	41
+3	4	10	51
+3	5	10	61
+3	6	10	71
+3	7	10	81
+3	8	10	91
+3	9	10	101
+4	0	10	10
+4	1	10	20
+4	10	10	111
+4	11	10	121
+4	12	10	131
+4	13	9	140
+4	14	10	150
+4	15	10	160
+4	16	10	170
+4	17	10	180
+4	18	10	190
+4	19	10	200
+4	2	10	30
+4	20	10	210
+4	21	11	221
+4	22	9	230
+4	3	11	41
+4	4	11	52
+4	5	10	62
+4	6	9	71
+4	7	10	81
+4	8	9	90
+4	9	11	101
+5	0	10	10
+5	1	10	20
+5	10	11	111
+5	11	9	120
+5	12	10	130
+5	13	9	139
+5	14	10	149
+5	15	10	159
+5	16	11	170
+5	17	10	180
+5	18	9	189
+5	19	10	199
+5	2	10	30
+5	20	9	208
+5	21	10	218
+5	22	11	229
+5	3	10	40
+5	4	10	50
+5	5	11	61
+5	6	9	70
+5	7	10	80
+5	8	10	90
+5	9	10	100
+6	0	11	11
+6	1	10	21
+6	10	10	110
+6	11	10	120
+6	12	10	130
+6	13	10	140
+6	14	10	150
+6	15	10	160
+6	16	10	170
+6	17	11	181
+6	18	9	190
+6	19	10	200
+6	2	9	30
+6	20	10	210
+6	21	10	220
+6	22	10	230
+6	3	10	40
+6	4	9	49
+6	5	11	60
+6	6	11	71
+6	7	10	81
+6	8	10	91
+6	9	9	100
+7	0	9	9
+7	1	11	20
+7	10	10	109
+7	11	10	119
+7	12	11	130
+7	13	10	140
+7	14	10	150
+7	15	10	160
+7	16	9	169
+7	17	10	179
+7	18	10	189
+7	19	10	199
+7	2	9	29
+7	20	10	209
+7	21	10	219
+7	22	10	229
+7	3	10	39
+7	4	10	49
+7	5	10	59
+7	6	11	70
+7	7	10	80
+7	8	10	90
+7	9	9	99
+8	0	9	9
+8	1	10	19
+8	10	10	110
+8	11	10	120
+8	12	10	130
+8	13	11	141
+8	14	9	150
+8	15	10	160
+8	16	9	169
+8	17	10	179
+8	18	10	189
+8	19	11	200
+8	2	11	30
+8	20	10	210
+8	21	9	219
+8	22	10	229
+8	3	10	40
+8	4	10	50
+8	5	9	59
+8	6	10	69
+8	7	10	79
+8	8	11	90
+8	9	10	100
+9	0	10	10
+9	1	10	20
+9	10	10	111
+9	11	10	121
+9	12	9	130
+9	13	10	140
+9	14	10	150
+9	15	10	160
+9	16	10	170
+9	17	10	180
+9	18	10	190
+9	19	9	199
+9	2	10	30
+9	20	11	210
+9	21	9	219
+9	22	10	229
+9	3	10	40
+9	4	10	50
+9	5	9	59
+9	6	10	69
+9	7	10	79
+9	8	11	90
+9	9	11	101
+NULL	0	5	5
+NULL	1	4	9
+NULL	10	4	47
+NULL	11	4	51
+NULL	12	4	55
+NULL	13	5	60
+NULL	14	4	64
+NULL	15	4	68
+NULL	16	4	72
+NULL	17	4	76
+NULL	18	5	81
+NULL	19	4	85
+NULL	2	4	13
+NULL	20	4	89
+NULL	21	5	94
+NULL	22	4	98
+NULL	3	5	18
+NULL	4	4	22
+NULL	5	4	26
+NULL	6	4	30
+NULL	7	4	34
+NULL	8	5	39
+NULL	9	4	43
+PREHOOK: query: select k1, k2, c, sum(c) over (partition by k1 order by k2) running
+from (select k1, k2, count(*) c from gu_fact group by k1, k2) t
+PREHOOK: type: QUERY
+PREHOOK: Input: default@gu_fact
+#### A masked pattern was here ####
+POSTHOOK: query: select k1, k2, c, sum(c) over (partition by k1 order by k2) running
+from (select k1, k2, count(*) c from gu_fact group by k1, k2) t
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@gu_fact
+#### A masked pattern was here ####
+0	0	10	10
+0	1	10	20
+0	10	10	109
+0	11	11	120
+0	12	9	129
+0	13	10	139
+0	14	9	148
+0	15	10	158
+0	16	11	169
+0	17	11	180
+0	18	10	190
+0	19	10	200
+0	2	10	30
+0	20	10	210
+0	21	9	219
+0	22	11	230
+0	3	10	40
+0	4	10	50
+0	5	10	60
+0	6	10	70
+0	7	9	79
+0	8	10	89
+0	9	10	99
+1	0	11	11
+1	1	11	22
+1	10	9	110
+1	11	10	120
+1	12	10	130
+1	13	10	140
+1	14	10	150
+1	15	10	160
+1	16	10	170
+1	17	11	181
+1	18	11	192
+1	19	9	201
+1	2	10	32
+1	20	10	211
+1	21	9	220
+1	22	10	230
+1	3	9	41
+1	4	10	51
+1	5	9	60
+1	6	11	71
+1	7	10	81
+1	8	10	91
+1	9	10	101
+10	0	10	10
+10	1	10	20
+10	10	10	111
+10	11	10	121
+10	12	9	130
+10	13	10	140
+10	14	10	150
+10	15	11	161
+10	16	10	171
+10	17	9	180
+10	18	10	190
+10	19	9	199
+10	2	10	30
+10	20	10	209
+10	21	11	220
+10	22	10	230
+10	3	9	39
+10	4	11	50
+10	5	10	60
+10	6	10	70
+10	7	10	80
+10	8	10	90
+10	9	11	101
+11	0	10	10
+11	1	9	19
+11	10	10	108
+11	11	11	119
+11	12	10	129
+11	13	10	139
+11	14	10	149
+11	15	9	158
+11	16	11	169
+11	17	9	178
+11	18	10	188
+11	19	10	198
+11	2	10	29
+11	20	10	208
+11	21	10	218
+11	22	11	229
+11	3	9	38
+11	4	10	48
+11	5	11	59
+11	6	10	69
+11	7	10	79
+11	8	9	88
+11	9	10	98
+12	0	11	11
+12	1	9	20
+12	10	10	109
+12	11	11	120
+12	12	11	131
+12	13	9	140
+12	14	10	150
+12	15	9	159
+12	16	10	169
+12	17	11	180
+12	18	10	190
+12	19	10	200
+12	2	10	30
+12	20	10	210
+12	21	10	220
+12	22	9	229
+12	3	10	40
+12	4	10	50
+12	5	10	60
+12	6	10	70
+12	7	10	80
+12	8	9	89
+12	9	10	99
+13	0	10	10
+13	1	11	21
+13	10	10	110
+13	11	10	120
+13	12	11	131
+13	13	10	141
+13	14	10	151
+13	15	10	161
+13	16	10	171
+13	17	10	181
+13	18	11	192
+13	19	10	202
+13	2	10	31
+13	20	9	211
+13	21	10	221
+13	22	9	230
+13	3	10	41
+13	4	9	50
+13	5	10	60
+13	6	9	69
+13	7	11	80
+13	8	10	90
+13	9	10	100
+14	0	10	10
+14	1	10	20
+14	10	10	110
+14	11	9	119
+14	12	10	129
+14	13	10	139
+14	14	11	150
+14	15	10	160
+14	16	10	170
+14	17	10	180
+14	18	9	189
+14	19	11	200
+14	2	10	30
+14	20	9	209
+14	21	10	219
+14	22	10	229
+14	3	10	40
+14	4	9	49
+14	5	10	59
+14	6	10	69
+14	7	10	79
+14	8	11	90
+14	9	10	100
+15	0	9	9
+15	1	10	19
+15	10	10	109
+15	11	9	118
+15	12	10	128
+15	13	10	138
+15	14	11	149
+15	15	11	160
+15	16	9	169
+15	17	10	179
+15	18	9	188
+15	19	10	198
+15	2	9	28
+15	20	11	209
+15	21	10	219
+15	22	10	229
+15	3	11	39
+15	4	10	49
+15	5	10	59
+15	6	10	69
+15	7	10	79
+15	8	10	89
+15	9	10	99
+16	0	9	9
+16	1	10	19
+16	10	11	109
+16	11	10	119
+16	12	10	129
+16	13	10	139
+16	14	9	148
+16	15	11	159
+16	16	10	169
+16	17	10	179
+16	18	10	189
+16	19	10	199
+16	2	10	29
+16	20	10	209
+16	21	10	219
+16	22	10	229
+16	3	10	39
+16	4	11	50
+16	5	10	60
+16	6	10	70
+16	7	9	79
+16	8	10	89
+16	9	9	98
+2	0	10	10
+2	1	10	20
+2	10	9	109
+2	11	10	119
+2	12	10	129
+2	13	11	140
+2	14	10	150
+2	15	10	160
+2	16	10	170
+2	17	9	179
+2	18	11	190
+2	19	10	200
+2	2	11	31
+2	20	10	210
+2	21	10	220
+2	22	10	230
+2	3	9	40
+2	4	10	50
+2	5	10	60
+2	6	10	70
+2	7	11	81
+2	8	9	90
+2	9	10	100
+3	0	10	10
+3	1	9	19
+3	10	10	111
+3	11	10	121
+3	12	10	131
+3	13	10	141
+3	14	11	152
+3	15	9	161
+3	16	10	171
+3	17	9	180
+3	18	10	190
+3	19	11	201
+3	2	11	30
+3	20	11	212
+3	21	10	222
+3	22	9	231
+3	3	11	41
+3	4	10	51
+3	5	10	61
+3	6	10	71
+3	7	10	81
+3	8	10	91
+3	9	10	101
+4	0	10	10
+4	1	10	20
+4	10	10	111
+4	11	10	121
+4	12	10	131
+4	13	9	140
+4	14	10	150
+4	15	10	160
+4	16	10	170
+4	17	10	180
+4	18	10	190
+4	19	10	200
+4	2	10	30
+4	20	10	210
+4	21	11	221
+4	22	9	230
+4	3	11	41
+4	4	11	52
+4	5	10	62
+4	6	9	71
+4	7	10	81
+4	8	9	90
+4	9	11	101
+5	0	10	10
+5	1	10	20
+5	10	11	111
+5	11	9	120
+5	12	10	130
+5	13	9	139
+5	14	10	149
+5	15	10	159
+5	16	11	170
+5	17	10	180
+5	18	9	189
+5	19	10	199
+5	2	10	30
+5	20	9	208
+5	21	10	218
+5	22	11	229
+5	3	10	40
+5	4	10	50
+5	5	11	61
+5	6	9	70
+5	7	10	80
+5	8	10	90
+5	9	10	100
+6	0	11	11
+6	1	10	21
+6	10	10	110
+6	11	10	120
+6	12	10	130
+6	13	10	140
+6	14	10	150
+6	15	10	160
+6	16	10	170
+6	17	11	181
+6	18	9	190
+6	19	10	200
+6	2	9	30
+6	20	10	210
+6	21	10	220
+6	22	10	230
+6	3	10	40
+6	4	9	49
+6	5	11	60
+6	6	11	71
+6	7	10	81
+6	8	10	91
+6	9	9	100
+7	0	9	9
+7	1	11	20
+7	10	10	109
+7	11	10	119
+7	12	11	130
+7	13	10	140
+7	14	10	150
+7	15	10	160
+7	16	9	169
+7	17	10	179
+7	18	10	189
+7	19	10	199
+7	2	9	29
+7	20	10	209
+7	21	10	219
+7	22	10	229
+7	3	10	39
+7	4	10	49
+7	5	10	59
+7	6	11	70
+7	7	10	80
+7	8	10	90
+7	9	9	99
+8	0	9	9
+8	1	10	19
+8	10	10	110
+8	11	10	120
+8	12	10	130
+8	13	11	141
+8	14	9	150
+8	15	10	160
+8	16	9	169
+8	17	10	179
+8	18	10	189
+8	19	11	200
+8	2	11	30
+8	20	10	210
+8	21	9	219
+8	22	10	229
+8	3	10	40
+8	4	10	50
+8	5	9	59
+8	6	10	69
+8	7	10	79
+8	8	11	90
+8	9	10	100
+9	0	10	10
+9	1	10	20
+9	10	10	111
+9	11	10	121
+9	12	9	130
+9	13	10	140
+9	14	10	150
+9	15	10	160
+9	16	10	170
+9	17	10	180
+9	18	10	190
+9	19	9	199
+9	2	10	30
+9	20	11	210
+9	21	9	219
+9	22	10	229
+9	3	10	40
+9	4	10	50
+9	5	9	59
+9	6	10	69
+9	7	10	79
+9	8	11	90
+9	9	11	101
+NULL	0	5	5
+NULL	1	4	9
+NULL	10	4	47
+NULL	11	4	51
+NULL	12	4	55
+NULL	13	5	60
+NULL	14	4	64
+NULL	15	4	68
+NULL	16	4	72
+NULL	17	4	76
+NULL	18	5	81
+NULL	19	4	85
+NULL	2	4	13
+NULL	20	4	89
+NULL	21	5	94
+NULL	22	4	98
+NULL	3	5	18
+NULL	4	4	22
+NULL	5	4	26
+NULL	6	4	30
+NULL	7	4	34
+NULL	8	5	39
+NULL	9	4	43
+PREHOOK: query: select k1, k2, c, sum(c) over (partition by k1 order by k2) running
+from (select k1, k2, count(*) c from gu_fact group by k1, k2) t
+PREHOOK: type: QUERY
+PREHOOK: Input: default@gu_fact
+#### A masked pattern was here ####
+POSTHOOK: query: select k1, k2, c, sum(c) over (partition by k1 order by k2) running
+from (select k1, k2, count(*) c from gu_fact group by k1, k2) t
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@gu_fact
+#### A masked pattern was here ####
+0	0	10	10
+0	1	10	20
+0	10	10	109
+0	11	11	120
+0	12	9	129
+0	13	10	139
+0	14	9	148
+0	15	10	158
+0	16	11	169
+0	17	11	180
+0	18	10	190
+0	19	10	200
+0	2	10	30
+0	20	10	210
+0	21	9	219
+0	22	11	230
+0	3	10	40
+0	4	10	50
+0	5	10	60
+0	6	10	70
+0	7	9	79
+0	8	10	89
+0	9	10	99
+1	0	11	11
+1	1	11	22
+1	10	9	110
+1	11	10	120
+1	12	10	130
+1	13	10	140
+1	14	10	150
+1	15	10	160
+1	16	10	170
+1	17	11	181
+1	18	11	192
+1	19	9	201
+1	2	10	32
+1	20	10	211
+1	21	9	220
+1	22	10	230
+1	3	9	41
+1	4	10	51
+1	5	9	60
+1	6	11	71
+1	7	10	81
+1	8	10	91
+1	9	10	101
+10	0	10	10
+10	1	10	20
+10	10	10	111
+10	11	10	121
+10	12	9	130
+10	13	10	140
+10	14	10	150
+10	15	11	161
+10	16	10	171
+10	17	9	180
+10	18	10	190
+10	19	9	199
+10	2	10	30
+10	20	10	209
+10	21	11	220
+10	22	10	230
+10	3	9	39
+10	4	11	50
+10	5	10	60
+10	6	10	70
+10	7	10	80
+10	8	10	90
+10	9	11	101
+11	0	10	10
+11	1	9	19
+11	10	10	108
+11	11	11	119
+11	12	10	129
+11	13	10	139
+11	14	10	149
+11	15	9	158
+11	16	11	169
+11	17	9	178
+11	18	10	188
+11	19	10	198
+11	2	10	29
+11	20	10	208
+11	21	10	218
+11	22	11	229
+11	3	9	38
+11	4	10	48
+11	5	11	59
+11	6	10	69
+11	7	10	79
+11	8	9	88
+11	9	10	98
+12	0	11	11
+12	1	9	20
+12	10	10	109
+12	11	11	120
+12	12	11	131
+12	13	9	140
+12	14	10	150
+12	15	9	159
+12	16	10	169
+12	17	11	180
+12	18	10	190
+12	19	10	200
+12	2	10	30
+12	20	10	210
+12	21	10	220
+12	22	9	229
+12	3	10	40
+12	4	10	50
+12	5	10	60
+12	6	10	70
+12	7	10	80
+12	8	9	89
+12	9	10	99
+13	0	10	10
+13	1	11	21
+13	10	10	110
+13	11	10	120
+13	12	11	131
+13	13	10	141
+13	14	10	151
+13	15	10	161
+13	16	10	171
+13	17	10	181
+13	18	11	192
+13	19	10	202
+13	2	10	31
+13	20	9	211
+13	21	10	221
+13	22	9	230
+13	3	10	41
+13	4	9	50
+13	5	10	60
+13	6	9	69
+13	7	11	80
+13	8	10	90
+13	9	10	100
+14	0	10	10
+14	1	10	20
+14	10	10	110
+14	11	9	119
+14	12	10	129
+14	13	10	139
+14	14	11	150
+14	15	10	160
+14	16	10	170
+14	17	10	180
+14	18	9	189
+14	19	11	200
+14	2	10	30
+14	20	9	209
+14	21	10	219
+14	22	10	229
+14	3	10	40
+14	4	9	49
+14	5	10	59
+14	6	10	69
+14	7	10	79
+14	8	11	90
+14	9	10	100
+15	0	9	9
+15	1	10	19
+15	10	10	109
+15	11	9	118
+15	12	10	128
+15	13	10	138
+15	14	11	149
+15	15	11	160
+15	16	9	169
+15	17	10	179
+15	18	9	188
+15	19	10	198
+15	2	9	28
+15	20	11	209
+15	21	10	219
+15	22	10	229
+15	3	11	39
+15	4	10	49
+15	5	10	59
+15	6	10	69
+15	7	10	79
+15	8	10	89
+15	9	10	99
+16	0	9	9
+16	1	10	19
+16	10	11	109
+16	11	10	119
+16	12	10	129
+16	13	10	139
+16	14	9	148
+16	15	11	159
+16	16	10	169
+16	17	10	179
+16	18	10	189
+16	19	10	199
+16	2	10	29
+16	20	10	209
+16	21	10	219
+16	22	10	229
+16	3	10	39
+16	4	11	50
+16	5	10	60
+16	6	10	70
+16	7	9	79
+16	8	10	89
+16	9	9	98
+2	0	10	10
+2	1	10	20
+2	10	9	109
+2	11	10	119
+2	12	10	129
+2	13	11	140
+2	14	10	150
+2	15	10	160
+2	16	10	170
+2	17	9	179
+2	18	11	190
+2	19	10	200
+2	2	11	31
+2	20	10	210
+2	21	10	220
+2	22	10	230
+2	3	9	40
+2	4	10	50
+2	5	10	60
+2	6	10	70
+2	7	11	81
+2	8	9	90
+2	9	10	100
+3	0	10	10
+3	1	9	19
+3	10	10	111
+3	11	10	121
+3	12	10	131
+3	13	10	141
+3	14	11	152
+3	15	9	161
+3	16	10	171
+3	17	9	180
+3	18	10	190
+3	19	11	201
+3	2	11	30
+3	20	11	212
+3	21	10	222
+3	22	9	231
+3	3	11	41
+3	4	10	51
+3	5	10	61
+3	6	10	71
+3	7	10	81
+3	8	10	91
+3	9	10	101
+4	0	10	10
+4	1	10	20
+4	10	10	111
+4	11	10	121
+4	12	10	131
+4	13	9	140
+4	14	10	150
+4	15	10	160
+4	16	10	170
+4	17	10	180
+4	18	10	190
+4	19	10	200
+4	2	10	30
+4	20	10	210
+4	21	11	221
+4	22	9	230
+4	3	11	41
+4	4	11	52
+4	5	10	62
+4	6	9	71
+4	7	10	81
+4	8	9	90
+4	9	11	101
+5	0	10	10
+5	1	10	20
+5	10	11	111
+5	11	9	120
+5	12	10	130
+5	13	9	139
+5	14	10	149
+5	15	10	159
+5	16	11	170
+5	17	10	180
+5	18	9	189
+5	19	10	199
+5	2	10	30
+5	20	9	208
+5	21	10	218
+5	22	11	229
+5	3	10	40
+5	4	10	50
+5	5	11	61
+5	6	9	70
+5	7	10	80
+5	8	10	90
+5	9	10	100
+6	0	11	11
+6	1	10	21
+6	10	10	110
+6	11	10	120
+6	12	10	130
+6	13	10	140
+6	14	10	150
+6	15	10	160
+6	16	10	170
+6	17	11	181
+6	18	9	190
+6	19	10	200
+6	2	9	30
+6	20	10	210
+6	21	10	220
+6	22	10	230
+6	3	10	40
+6	4	9	49
+6	5	11	60
+6	6	11	71
+6	7	10	81
+6	8	10	91
+6	9	9	100
+7	0	9	9
+7	1	11	20
+7	10	10	109
+7	11	10	119
+7	12	11	130
+7	13	10	140
+7	14	10	150
+7	15	10	160
+7	16	9	169
+7	17	10	179
+7	18	10	189
+7	19	10	199
+7	2	9	29
+7	20	10	209
+7	21	10	219
+7	22	10	229
+7	3	10	39
+7	4	10	49
+7	5	10	59
+7	6	11	70
+7	7	10	80
+7	8	10	90
+7	9	9	99
+8	0	9	9
+8	1	10	19
+8	10	10	110
+8	11	10	120
+8	12	10	130
+8	13	11	141
+8	14	9	150
+8	15	10	160
+8	16	9	169
+8	17	10	179
+8	18	10	189
+8	19	11	200
+8	2	11	30
+8	20	10	210
+8	21	9	219
+8	22	10	229
+8	3	10	40
+8	4	10	50
+8	5	9	59
+8	6	10	69
+8	7	10	79
+8	8	11	90
+8	9	10	100
+9	0	10	10
+9	1	10	20
+9	10	10	111
+9	11	10	121
+9	12	9	130
+9	13	10	140
+9	14	10	150
+9	15	10	160
+9	16	10	170
+9	17	10	180
+9	18	10	190
+9	19	9	199
+9	2	10	30
+9	20	11	210
+9	21	9	219
+9	22	10	229
+9	3	10	40
+9	4	10	50
+9	5	9	59
+9	6	10	69
+9	7	10	79
+9	8	11	90
+9	9	11	101
+NULL	0	5	5
+NULL	1	4	9
+NULL	10	4	47
+NULL	11	4	51
+NULL	12	4	55
+NULL	13	5	60
+NULL	14	4	64
+NULL	15	4	68
+NULL	16	4	72
+NULL	17	4	76
+NULL	18	5	81
+NULL	19	4	85
+NULL	2	4	13
+NULL	20	4	89
+NULL	21	5	94
+NULL	22	4	98
+NULL	3	5	18
+NULL	4	4	22
+NULL	5	4	26
+NULL	6	4	30
+NULL	7	4	34
+NULL	8	5	39
+NULL	9	4	43
+PREHOOK: query: select k1, k2, c, sum(c) over (partition by k1 order by k2) running
+from (select k1, k2, count(*) c from gu_fact group by k1, k2) t
+PREHOOK: type: QUERY
+PREHOOK: Input: default@gu_fact
+#### A masked pattern was here ####
+POSTHOOK: query: select k1, k2, c, sum(c) over (partition by k1 order by k2) running
+from (select k1, k2, count(*) c from gu_fact group by k1, k2) t
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@gu_fact
+#### A masked pattern was here ####
+0	0	10	10
+0	1	10	20
+0	10	10	109
+0	11	11	120
+0	12	9	129
+0	13	10	139
+0	14	9	148
+0	15	10	158
+0	16	11	169
+0	17	11	180
+0	18	10	190
+0	19	10	200
+0	2	10	30
+0	20	10	210
+0	21	9	219
+0	22	11	230
+0	3	10	40
+0	4	10	50
+0	5	10	60
+0	6	10	70
+0	7	9	79
+0	8	10	89
+0	9	10	99
+1	0	11	11
+1	1	11	22
+1	10	9	110
+1	11	10	120
+1	12	10	130
+1	13	10	140
+1	14	10	150
+1	15	10	160
+1	16	10	170
+1	17	11	181
+1	18	11	192
+1	19	9	201
+1	2	10	32
+1	20	10	211
+1	21	9	220
+1	22	10	230
+1	3	9	41
+1	4	10	51
+1	5	9	60
+1	6	11	71
+1	7	10	81
+1	8	10	91
+1	9	10	101
+10	0	10	10
+10	1	10	20
+10	10	10	111
+10	11	10	121
+10	12	9	130
+10	13	10	140
+10	14	10	150
+10	15	11	161
+10	16	10	171
+10	17	9	180
+10	18	10	190
+10	19	9	199
+10	2	10	30
+10	20	10	209
+10	21	11	220
+10	22	10	230
+10	3	9	39
+10	4	11	50
+10	5	10	60
+10	6	10	70
+10	7	10	80
+10	8	10	90
+10	9	11	101
+11	0	10	10
+11	1	9	19
+11	10	10	108
+11	11	11	119
+11	12	10	129
+11	13	10	139
+11	14	10	149
+11	15	9	158
+11	16	11	169
+11	17	9	178
+11	18	10	188
+11	19	10	198
+11	2	10	29
+11	20	10	208
+11	21	10	218
+11	22	11	229
+11	3	9	38
+11	4	10	48
+11	5	11	59
+11	6	10	69
+11	7	10	79
+11	8	9	88
+11	9	10	98
+12	0	11	11
+12	1	9	20
+12	10	10	109
+12	11	11	120
+12	12	11	131
+12	13	9	140
+12	14	10	150
+12	15	9	159
+12	16	10	169
+12	17	11	180
+12	18	10	190
+12	19	10	200
+12	2	10	30
+12	20	10	210
+12	21	10	220
+12	22	9	229
+12	3	10	40
+12	4	10	50
+12	5	10	60
+12	6	10	70
+12	7	10	80
+12	8	9	89
+12	9	10	99
+13	0	10	10
+13	1	11	21
+13	10	10	110
+13	11	10	120
+13	12	11	131
+13	13	10	141
+13	14	10	151
+13	15	10	161
+13	16	10	171
+13	17	10	181
+13	18	11	192
+13	19	10	202
+13	2	10	31
+13	20	9	211
+13	21	10	221
+13	22	9	230
+13	3	10	41
+13	4	9	50
+13	5	10	60
+13	6	9	69
+13	7	11	80
+13	8	10	90
+13	9	10	100
+14	0	10	10
+14	1	10	20
+14	10	10	110
+14	11	9	119
+14	12	10	129
+14	13	10	139
+14	14	11	150
+14	15	10	160
+14	16	10	170
+14	17	10	180
+14	18	9	189
+14	19	11	200
+14	2	10	30
+14	20	9	209
+14	21	10	219
+14	22	10	229
+14	3	10	40
+14	4	9	49
+14	5	10	59
+14	6	10	69
+14	7	10	79
+14	8	11	90
+14	9	10	100
+15	0	9	9
+15	1	10	19
+15	10	10	109
+15	11	9	118
+15	12	10	128
+15	13	10	138
+15	14	11	149
+15	15	11	160
+15	16	9	169
+15	17	10	179
+15	18	9	188
+15	19	10	198
+15	2	9	28
+15	20	11	209
+15	21	10	219
+15	22	10	229
+15	3	11	39
+15	4	10	49
+15	5	10	59
+15	6	10	69
+15	7	10	79
+15	8	10	89
+15	9	10	99
+16	0	9	9
+16	1	10	19
+16	10	11	109
+16	11	10	119
+16	12	10	129
+16	13	10	139
+16	14	9	148
+16	15	11	159
+16	16	10	169
+16	17	10	179
+16	18	10	189
+16	19	10	199
+16	2	10	29
+16	20	10	209
+16	21	10	219
+16	22	10	229
+16	3	10	39
+16	4	11	50
+16	5	10	60
+16	6	10	70
+16	7	9	79
+16	8	10	89
+16	9	9	98
+2	0	10	10
+2	1	10	20
+2	10	9	109
+2	11	10	119
+2	12	10	129
+2	13	11	140
+2	14	10	150
+2	15	10	160
+2	16	10	170
+2	17	9	179
+2	18	11	190
+2	19	10	200
+2	2	11	31
+2	20	10	210
+2	21	10	220
+2	22	10	230
+2	3	9	40
+2	4	10	50
+2	5	10	60
+2	6	10	70
+2	7	11	81
+2	8	9	90
+2	9	10	100
+3	0	10	10
+3	1	9	19
+3	10	10	111
+3	11	10	121
+3	12	10	131
+3	13	10	141
+3	14	11	152
+3	15	9	161
+3	16	10	171
+3	17	9	180
+3	18	10	190
+3	19	11	201
+3	2	11	30
+3	20	11	212
+3	21	10	222
+3	22	9	231
+3	3	11	41
+3	4	10	51
+3	5	10	61
+3	6	10	71
+3	7	10	81
+3	8	10	91
+3	9	10	101
+4	0	10	10
+4	1	10	20
+4	10	10	111
+4	11	10	121
+4	12	10	131
+4	13	9	140
+4	14	10	150
+4	15	10	160
+4	16	10	170
+4	17	10	180
+4	18	10	190
+4	19	10	200
+4	2	10	30
+4	20	10	210
+4	21	11	221
+4	22	9	230
+4	3	11	41
+4	4	11	52
+4	5	10	62
+4	6	9	71
+4	7	10	81
+4	8	9	90
+4	9	11	101
+5	0	10	10
+5	1	10	20
+5	10	11	111
+5	11	9	120
+5	12	10	130
+5	13	9	139
+5	14	10	149
+5	15	10	159
+5	16	11	170
+5	17	10	180
+5	18	9	189
+5	19	10	199
+5	2	10	30
+5	20	9	208
+5	21	10	218
+5	22	11	229
+5	3	10	40
+5	4	10	50
+5	5	11	61
+5	6	9	70
+5	7	10	80
+5	8	10	90
+5	9	10	100
+6	0	11	11
+6	1	10	21
+6	10	10	110
+6	11	10	120
+6	12	10	130
+6	13	10	140
+6	14	10	150
+6	15	10	160
+6	16	10	170
+6	17	11	181
+6	18	9	190
+6	19	10	200
+6	2	9	30
+6	20	10	210
+6	21	10	220
+6	22	10	230
+6	3	10	40
+6	4	9	49
+6	5	11	60
+6	6	11	71
+6	7	10	81
+6	8	10	91
+6	9	9	100
+7	0	9	9
+7	1	11	20
+7	10	10	109
+7	11	10	119
+7	12	11	130
+7	13	10	140
+7	14	10	150
+7	15	10	160
+7	16	9	169
+7	17	10	179
+7	18	10	189
+7	19	10	199
+7	2	9	29
+7	20	10	209
+7	21	10	219
+7	22	10	229
+7	3	10	39
+7	4	10	49
+7	5	10	59
+7	6	11	70
+7	7	10	80
+7	8	10	90
+7	9	9	99
+8	0	9	9
+8	1	10	19
+8	10	10	110
+8	11	10	120
+8	12	10	130
+8	13	11	141
+8	14	9	150
+8	15	10	160
+8	16	9	169
+8	17	10	179
+8	18	10	189
+8	19	11	200
+8	2	11	30
+8	20	10	210
+8	21	9	219
+8	22	10	229
+8	3	10	40
+8	4	10	50
+8	5	9	59
+8	6	10	69
+8	7	10	79
+8	8	11	90
+8	9	10	100
+9	0	10	10
+9	1	10	20
+9	10	10	111
+9	11	10	121
+9	12	9	130
+9	13	10	140
+9	14	10	150
+9	15	10	160
+9	16	10	170
+9	17	10	180
+9	18	10	190
+9	19	9	199
+9	2	10	30
+9	20	11	210
+9	21	9	219
+9	22	10	229
+9	3	10	40
+9	4	10	50
+9	5	9	59
+9	6	10	69
+9	7	10	79
+9	8	11	90
+9	9	11	101
+NULL	0	5	5
+NULL	1	4	9
+NULL	10	4	47
+NULL	11	4	51
+NULL	12	4	55
+NULL	13	5	60
+NULL	14	4	64
+NULL	15	4	68
+NULL	16	4	72
+NULL	17	4	76
+NULL	18	5	81
+NULL	19	4	85
+NULL	2	4	13
+NULL	20	4	89
+NULL	21	5	94
+NULL	22	4	98
+NULL	3	5	18
+NULL	4	4	22
+NULL	5	4	26
+NULL	6	4	30
+NULL	7	4	34
+NULL	8	5	39
+NULL	9	4	43
+PREHOOK: query: select k2, sum(c), sum(sv), max(mx), min(mn), sum(cv)
+from (select k1, k2, count(*) c, sum(v) sv, max(d) mx, min(s) mn, count(v) cv
+      from gu_fact group by k1, k2) t
+group by k2
+PREHOOK: type: QUERY
+PREHOOK: Input: default@gu_fact
+#### A masked pattern was here ####
+POSTHOOK: query: select k2, sum(c), sum(sv), max(mx), min(mn), sum(cv)
+from (select k1, k2, count(*) c, sum(v) sv, max(d) mx, min(s) mn, count(v) cv
+      from gu_fact group by k1, k2) t
+group by k2
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@gu_fact
+#### A masked pattern was here ####
+0	174	477	61.25	s0	158
+1	174	477	61.25	s0	159
+10	174	471	61.25	s0	158
+11	174	472	61.25	s0	158
+12	174	476	61.25	s0	159
+13	174	476	61.25	s0	159
+14	174	473	61.25	s0	158
+15	174	474	61.25	s0	158
+16	174	482	61.25	s0	158
+17	174	476	61.25	s0	158
+18	174	470	61.25	s0	158
+19	174	471	61.25	s0	158
+2	174	477	61.25	s0	159
+20	174	472	61.25	s0	158
+21	173	470	61.25	s0	157
+22	173	470	61.25	s0	157
+3	174	471	61.25	s0	158
+4	174	472	61.25	s0	158
+5	174	473	61.25	s0	158
+6	174	474	61.25	s0	158
+7	174	475	61.25	s0	158
+8	174	476	61.25	s0	158
+9	174	477	61.25	s0	158
+PREHOOK: query: select count(*), sum(k1), sum(k2)
+from (select k1, k2 from gu_fact union select k1, k2 from gu_fact2) t
+PREHOOK: type: QUERY
+PREHOOK: Input: default@gu_fact
+PREHOOK: Input: default@gu_fact2
+#### A masked pattern was here ####
+POSTHOOK: query: select count(*), sum(k1), sum(k2)
+from (select k1, k2 from gu_fact union select k1, k2 from gu_fact2) t
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@gu_fact
+POSTHOOK: Input: default@gu_fact2
+#### A masked pattern was here ####
+580	4959	8120
+PREHOOK: query: create table gu_dim (k int, name string)
+PREHOOK: type: CREATETABLE
+PREHOOK: Output: database:default
+PREHOOK: Output: default@gu_dim
+POSTHOOK: query: create table gu_dim (k int, name string)
+POSTHOOK: type: CREATETABLE
+POSTHOOK: Output: database:default
+POSTHOOK: Output: default@gu_dim
+PREHOOK: query: insert into gu_dim select pos, concat('n', pos % 5) from (select posexplode(split(space(16), ' '))) t
+PREHOOK: type: QUERY
+PREHOOK: Input: _dummy_database@_dummy_table
+PREHOOK: Output: default@gu_dim
+POSTHOOK: query: insert into gu_dim select pos, concat('n', pos % 5) from (select posexplode(split(space(16), ' '))) t
+POSTHOOK: type: QUERY
+POSTHOOK: Input: _dummy_database@_dummy_table
+POSTHOOK: Output: default@gu_dim
+POSTHOOK: Lineage: gu_dim.k SCRIPT []
+POSTHOOK: Lineage: gu_dim.name SCRIPT []
+PREHOOK: query: explain
+select d.name, sum(t.c) from (select k1, count(*) c from gu_fact group by k1) t join gu_dim d on t.k1 = d.k
+group by d.name
+PREHOOK: type: QUERY
+PREHOOK: Input: default@gu_dim
+PREHOOK: Input: default@gu_fact
+#### A masked pattern was here ####
+POSTHOOK: query: explain
+select d.name, sum(t.c) from (select k1, count(*) c from gu_fact group by k1) t join gu_dim d on t.k1 = d.k
+group by d.name
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@gu_dim
+POSTHOOK: Input: default@gu_fact
+#### A masked pattern was here ####
+STAGE DEPENDENCIES:
+  Stage-1 is a root stage
+  Stage-0 depends on stages: Stage-1
+
+STAGE PLANS:
+  Stage: Stage-1
+    Tez
+#### A masked pattern was here ####
+      Edges:
+        Reducer 2 <- Map 1 (SIMPLE_EDGE), Map 4 (BROADCAST_EDGE)
+        Reducer 3 <- Reducer 2 (SIMPLE_EDGE)
+#### A masked pattern was here ####
+      Vertices:
+        Map 1 
+            Map Operator Tree:
+                TableScan
+                  alias: gu_fact
+                  filterExpr: k1 is not null (type: boolean)
+                  Statistics: Num rows: 4000 Data size: 15612 Basic stats: COMPLETE Column stats: COMPLETE
+                  Filter Operator
+                    predicate: k1 is not null (type: boolean)
+                    Statistics: Num rows: 3902 Data size: 15228 Basic stats: COMPLETE Column stats: COMPLETE
+                    Group By Operator
+                      aggregations: count()
+                      keys: k1 (type: int)
+                      minReductionHashAggr: 0.99
+                      mode: hash
+                      outputColumnNames: _col0, _col1
+                      Statistics: Num rows: 18 Data size: 216 Basic stats: COMPLETE Column stats: COMPLETE
+                      Reduce Output Operator
+                        key expressions: _col0 (type: int)
+                        null sort order: z
+                        sort order: +
+                        Map-reduce partition columns: _col0 (type: int)
+                        Statistics: Num rows: 18 Data size: 216 Basic stats: COMPLETE Column stats: COMPLETE
+                        value expressions: _col1 (type: bigint)
+            Execution mode: llap
+            LLAP IO: all inputs
+        Map 4 
+            Map Operator Tree:
+                TableScan
+                  alias: d
+                  filterExpr: k is not null (type: boolean)
+                  Statistics: Num rows: 17 Data size: 1530 Basic stats: COMPLETE Column stats: COMPLETE
+                  Filter Operator
+                    predicate: k is not null (type: boolean)
+                    Statistics: Num rows: 17 Data size: 1530 Basic stats: COMPLETE Column stats: COMPLETE
+                    Select Operator
+                      expressions: k (type: int), name (type: string)
+                      outputColumnNames: _col0, _col1
+                      Statistics: Num rows: 17 Data size: 1530 Basic stats: COMPLETE Column stats: COMPLETE
+                      Reduce Output Operator
+                        key expressions: _col0 (type: int)
+                        null sort order: z
+                        sort order: +
+                        Map-reduce partition columns: _col0 (type: int)
+                        Statistics: Num rows: 17 Data size: 1530 Basic stats: COMPLETE Column stats: COMPLETE
+                        value expressions: _col1 (type: string)
+            Execution mode: llap
+            LLAP IO: all inputs
+        Reducer 2 
+            Execution mode: llap
+            Reduce Operator Tree:
+              Group By Operator
+                aggregations: count(VALUE._col0)
+                keys: KEY._col0 (type: int)
+                mode: mergepartial
+                outputColumnNames: _col0, _col1
+                Statistics: Num rows: 17 Data size: 204 Basic stats: COMPLETE Column stats: COMPLETE
+                Map Join Operator
+                  condition map:
+                       Inner Join 0 to 1
+                  keys:
+                    0 _col0 (type: int)
+                    1 _col0 (type: int)
+                  outputColumnNames: _col1, _col3
+                  input vertices:
+                    1 Map 4
+                  Statistics: Num rows: 17 Data size: 1598 Basic stats: COMPLETE Column stats: COMPLETE
+                  Group By Operator
+                    aggregations: sum(_col1)
+                    keys: _col3 (type: string)
+                    minReductionHashAggr: 0.7058823
+                    mode: hash
+                    outputColumnNames: _col0, _col1
+                    Statistics: Num rows: 5 Data size: 470 Basic stats: COMPLETE Column stats: COMPLETE
+                    Reduce Output Operator
+                      key expressions: _col0 (type: string)
+                      null sort order: z
+                      sort order: +
+                      Map-reduce partition columns: _col0 (type: string)
+                      Statistics: Num rows: 5 Data size: 470 Basic stats: COMPLETE Column stats: COMPLETE
+                      value expressions: _col1 (type: bigint)
+        Reducer 3 
+            Execution mode: llap
+            Reduce Operator Tree:
+              Group By Operator
+                aggregations: sum(VALUE._col0)
+                keys: KEY._col0 (type: string)
+                mode: mergepartial
+                outputColumnNames: _col0, _col1
+                Statistics: Num rows: 5 Data size: 470 Basic stats: COMPLETE Column stats: COMPLETE
+                File Output Operator
+                  compressed: false
+                  Statistics: Num rows: 5 Data size: 470 Basic stats: COMPLETE Column stats: COMPLETE
+                  table:
+                      input format: org.apache.hadoop.mapred.SequenceFileInputFormat
+                      output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
+                      serde: org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe
+
+  Stage: Stage-0
+    Fetch Operator
+      limit: -1
+      Processor Tree:
+        ListSink
+
+PREHOOK: query: select d.name, sum(t.c) from (select k1, count(*) c from gu_fact group by k1) t join gu_dim d on t.k1 = d.k
+group by d.name
+PREHOOK: type: QUERY
+PREHOOK: Input: default@gu_dim
+PREHOOK: Input: default@gu_fact
+#### A masked pattern was here ####
+POSTHOOK: query: select d.name, sum(t.c) from (select k1, count(*) c from gu_fact group by k1) t join gu_dim d on t.k1 = d.k
+group by d.name
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@gu_dim
+POSTHOOK: Input: default@gu_fact
+#### A masked pattern was here ####
+n0	918
+n1	918
+n2	688
+n3	690
+n4	688
+PREHOOK: query: select d.name, sum(t.c) from (select k1, count(*) c from gu_fact group by k1) t join gu_dim d on t.k1 = d.k
+group by d.name
+PREHOOK: type: QUERY
+PREHOOK: Input: default@gu_dim
+PREHOOK: Input: default@gu_fact
+#### A masked pattern was here ####
+POSTHOOK: query: select d.name, sum(t.c) from (select k1, count(*) c from gu_fact group by k1) t join gu_dim d on t.k1 = d.k
+group by d.name
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@gu_dim
+POSTHOOK: Input: default@gu_fact
+#### A masked pattern was here ####
+n0	918
+n1	918
+n2	688
+n3	690
+n4	688

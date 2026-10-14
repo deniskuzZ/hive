@@ -17,7 +17,7 @@ STAGE PLANS:
                 TableScan
                   alias: store_sales
                   filterExpr: (ss_cdemo_sk is not null and ss_promo_sk is not null) (type: boolean)
-                  probeDecodeDetails: cacheKey:HASH_MAP_MAPJOIN_100_container, bigKeyColName:ss_promo_sk, smallTablePos:1, keyRatio:1.6082727526128025E-8
+                  probeDecodeDetails: cacheKey:HASH_MAP_MAPJOIN_98_container, bigKeyColName:ss_cdemo_sk, smallTablePos:1, keyRatio:0.014285706848340874
                   Statistics: Num rows: 82510879939 Data size: 30001935686500 Basic stats: COMPLETE Column stats: COMPLETE
                   Filter Operator
                     predicate: (ss_cdemo_sk is not null and ss_promo_sk is not null) (type: boolean)
@@ -35,7 +35,7 @@ STAGE PLANS:
                         outputColumnNames: _col0, _col2, _col3, _col4, _col5, _col6, _col7
                         input vertices:
                           1 Map 4
-                        Statistics: Num rows: 1123860813 Data size: 17981773356 Basic stats: COMPLETE Column stats: COMPLETE
+                        Statistics: Num rows: 1123860813 Data size: 399870408492 Basic stats: COMPLETE Column stats: COMPLETE
                         Map Join Operator
                           condition map:
                                Inner Join 0 to 1
@@ -45,7 +45,7 @@ STAGE PLANS:
                           outputColumnNames: _col0, _col2, _col3, _col4, _col5, _col6
                           input vertices:
                             1 Map 5
-                          Statistics: Num rows: 225876909 Data size: 1807015620 Basic stats: COMPLETE Column stats: COMPLETE
+                          Statistics: Num rows: 225876909 Data size: 78560136180 Basic stats: COMPLETE Column stats: COMPLETE
                           Map Join Operator
                             condition map:
                                  Inner Join 0 to 1
@@ -55,7 +55,7 @@ STAGE PLANS:
                             outputColumnNames: _col0, _col3, _col4, _col5, _col6
                             input vertices:
                               1 Map 6
-                            Statistics: Num rows: 225876909 Data size: 1807015612 Basic stats: COMPLETE Column stats: COMPLETE
+                            Statistics: Num rows: 225876909 Data size: 76795593844 Basic stats: COMPLETE Column stats: COMPLETE
                             Map Join Operator
                               condition map:
                                    Inner Join 0 to 1
@@ -65,12 +65,12 @@ STAGE PLANS:
                               outputColumnNames: _col3, _col4, _col5, _col6, _col12
                               input vertices:
                                 1 Map 7
-                              Statistics: Num rows: 225876909 Data size: 22587691240 Basic stats: COMPLETE Column stats: COMPLETE
+                              Statistics: Num rows: 225876909 Data size: 97576269472 Basic stats: COMPLETE Column stats: COMPLETE
                               Top N Key Operator
                                 sort order: +
                                 keys: _col12 (type: string)
                                 null sort order: z
-                                Statistics: Num rows: 225876909 Data size: 22587691240 Basic stats: COMPLETE Column stats: COMPLETE
+                                Statistics: Num rows: 225876909 Data size: 97576269472 Basic stats: COMPLETE Column stats: COMPLETE
                                 top n: 100
                                 Group By Operator
                                   aggregations: sum(_col3), count(_col3), sum(_col4), count(_col4), sum(_col6), count(_col6), sum(_col5), count(_col5)
@@ -78,13 +78,13 @@ STAGE PLANS:
                                   minReductionHashAggr: 0.99
                                   mode: hash
                                   outputColumnNames: _col0, _col1, _col2, _col3, _col4, _col5, _col6, _col7, _col8
-                                  Statistics: Num rows: 22029636 Data size: 10486106736 Basic stats: COMPLETE Column stats: COMPLETE
+                                  Statistics: Num rows: 94554168 Data size: 45007783968 Basic stats: COMPLETE Column stats: COMPLETE
                                   Reduce Output Operator
                                     key expressions: _col0 (type: string)
                                     null sort order: z
                                     sort order: +
                                     Map-reduce partition columns: _col0 (type: string)
-                                    Statistics: Num rows: 22029636 Data size: 10486106736 Basic stats: COMPLETE Column stats: COMPLETE
+                                    Statistics: Num rows: 94554168 Data size: 45007783968 Basic stats: COMPLETE Column stats: COMPLETE
                                     value expressions: _col1 (type: bigint), _col2 (type: bigint), _col3 (type: decimal(17,2)), _col4 (type: bigint), _col5 (type: decimal(17,2)), _col6 (type: bigint), _col7 (type: decimal(17,2)), _col8 (type: bigint)
             Execution mode: vectorized, llap
             LLAP IO: may be used (ACID table)

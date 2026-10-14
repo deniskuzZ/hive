@@ -830,7 +830,7 @@ STAGE PLANS:
                   1 _col0 (type: int), _col1 (type: decimal(10,2))
                 nullSafes: [true, true]
                 outputColumnNames: _col2, _col3, _col4, _col5, _col6, _col7
-                Statistics: Num rows: 1 Data size: 212 Basic stats: COMPLETE Column stats: COMPLETE
+                Statistics: Num rows: 2 Data size: 424 Basic stats: COMPLETE Column stats: COMPLETE
                 Filter Operator
                   predicate: _col3 (type: boolean)
                   Statistics: Num rows: 1 Data size: 212 Basic stats: COMPLETE Column stats: COMPLETE
@@ -1942,7 +1942,7 @@ STAGE PLANS:
                   1 _col0 (type: int), _col1 (type: decimal(10,2))
                 nullSafes: [true, true]
                 outputColumnNames: _col2, _col3, _col4, _col5, _col6, _col7
-                Statistics: Num rows: 1 Data size: 212 Basic stats: COMPLETE Column stats: COMPLETE
+                Statistics: Num rows: 2 Data size: 424 Basic stats: COMPLETE Column stats: COMPLETE
                 Filter Operator
                   predicate: _col3 (type: boolean)
                   Statistics: Num rows: 1 Data size: 212 Basic stats: COMPLETE Column stats: COMPLETE

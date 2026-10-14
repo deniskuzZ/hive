@@ -1,0 +1,325 @@
+PREHOOK: query: create table nn_fact (k bigint, v1 bigint, v2 bigint, v3 bigint)
+PREHOOK: type: CREATETABLE
+PREHOOK: Output: database:default
+PREHOOK: Output: default@nn_fact
+POSTHOOK: query: create table nn_fact (k bigint, v1 bigint, v2 bigint, v3 bigint)
+POSTHOOK: type: CREATETABLE
+POSTHOOK: Output: database:default
+POSTHOOK: Output: default@nn_fact
+PREHOOK: query: create table nn_dim (k bigint, f int)
+PREHOOK: type: CREATETABLE
+PREHOOK: Output: database:default
+PREHOOK: Output: default@nn_dim
+POSTHOOK: query: create table nn_dim (k bigint, f int)
+POSTHOOK: type: CREATETABLE
+POSTHOOK: Output: database:default
+POSTHOOK: Output: default@nn_dim
+PREHOOK: query: alter table nn_fact update statistics set('numRows'='10000000','rawDataSize'='320000000')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@nn_fact
+PREHOOK: Output: default@nn_fact
+POSTHOOK: query: alter table nn_fact update statistics set('numRows'='10000000','rawDataSize'='320000000')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@nn_fact
+POSTHOOK: Output: default@nn_fact
+PREHOOK: query: alter table nn_fact update statistics for column k set('numDVs'='1000','numNulls'='0','lowValue'='1','highValue'='1000')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@nn_fact
+PREHOOK: Output: default@nn_fact
+POSTHOOK: query: alter table nn_fact update statistics for column k set('numDVs'='1000','numNulls'='0','lowValue'='1','highValue'='1000')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@nn_fact
+POSTHOOK: Output: default@nn_fact
+PREHOOK: query: alter table nn_fact update statistics for column v1 set('numDVs'='100000','numNulls'='500000','lowValue'='1','highValue'='100000')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@nn_fact
+PREHOOK: Output: default@nn_fact
+POSTHOOK: query: alter table nn_fact update statistics for column v1 set('numDVs'='100000','numNulls'='500000','lowValue'='1','highValue'='100000')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@nn_fact
+POSTHOOK: Output: default@nn_fact
+PREHOOK: query: alter table nn_fact update statistics for column v2 set('numDVs'='100000','numNulls'='500000','lowValue'='1','highValue'='100000')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@nn_fact
+PREHOOK: Output: default@nn_fact
+POSTHOOK: query: alter table nn_fact update statistics for column v2 set('numDVs'='100000','numNulls'='500000','lowValue'='1','highValue'='100000')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@nn_fact
+POSTHOOK: Output: default@nn_fact
+PREHOOK: query: alter table nn_fact update statistics for column v3 set('numDVs'='100000','numNulls'='500000','lowValue'='1','highValue'='100000')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@nn_fact
+PREHOOK: Output: default@nn_fact
+POSTHOOK: query: alter table nn_fact update statistics for column v3 set('numDVs'='100000','numNulls'='500000','lowValue'='1','highValue'='100000')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@nn_fact
+POSTHOOK: Output: default@nn_fact
+PREHOOK: query: alter table nn_dim update statistics set('numRows'='1000','rawDataSize'='12000')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@nn_dim
+PREHOOK: Output: default@nn_dim
+POSTHOOK: query: alter table nn_dim update statistics set('numRows'='1000','rawDataSize'='12000')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@nn_dim
+POSTHOOK: Output: default@nn_dim
+PREHOOK: query: alter table nn_dim update statistics for column k set('numDVs'='1000','numNulls'='0','lowValue'='1','highValue'='1000')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@nn_dim
+PREHOOK: Output: default@nn_dim
+POSTHOOK: query: alter table nn_dim update statistics for column k set('numDVs'='1000','numNulls'='0','lowValue'='1','highValue'='1000')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@nn_dim
+POSTHOOK: Output: default@nn_dim
+PREHOOK: query: alter table nn_dim update statistics for column f set('numDVs'='1000','numNulls'='0','lowValue'='1','highValue'='1000')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@nn_dim
+PREHOOK: Output: default@nn_dim
+POSTHOOK: query: alter table nn_dim update statistics for column f set('numDVs'='1000','numNulls'='0','lowValue'='1','highValue'='1000')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@nn_dim
+POSTHOOK: Output: default@nn_dim
+PREHOOK: query: explain select f.k, f.v1, f.v2, f.v3 from nn_fact f join nn_dim d on f.k = d.k where d.f = 7
+PREHOOK: type: QUERY
+PREHOOK: Input: default@nn_dim
+PREHOOK: Input: default@nn_fact
+#### A masked pattern was here ####
+POSTHOOK: query: explain select f.k, f.v1, f.v2, f.v3 from nn_fact f join nn_dim d on f.k = d.k where d.f = 7
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@nn_dim
+POSTHOOK: Input: default@nn_fact
+#### A masked pattern was here ####
+STAGE DEPENDENCIES:
+  Stage-1 is a root stage
+  Stage-0 depends on stages: Stage-1
+
+STAGE PLANS:
+  Stage: Stage-1
+    Tez
+#### A masked pattern was here ####
+      Edges:
+        Reducer 2 <- Map 1 (SIMPLE_EDGE), Map 3 (SIMPLE_EDGE)
+#### A masked pattern was here ####
+      Vertices:
+        Map 1 
+            Map Operator Tree:
+                TableScan
+                  alias: f
+                  filterExpr: k is not null (type: boolean)
+                  Statistics: Num rows: 10000000 Data size: 308000024 Basic stats: COMPLETE Column stats: COMPLETE
+                  Filter Operator
+                    predicate: k is not null (type: boolean)
+                    Statistics: Num rows: 10000000 Data size: 308000024 Basic stats: COMPLETE Column stats: COMPLETE
+                    Select Operator
+                      expressions: k (type: bigint), v1 (type: bigint), v2 (type: bigint), v3 (type: bigint)
+                      outputColumnNames: _col0, _col1, _col2, _col3
+                      Statistics: Num rows: 10000000 Data size: 308000024 Basic stats: COMPLETE Column stats: COMPLETE
+                      Reduce Output Operator
+                        key expressions: _col0 (type: bigint)
+                        null sort order: z
+                        sort order: +
+                        Map-reduce partition columns: _col0 (type: bigint)
+                        Statistics: Num rows: 10000000 Data size: 308000024 Basic stats: COMPLETE Column stats: COMPLETE
+                        value expressions: _col1 (type: bigint), _col2 (type: bigint), _col3 (type: bigint)
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Map 3 
+            Map Operator Tree:
+                TableScan
+                  alias: d
+                  filterExpr: ((f = 7) and k is not null) (type: boolean)
+                  Statistics: Num rows: 1000 Data size: 12000 Basic stats: COMPLETE Column stats: COMPLETE
+                  Filter Operator
+                    predicate: ((f = 7) and k is not null) (type: boolean)
+                    Statistics: Num rows: 1 Data size: 12 Basic stats: COMPLETE Column stats: COMPLETE
+                    Select Operator
+                      expressions: k (type: bigint)
+                      outputColumnNames: _col0
+                      Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                      Reduce Output Operator
+                        key expressions: _col0 (type: bigint)
+                        null sort order: z
+                        sort order: +
+                        Map-reduce partition columns: _col0 (type: bigint)
+                        Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Reducer 2 
+            Execution mode: llap
+            Reduce Operator Tree:
+              Merge Join Operator
+                condition map:
+                     Inner Join 0 to 1
+                keys:
+                  0 _col0 (type: bigint)
+                  1 _col0 (type: bigint)
+                outputColumnNames: _col0, _col1, _col2, _col3
+                Statistics: Num rows: 10001 Data size: 308056 Basic stats: COMPLETE Column stats: COMPLETE
+                File Output Operator
+                  compressed: false
+                  Statistics: Num rows: 10001 Data size: 308056 Basic stats: COMPLETE Column stats: COMPLETE
+                  table:
+                      input format: org.apache.hadoop.mapred.SequenceFileInputFormat
+                      output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
+                      serde: org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe
+
+  Stage: Stage-0
+    Fetch Operator
+      limit: -1
+      Processor Tree:
+        ListSink
+
+PREHOOK: query: create table nn_left (k bigint, v bigint)
+PREHOOK: type: CREATETABLE
+PREHOOK: Output: database:default
+PREHOOK: Output: default@nn_left
+POSTHOOK: query: create table nn_left (k bigint, v bigint)
+POSTHOOK: type: CREATETABLE
+POSTHOOK: Output: database:default
+POSTHOOK: Output: default@nn_left
+PREHOOK: query: create table nn_right (k bigint, w bigint)
+PREHOOK: type: CREATETABLE
+PREHOOK: Output: database:default
+PREHOOK: Output: default@nn_right
+POSTHOOK: query: create table nn_right (k bigint, w bigint)
+POSTHOOK: type: CREATETABLE
+POSTHOOK: Output: database:default
+POSTHOOK: Output: default@nn_right
+PREHOOK: query: alter table nn_left update statistics set('numRows'='1000','rawDataSize'='16000')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@nn_left
+PREHOOK: Output: default@nn_left
+POSTHOOK: query: alter table nn_left update statistics set('numRows'='1000','rawDataSize'='16000')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@nn_left
+POSTHOOK: Output: default@nn_left
+PREHOOK: query: alter table nn_left update statistics for column k set('numDVs'='500','numNulls'='0','lowValue'='1','highValue'='500')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@nn_left
+PREHOOK: Output: default@nn_left
+POSTHOOK: query: alter table nn_left update statistics for column k set('numDVs'='500','numNulls'='0','lowValue'='1','highValue'='500')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@nn_left
+POSTHOOK: Output: default@nn_left
+PREHOOK: query: alter table nn_left update statistics for column v set('numDVs'='1000','numNulls'='0','lowValue'='1','highValue'='1000')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@nn_left
+PREHOOK: Output: default@nn_left
+POSTHOOK: query: alter table nn_left update statistics for column v set('numDVs'='1000','numNulls'='0','lowValue'='1','highValue'='1000')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@nn_left
+POSTHOOK: Output: default@nn_left
+PREHOOK: query: alter table nn_right update statistics set('numRows'='1000','rawDataSize'='16000')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@nn_right
+PREHOOK: Output: default@nn_right
+POSTHOOK: query: alter table nn_right update statistics set('numRows'='1000','rawDataSize'='16000')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@nn_right
+POSTHOOK: Output: default@nn_right
+PREHOOK: query: alter table nn_right update statistics for column k set('numDVs'='400','numNulls'='0','lowValue'='1','highValue'='400')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@nn_right
+PREHOOK: Output: default@nn_right
+POSTHOOK: query: alter table nn_right update statistics for column k set('numDVs'='400','numNulls'='0','lowValue'='1','highValue'='400')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@nn_right
+POSTHOOK: Output: default@nn_right
+PREHOOK: query: alter table nn_right update statistics for column w set('numDVs'='1000','numNulls'='0','lowValue'='1','highValue'='1000')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@nn_right
+PREHOOK: Output: default@nn_right
+POSTHOOK: query: alter table nn_right update statistics for column w set('numDVs'='1000','numNulls'='0','lowValue'='1','highValue'='1000')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@nn_right
+POSTHOOK: Output: default@nn_right
+PREHOOK: query: explain select l.k, l.v, r.w from nn_left l left join nn_right r on l.k = r.k
+PREHOOK: type: QUERY
+PREHOOK: Input: default@nn_left
+PREHOOK: Input: default@nn_right
+#### A masked pattern was here ####
+POSTHOOK: query: explain select l.k, l.v, r.w from nn_left l left join nn_right r on l.k = r.k
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@nn_left
+POSTHOOK: Input: default@nn_right
+#### A masked pattern was here ####
+STAGE DEPENDENCIES:
+  Stage-1 is a root stage
+  Stage-0 depends on stages: Stage-1
+
+STAGE PLANS:
+  Stage: Stage-1
+    Tez
+#### A masked pattern was here ####
+      Edges:
+        Reducer 2 <- Map 1 (SIMPLE_EDGE), Map 3 (SIMPLE_EDGE)
+#### A masked pattern was here ####
+      Vertices:
+        Map 1 
+            Map Operator Tree:
+                TableScan
+                  alias: l
+                  Statistics: Num rows: 1000 Data size: 16000 Basic stats: COMPLETE Column stats: COMPLETE
+                  Select Operator
+                    expressions: k (type: bigint), v (type: bigint)
+                    outputColumnNames: _col0, _col1
+                    Statistics: Num rows: 1000 Data size: 16000 Basic stats: COMPLETE Column stats: COMPLETE
+                    Reduce Output Operator
+                      key expressions: _col0 (type: bigint)
+                      null sort order: z
+                      sort order: +
+                      Map-reduce partition columns: _col0 (type: bigint)
+                      Statistics: Num rows: 1000 Data size: 16000 Basic stats: COMPLETE Column stats: COMPLETE
+                      value expressions: _col1 (type: bigint)
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Map 3 
+            Map Operator Tree:
+                TableScan
+                  alias: r
+                  filterExpr: k is not null (type: boolean)
+                  Statistics: Num rows: 1000 Data size: 16000 Basic stats: COMPLETE Column stats: COMPLETE
+                  Filter Operator
+                    predicate: k is not null (type: boolean)
+                    Statistics: Num rows: 1000 Data size: 16000 Basic stats: COMPLETE Column stats: COMPLETE
+                    Select Operator
+                      expressions: k (type: bigint), w (type: bigint)
+                      outputColumnNames: _col0, _col1
+                      Statistics: Num rows: 1000 Data size: 16000 Basic stats: COMPLETE Column stats: COMPLETE
+                      Reduce Output Operator
+                        key expressions: _col0 (type: bigint)
+                        null sort order: z
+                        sort order: +
+                        Map-reduce partition columns: _col0 (type: bigint)
+                        Statistics: Num rows: 1000 Data size: 16000 Basic stats: COMPLETE Column stats: COMPLETE
+                        value expressions: _col1 (type: bigint)
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Reducer 2 
+            Execution mode: llap
+            Reduce Operator Tree:
+              Merge Join Operator
+                condition map:
+                     Left Outer Join 0 to 1
+                keys:
+                  0 _col0 (type: bigint)
+                  1 _col0 (type: bigint)
+                outputColumnNames: _col0, _col1, _col3
+                Statistics: Num rows: 2200 Data size: 51208 Basic stats: COMPLETE Column stats: COMPLETE
+                Select Operator
+                  expressions: _col0 (type: bigint), _col1 (type: bigint), _col3 (type: bigint)
+                  outputColumnNames: _col0, _col1, _col2
+                  Statistics: Num rows: 2200 Data size: 51208 Basic stats: COMPLETE Column stats: COMPLETE
+                  File Output Operator
+                    compressed: false
+                    Statistics: Num rows: 2200 Data size: 51208 Basic stats: COMPLETE Column stats: COMPLETE
+                    table:
+                        input format: org.apache.hadoop.mapred.SequenceFileInputFormat
+                        output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
+                        serde: org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe
+
+  Stage: Stage-0
+    Fetch Operator
+      limit: -1
+      Processor Tree:
+        ListSink
+

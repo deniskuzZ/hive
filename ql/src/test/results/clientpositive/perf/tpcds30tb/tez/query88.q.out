@@ -61,7 +61,7 @@ STAGE PLANS:
                         outputColumnNames: _col0, _col2
                         input vertices:
                           1 Map 10
-                        Statistics: Num rows: 18060072441 Data size: 234746554480 Basic stats: COMPLETE Column stats: COMPLETE
+                        Statistics: Num rows: 18060072441 Data size: 275949654264 Basic stats: COMPLETE Column stats: COMPLETE
                         Map Join Operator
                           condition map:
                                Inner Join 0 to 1
@@ -71,7 +71,7 @@ STAGE PLANS:
                           outputColumnNames: _col2
                           input vertices:
                             1 Reducer 17
-                          Statistics: Num rows: 682661983 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                          Statistics: Num rows: 682661983 Data size: 5215241888 Basic stats: COMPLETE Column stats: COMPLETE
                           Map Join Operator
                             condition map:
                                  Inner Join 0 to 1
@@ -101,7 +101,7 @@ STAGE PLANS:
                           outputColumnNames: _col2
                           input vertices:
                             1 Reducer 12
-                          Statistics: Num rows: 682661983 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                          Statistics: Num rows: 682661983 Data size: 5215241888 Basic stats: COMPLETE Column stats: COMPLETE
                           Map Join Operator
                             condition map:
                                  Inner Join 0 to 1
@@ -131,7 +131,7 @@ STAGE PLANS:
                           outputColumnNames: _col2
                           input vertices:
                             1 Reducer 16
-                          Statistics: Num rows: 682661983 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                          Statistics: Num rows: 682661983 Data size: 5215241888 Basic stats: COMPLETE Column stats: COMPLETE
                           Map Join Operator
                             condition map:
                                  Inner Join 0 to 1
@@ -161,7 +161,7 @@ STAGE PLANS:
                           outputColumnNames: _col2
                           input vertices:
                             1 Reducer 15
-                          Statistics: Num rows: 706587981 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                          Statistics: Num rows: 706587981 Data size: 5398026152 Basic stats: COMPLETE Column stats: COMPLETE
                           Map Join Operator
                             condition map:
                                  Inner Join 0 to 1
@@ -191,7 +191,7 @@ STAGE PLANS:
                           outputColumnNames: _col2
                           input vertices:
                             1 Reducer 14
-                          Statistics: Num rows: 706587981 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                          Statistics: Num rows: 706587981 Data size: 5398026152 Basic stats: COMPLETE Column stats: COMPLETE
                           Map Join Operator
                             condition map:
                                  Inner Join 0 to 1
@@ -221,7 +221,7 @@ STAGE PLANS:
                           outputColumnNames: _col2
                           input vertices:
                             1 Map 11
-                          Statistics: Num rows: 706587981 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                          Statistics: Num rows: 706587981 Data size: 5398026152 Basic stats: COMPLETE Column stats: COMPLETE
                           Map Join Operator
                             condition map:
                                  Inner Join 0 to 1
@@ -251,7 +251,7 @@ STAGE PLANS:
                           outputColumnNames: _col2
                           input vertices:
                             1 Reducer 18
-                          Statistics: Num rows: 706587981 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                          Statistics: Num rows: 706587981 Data size: 5398026152 Basic stats: COMPLETE Column stats: COMPLETE
                           Map Join Operator
                             condition map:
                                  Inner Join 0 to 1
@@ -281,7 +281,7 @@ STAGE PLANS:
                           outputColumnNames: _col2
                           input vertices:
                             1 Reducer 13
-                          Statistics: Num rows: 682661983 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                          Statistics: Num rows: 682661983 Data size: 5215241888 Basic stats: COMPLETE Column stats: COMPLETE
                           Map Join Operator
                             condition map:
                                  Inner Join 0 to 1
