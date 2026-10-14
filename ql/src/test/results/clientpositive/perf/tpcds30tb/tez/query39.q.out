@@ -34,7 +34,7 @@ STAGE PLANS:
                       outputColumnNames: _col1, _col2, _col3
                       input vertices:
                         1 Map 5
-                      Statistics: Num rows: 27726856 Data size: 443629700 Basic stats: COMPLETE Column stats: COMPLETE
+                      Statistics: Num rows: 27726856 Data size: 548991456 Basic stats: COMPLETE Column stats: COMPLETE
                       Select Operator
                         expressions: _col1 (type: bigint)
                         outputColumnNames: _col1
@@ -59,24 +59,24 @@ STAGE PLANS:
                         outputColumnNames: _col2, _col3, _col5
                         input vertices:
                           1 Map 8
-                        Statistics: Num rows: 27726856 Data size: 443629700 Basic stats: COMPLETE Column stats: COMPLETE
+                        Statistics: Num rows: 27726856 Data size: 548991456 Basic stats: COMPLETE Column stats: COMPLETE
                         Select Operator
                           expressions: _col5 (type: bigint), _col3 (type: bigint), _col2 (type: int), UDFToDouble(_col2) (type: double), (UDFToDouble(_col2) * UDFToDouble(_col2)) (type: double)
                           outputColumnNames: _col1, _col2, _col3, _col4, _col5
-                          Statistics: Num rows: 27726856 Data size: 443629700 Basic stats: COMPLETE Column stats: COMPLETE
+                          Statistics: Num rows: 27726856 Data size: 548991456 Basic stats: COMPLETE Column stats: COMPLETE
                           Group By Operator
                             aggregations: sum(_col3), count(_col3), sum(_col5), sum(_col4), count(_col4)
                             keys: _col1 (type: bigint), _col2 (type: bigint)
                             minReductionHashAggr: 0.99
                             mode: hash
                             outputColumnNames: _col0, _col1, _col2, _col3, _col4, _col5, _col6
-                            Statistics: Num rows: 15836 Data size: 886816 Basic stats: COMPLETE Column stats: COMPLETE
+                            Statistics: Num rows: 23754 Data size: 1330224 Basic stats: COMPLETE Column stats: COMPLETE
                             Reduce Output Operator
                               key expressions: _col0 (type: bigint), _col1 (type: bigint)
                               null sort order: zz
                               sort order: ++
                               Map-reduce partition columns: _col0 (type: bigint), _col1 (type: bigint)
-                              Statistics: Num rows: 15836 Data size: 886816 Basic stats: COMPLETE Column stats: COMPLETE
+                              Statistics: Num rows: 23754 Data size: 1330224 Basic stats: COMPLETE Column stats: COMPLETE
                               value expressions: _col2 (type: bigint), _col3 (type: bigint), _col4 (type: double), _col5 (type: double), _col6 (type: bigint)
             Execution mode: vectorized, llap
             LLAP IO: may be used (ACID table)
@@ -137,7 +137,7 @@ STAGE PLANS:
                         outputColumnNames: _col1, _col2, _col3
                         input vertices:
                           1 Map 5
-                        Statistics: Num rows: 27726856 Data size: 443629700 Basic stats: COMPLETE Column stats: COMPLETE
+                        Statistics: Num rows: 27726856 Data size: 548991456 Basic stats: COMPLETE Column stats: COMPLETE
                         Map Join Operator
                           condition map:
                                Inner Join 0 to 1
@@ -147,24 +147,24 @@ STAGE PLANS:
                           outputColumnNames: _col2, _col3, _col5
                           input vertices:
                             1 Map 8
-                          Statistics: Num rows: 27726856 Data size: 443629700 Basic stats: COMPLETE Column stats: COMPLETE
+                          Statistics: Num rows: 27726856 Data size: 548991456 Basic stats: COMPLETE Column stats: COMPLETE
                           Select Operator
                             expressions: _col5 (type: bigint), _col3 (type: bigint), _col2 (type: int), UDFToDouble(_col2) (type: double), (UDFToDouble(_col2) * UDFToDouble(_col2)) (type: double)
                             outputColumnNames: _col1, _col2, _col3, _col4, _col5
-                            Statistics: Num rows: 27726856 Data size: 443629700 Basic stats: COMPLETE Column stats: COMPLETE
+                            Statistics: Num rows: 27726856 Data size: 548991456 Basic stats: COMPLETE Column stats: COMPLETE
                             Group By Operator
                               aggregations: sum(_col3), count(_col3), sum(_col5), sum(_col4), count(_col4)
                               keys: _col1 (type: bigint), _col2 (type: bigint)
                               minReductionHashAggr: 0.99
                               mode: hash
                               outputColumnNames: _col0, _col1, _col2, _col3, _col4, _col5, _col6
-                              Statistics: Num rows: 15836 Data size: 886816 Basic stats: COMPLETE Column stats: COMPLETE
+                              Statistics: Num rows: 23754 Data size: 1330224 Basic stats: COMPLETE Column stats: COMPLETE
                               Reduce Output Operator
                                 key expressions: _col0 (type: bigint), _col1 (type: bigint)
                                 null sort order: zz
                                 sort order: ++
                                 Map-reduce partition columns: _col0 (type: bigint), _col1 (type: bigint)
-                                Statistics: Num rows: 15836 Data size: 886816 Basic stats: COMPLETE Column stats: COMPLETE
+                                Statistics: Num rows: 23754 Data size: 1330224 Basic stats: COMPLETE Column stats: COMPLETE
                                 value expressions: _col2 (type: bigint), _col3 (type: bigint), _col4 (type: double), _col5 (type: double), _col6 (type: bigint)
             Execution mode: vectorized, llap
             LLAP IO: may be used (ACID table)
