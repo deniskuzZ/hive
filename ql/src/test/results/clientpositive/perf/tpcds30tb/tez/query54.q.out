@@ -206,7 +206,7 @@ STAGE PLANS:
                         outputColumnNames: _col1, _col2
                         input vertices:
                           1 Map 5
-                        Statistics: Num rows: 1087114782 Data size: 15684993992 Basic stats: COMPLETE Column stats: COMPLETE
+                        Statistics: Num rows: 1087114782 Data size: 17365030976 Basic stats: COMPLETE Column stats: COMPLETE
                         Map Join Operator
                           condition map:
                                Inner Join 0 to 1
@@ -216,23 +216,23 @@ STAGE PLANS:
                           outputColumnNames: _col1
                           input vertices:
                             1 Map 19
-                          Statistics: Num rows: 997699 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                          Statistics: Num rows: 997699 Data size: 7955160 Basic stats: COMPLETE Column stats: COMPLETE
                           Select Operator
                             expressions: _col1 (type: bigint)
                             outputColumnNames: _col0
-                            Statistics: Num rows: 997699 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                            Statistics: Num rows: 997699 Data size: 7955160 Basic stats: COMPLETE Column stats: COMPLETE
                             Group By Operator
                               keys: _col0 (type: bigint)
                               minReductionHashAggr: 0.99
                               mode: hash
                               outputColumnNames: _col0
-                              Statistics: Num rows: 1216 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                              Statistics: Num rows: 1216 Data size: 9704 Basic stats: COMPLETE Column stats: COMPLETE
                               Reduce Output Operator
                                 key expressions: _col0 (type: bigint)
                                 null sort order: z
                                 sort order: +
                                 Map-reduce partition columns: _col0 (type: bigint)
-                                Statistics: Num rows: 1216 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                                Statistics: Num rows: 1216 Data size: 9704 Basic stats: COMPLETE Column stats: COMPLETE
             Execution mode: vectorized, llap
             LLAP IO: may be used (ACID table)
         Map 18 
@@ -257,7 +257,7 @@ STAGE PLANS:
                         outputColumnNames: _col1, _col2
                         input vertices:
                           1 Map 5
-                        Statistics: Num rows: 1087114782 Data size: 15684993992 Basic stats: COMPLETE Column stats: COMPLETE
+                        Statistics: Num rows: 1087114782 Data size: 17365030976 Basic stats: COMPLETE Column stats: COMPLETE
                         Map Join Operator
                           condition map:
                                Inner Join 0 to 1
@@ -267,23 +267,23 @@ STAGE PLANS:
                           outputColumnNames: _col1
                           input vertices:
                             1 Map 19
-                          Statistics: Num rows: 997699 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                          Statistics: Num rows: 997699 Data size: 7955160 Basic stats: COMPLETE Column stats: COMPLETE
                           Select Operator
                             expressions: _col1 (type: bigint)
                             outputColumnNames: _col0
-                            Statistics: Num rows: 997699 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                            Statistics: Num rows: 997699 Data size: 7955160 Basic stats: COMPLETE Column stats: COMPLETE
                             Group By Operator
                               keys: _col0 (type: bigint)
                               minReductionHashAggr: 0.99
                               mode: hash
                               outputColumnNames: _col0
-                              Statistics: Num rows: 1216 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                              Statistics: Num rows: 1216 Data size: 9704 Basic stats: COMPLETE Column stats: COMPLETE
                               Reduce Output Operator
                                 key expressions: _col0 (type: bigint)
                                 null sort order: z
                                 sort order: +
                                 Map-reduce partition columns: _col0 (type: bigint)
-                                Statistics: Num rows: 1216 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                                Statistics: Num rows: 1216 Data size: 9704 Basic stats: COMPLETE Column stats: COMPLETE
             Execution mode: vectorized, llap
             LLAP IO: may be used (ACID table)
         Map 19 

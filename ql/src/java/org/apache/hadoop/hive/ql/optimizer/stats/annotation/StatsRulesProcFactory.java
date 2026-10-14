@@ -2068,6 +2068,8 @@ public class StatsRulesProcFactory {
             ColStatistics cs = joinStats.get(pos).getColumnStatisticsFromColName(colName);
             String outColName = key;
             if (cs != null) {
+              // a renamed copy: the outer join estimate below looks the join keys up by their input names
+              cs = cs.clone();
               cs.setColumnName(outColName);
             }
             outColStats.add(cs);
@@ -2632,6 +2634,8 @@ public class StatsRulesProcFactory {
         colNameStatsAvailable.add(cs.getColumnName());
         int pos = jop.getConf().getReversedExprs().get(cs.getColumnName());
         long oldDV = cs.getCountDistint();
+        long oldRowCount = rowCountParents.get(pos);
+        double ratio = (double) newNumRows / (double) oldRowCount;
 
         boolean useCalciteForNdvReadjustment
             = HiveConf.getBoolVar(conf, ConfVars.HIVE_STATS_JOIN_NDV_READJUSTMENT);
@@ -2641,9 +2645,6 @@ public class StatsRulesProcFactory {
           Preconditions.checkNotNull(approxNdv, "approximate NDV is null");
           newDV = approxNdv.longValue();
         } else {
-          long oldRowCount = rowCountParents.get(pos);
-          double ratio = (double) newNumRows / (double) oldRowCount;
-
           // if ratio is greater than 1, then number of rows increases. This can happen
           // when some operators like GROUPBY duplicates the input rows in which case
           // number of distincts should not change. Update the distinct count only when
@@ -2653,6 +2654,10 @@ public class StatsRulesProcFactory {
           }
         }
         cs.setCountDistint(newDV);
+        // a column keeps its fraction of nulls through the join
+        if (cs.getNumNulls() > 0) {
+          cs.setNumNulls(Math.round(ratio * cs.getNumNulls()));
+        }
         updateNumNulls(cs, leftUnmatchedRows, rightUnmatchedRows, newNumRows, pos, jop);
       }
       stats.setColumnStats(colStats);

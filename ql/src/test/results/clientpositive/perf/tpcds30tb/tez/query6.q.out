@@ -103,17 +103,17 @@ STAGE PLANS:
                         outputColumnNames: _col6, _col7
                         input vertices:
                           0 Map 9
-                        Statistics: Num rows: 639413 Data size: 5115312 Basic stats: COMPLETE Column stats: COMPLETE
+                        Statistics: Num rows: 639413 Data size: 10110040 Basic stats: COMPLETE Column stats: COMPLETE
                         Select Operator
                           expressions: _col6 (type: bigint), _col7 (type: bigint)
                           outputColumnNames: _col1, _col2
-                          Statistics: Num rows: 639413 Data size: 5115312 Basic stats: COMPLETE Column stats: COMPLETE
+                          Statistics: Num rows: 639413 Data size: 10110040 Basic stats: COMPLETE Column stats: COMPLETE
                           Reduce Output Operator
                             key expressions: _col1 (type: bigint)
                             null sort order: z
                             sort order: +
                             Map-reduce partition columns: _col1 (type: bigint)
-                            Statistics: Num rows: 639413 Data size: 5115312 Basic stats: COMPLETE Column stats: COMPLETE
+                            Statistics: Num rows: 639413 Data size: 10110040 Basic stats: COMPLETE Column stats: COMPLETE
                             value expressions: _col2 (type: bigint)
             Execution mode: vectorized, llap
             LLAP IO: may be used (ACID table)
