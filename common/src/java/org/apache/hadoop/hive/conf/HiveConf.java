@@ -2902,7 +2902,7 @@ public class HiveConf extends Configuration {
     HIVE_STATS_CORRELATED_MULTI_KEY_JOINS("hive.stats.correlated.multi.key.joins", true,
         "Deprecated: use hive.stats.multi.key.joins.independence.factor. Setting this flag to false makes the\n" +
         "physical planner estimate the output rows of a join on several keys with the independence factor 0.5."),
-    HIVE_STATS_MULTI_KEY_JOINS_INDEPENDENCE_FACTOR("hive.stats.multi.key.joins.independence.factor", 0f,
+    HIVE_STATS_MULTI_KEY_JOINS_INDEPENDENCE_FACTOR("hive.stats.multi.key.joins.independence.factor", 0.25f,
         new RangeValidator(0.0f, 1.0f),
         "How independent CBO and the physical planner assume the keys of a join on several keys to be when they\n" +
         "estimate its output rows. The distinct value counts of the keys, largest first, combine into the distinct\n" +
