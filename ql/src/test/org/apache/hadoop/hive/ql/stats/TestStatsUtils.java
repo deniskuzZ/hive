@@ -680,10 +680,10 @@ class TestStatsUtils {
   @Test
   void testMultiKeyJoinIndependenceFactor() {
     HiveConf conf = new HiveConf();
-    assertEquals(0, StatsUtils.getMultiKeyJoinIndependenceFactor(conf,
-        HiveConf.ConfVars.HIVE_STATS_CORRELATED_MULTI_KEY_JOINS));
-    conf.setFloatVar(HiveConf.ConfVars.HIVE_STATS_MULTI_KEY_JOINS_INDEPENDENCE_FACTOR, 0.25f);
     assertEquals(0.25, StatsUtils.getMultiKeyJoinIndependenceFactor(conf,
+        HiveConf.ConfVars.HIVE_STATS_CORRELATED_MULTI_KEY_JOINS));
+    conf.setFloatVar(HiveConf.ConfVars.HIVE_STATS_MULTI_KEY_JOINS_INDEPENDENCE_FACTOR, 0f);
+    assertEquals(0, StatsUtils.getMultiKeyJoinIndependenceFactor(conf,
         HiveConf.ConfVars.HIVE_STATS_CORRELATED_MULTI_KEY_JOINS));
     conf.setBoolVar(HiveConf.ConfVars.HIVE_STATS_CORRELATED_MULTI_KEY_JOINS, false);
     assertEquals(0.5, StatsUtils.getMultiKeyJoinIndependenceFactor(conf,

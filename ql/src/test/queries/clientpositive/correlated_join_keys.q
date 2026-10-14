@@ -31,7 +31,7 @@ explain select count(*) from customer_address_n0 a join customer_address_n0 b on
 set hive.stats.correlated.multi.key.joins=true;
 explain select count(*) from customer_address_n0 a join customer_address_n0 b on (a.ca_zip = b.ca_zip and a.ca_state = b.ca_state);
 
-set hive.stats.multi.key.joins.independence.factor=0.25;
+set hive.stats.multi.key.joins.independence.factor=0;
 explain select count(*) from customer_address_n0 a join customer_address_n0 b on (a.ca_zip = b.ca_zip and a.ca_state = b.ca_state);
 
 -- k1 and k2 tie for the most distinct values and k1, the first, has the fewest on the right side: at factor 0, as with
