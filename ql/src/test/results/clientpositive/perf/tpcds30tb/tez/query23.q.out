@@ -42,7 +42,7 @@ STAGE PLANS:
                         outputColumnNames: _col0, _col1, _col2, _col3
                         input vertices:
                           1 Map 12
-                        Statistics: Num rows: 723144625 Data size: 82199941740 Basic stats: COMPLETE Column stats: COMPLETE
+                        Statistics: Num rows: 723144625 Data size: 95231651784 Basic stats: COMPLETE Column stats: COMPLETE
                         Map Join Operator
                           condition map:
                                Left Semi Join 0 to 1
@@ -52,7 +52,7 @@ STAGE PLANS:
                           outputColumnNames: _col0, _col2, _col3
                           input vertices:
                             1 Reducer 11
-                          Statistics: Num rows: 723144625 Data size: 76414784740 Basic stats: COMPLETE Column stats: COMPLETE
+                          Statistics: Num rows: 723144625 Data size: 89446494784 Basic stats: COMPLETE Column stats: COMPLETE
                           Map Join Operator
                             condition map:
                                  Left Semi Join 0 to 1
@@ -62,7 +62,7 @@ STAGE PLANS:
                             outputColumnNames: _col2, _col3
                             input vertices:
                               1 Reducer 7
-                            Statistics: Num rows: 723144625 Data size: 71473275804 Basic stats: COMPLETE Column stats: COMPLETE
+                            Statistics: Num rows: 723144625 Data size: 83675558944 Basic stats: COMPLETE Column stats: COMPLETE
                             Select Operator
                               expressions: (CAST( _col2 AS decimal(10,0)) * _col3) (type: decimal(18,2))
                               outputColumnNames: _col0
@@ -218,7 +218,7 @@ STAGE PLANS:
                         outputColumnNames: _col0, _col1, _col2, _col3
                         input vertices:
                           1 Map 12
-                        Statistics: Num rows: 366561381 Data size: 48050956264 Basic stats: COMPLETE Column stats: COMPLETE
+                        Statistics: Num rows: 366561381 Data size: 48380412688 Basic stats: COMPLETE Column stats: COMPLETE
                         Map Join Operator
                           condition map:
                                Left Semi Join 0 to 1
@@ -228,7 +228,7 @@ STAGE PLANS:
                           outputColumnNames: _col1, _col2, _col3
                           input vertices:
                             1 Reducer 11
-                          Statistics: Num rows: 366561381 Data size: 45118465216 Basic stats: COMPLETE Column stats: COMPLETE
+                          Statistics: Num rows: 366561381 Data size: 45447921640 Basic stats: COMPLETE Column stats: COMPLETE
                           Map Join Operator
                             condition map:
                                  Left Semi Join 0 to 1
@@ -238,7 +238,7 @@ STAGE PLANS:
                             outputColumnNames: _col2, _col3
                             input vertices:
                               1 Reducer 7
-                            Statistics: Num rows: 366561381 Data size: 42207520544 Basic stats: COMPLETE Column stats: COMPLETE
+                            Statistics: Num rows: 366561381 Data size: 42515796368 Basic stats: COMPLETE Column stats: COMPLETE
                             Select Operator
                               expressions: (CAST( _col2 AS decimal(10,0)) * _col3) (type: decimal(18,2))
                               outputColumnNames: _col0
@@ -323,20 +323,20 @@ STAGE PLANS:
                         outputColumnNames: _col1, _col2
                         input vertices:
                           1 Reducer 13
-                        Statistics: Num rows: 64769599664 Data size: 7757159825120 Basic stats: COMPLETE Column stats: COMPLETE
+                        Statistics: Num rows: 64769599664 Data size: 7760138517072 Basic stats: COMPLETE Column stats: COMPLETE
                         Group By Operator
                           aggregations: sum(_col2)
                           keys: _col1 (type: bigint)
                           minReductionHashAggr: 0.99
                           mode: hash
                           outputColumnNames: _col0, _col1
-                          Statistics: Num rows: 64769599664 Data size: 7757159825120 Basic stats: COMPLETE Column stats: COMPLETE
+                          Statistics: Num rows: 64769599664 Data size: 7760138517072 Basic stats: COMPLETE Column stats: COMPLETE
                           Reduce Output Operator
                             key expressions: _col0 (type: bigint)
                             null sort order: z
                             sort order: +
                             Map-reduce partition columns: _col0 (type: bigint)
-                            Statistics: Num rows: 64769599664 Data size: 7757159825120 Basic stats: COMPLETE Column stats: COMPLETE
+                            Statistics: Num rows: 64769599664 Data size: 7760138517072 Basic stats: COMPLETE Column stats: COMPLETE
                             value expressions: _col1 (type: decimal(28,2))
                   Select Operator
                     expressions: ss_item_sk (type: bigint), ss_sold_date_sk (type: bigint)
@@ -522,11 +522,11 @@ STAGE PLANS:
                 keys: KEY._col0 (type: bigint)
                 mode: mergepartial
                 outputColumnNames: _col0, _col1
-                Statistics: Num rows: 63129535 Data size: 7560736760 Basic stats: COMPLETE Column stats: COMPLETE
+                Statistics: Num rows: 63129535 Data size: 7563640032 Basic stats: COMPLETE Column stats: COMPLETE
                 Select Operator
                   expressions: _col1 (type: decimal(28,2))
                   outputColumnNames: _col1
-                  Statistics: Num rows: 63129535 Data size: 7560736760 Basic stats: COMPLETE Column stats: COMPLETE
+                  Statistics: Num rows: 63129535 Data size: 7563640032 Basic stats: COMPLETE Column stats: COMPLETE
                   Group By Operator
                     aggregations: max(_col1)
                     minReductionHashAggr: 0.99

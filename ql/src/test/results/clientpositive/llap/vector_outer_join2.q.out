@@ -300,7 +300,7 @@ STAGE PLANS:
                       outputColumnNames: _col1
                       input vertices:
                         1 Map 3
-                      Statistics: Num rows: 25 Data size: 128 Basic stats: COMPLETE Column stats: COMPLETE
+                      Statistics: Num rows: 25 Data size: 104 Basic stats: COMPLETE Column stats: COMPLETE
                       Map Join Operator
                         condition map:
                              Left Outer Join 0 to 1
@@ -319,7 +319,7 @@ STAGE PLANS:
                         outputColumnNames: _col1
                         input vertices:
                           1 Reducer 4
-                        Statistics: Num rows: 25 Data size: 128 Basic stats: COMPLETE Column stats: COMPLETE
+                        Statistics: Num rows: 25 Data size: 104 Basic stats: COMPLETE Column stats: COMPLETE
                         Group By Operator
                           aggregations: count(), sum(_col1)
                           Group By Vectorization:

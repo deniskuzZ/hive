@@ -42,13 +42,13 @@ STAGE PLANS:
                         outputColumnNames: _col0, _col3
                         input vertices:
                           1 Map 10
-                        Statistics: Num rows: 15839433273 Data size: 998531594912 Basic stats: COMPLETE Column stats: COMPLETE
+                        Statistics: Num rows: 15839433273 Data size: 1010736926872 Basic stats: COMPLETE Column stats: COMPLETE
                         Reduce Output Operator
                           key expressions: _col0 (type: bigint)
                           null sort order: z
                           sort order: +
                           Map-reduce partition columns: _col0 (type: bigint)
-                          Statistics: Num rows: 15839433273 Data size: 998531594912 Basic stats: COMPLETE Column stats: COMPLETE
+                          Statistics: Num rows: 15839433273 Data size: 1010736926872 Basic stats: COMPLETE Column stats: COMPLETE
                           value expressions: _col3 (type: date)
             Execution mode: vectorized, llap
             LLAP IO: may be used (ACID table)
@@ -158,13 +158,13 @@ STAGE PLANS:
                         outputColumnNames: _col0, _col3
                         input vertices:
                           1 Map 10
-                        Statistics: Num rows: 4245017503 Data size: 271659573816 Basic stats: COMPLETE Column stats: COMPLETE
+                        Statistics: Num rows: 4245017503 Data size: 271676884136 Basic stats: COMPLETE Column stats: COMPLETE
                         Reduce Output Operator
                           key expressions: _col0 (type: bigint)
                           null sort order: z
                           sort order: +
                           Map-reduce partition columns: _col0 (type: bigint)
-                          Statistics: Num rows: 4245017503 Data size: 271659573816 Basic stats: COMPLETE Column stats: COMPLETE
+                          Statistics: Num rows: 4245017503 Data size: 271676884136 Basic stats: COMPLETE Column stats: COMPLETE
                           value expressions: _col3 (type: date)
             Execution mode: vectorized, llap
             LLAP IO: may be used (ACID table)
@@ -222,13 +222,13 @@ STAGE PLANS:
                         outputColumnNames: _col0, _col3
                         input vertices:
                           1 Map 10
-                        Statistics: Num rows: 8374481746 Data size: 535123183680 Basic stats: COMPLETE Column stats: COMPLETE
+                        Statistics: Num rows: 8374481746 Data size: 535802141416 Basic stats: COMPLETE Column stats: COMPLETE
                         Reduce Output Operator
                           key expressions: _col0 (type: bigint)
                           null sort order: z
                           sort order: +
                           Map-reduce partition columns: _col0 (type: bigint)
-                          Statistics: Num rows: 8374481746 Data size: 535123183680 Basic stats: COMPLETE Column stats: COMPLETE
+                          Statistics: Num rows: 8374481746 Data size: 535802141416 Basic stats: COMPLETE Column stats: COMPLETE
                           value expressions: _col3 (type: date)
             Execution mode: vectorized, llap
             LLAP IO: may be used (ACID table)
@@ -244,20 +244,20 @@ STAGE PLANS:
                 outputColumnNames: _col3, _col5, _col6
                 input vertices:
                   1 Map 14
-                Statistics: Num rows: 4245017503 Data size: 1001320399808 Basic stats: COMPLETE Column stats: COMPLETE
+                Statistics: Num rows: 4245017503 Data size: 975094790228 Basic stats: COMPLETE Column stats: COMPLETE
                 DynamicPartitionHashJoin: true
                 Group By Operator
                   keys: _col6 (type: char(30)), _col5 (type: char(20)), _col3 (type: date)
                   minReductionHashAggr: 0.99
                   mode: hash
                   outputColumnNames: _col0, _col1, _col2
-                  Statistics: Num rows: 4245017503 Data size: 1001320399808 Basic stats: COMPLETE Column stats: COMPLETE
+                  Statistics: Num rows: 4245017503 Data size: 975094790228 Basic stats: COMPLETE Column stats: COMPLETE
                   Reduce Output Operator
                     key expressions: _col0 (type: char(30)), _col1 (type: char(20)), _col2 (type: date)
                     null sort order: zzz
                     sort order: +++
                     Map-reduce partition columns: _col0 (type: char(30)), _col1 (type: char(20)), _col2 (type: date)
-                    Statistics: Num rows: 4245017503 Data size: 1001320399808 Basic stats: COMPLETE Column stats: COMPLETE
+                    Statistics: Num rows: 4245017503 Data size: 975094790228 Basic stats: COMPLETE Column stats: COMPLETE
         Reducer 13 
             Execution mode: vectorized, llap
             Reduce Operator Tree:
@@ -265,30 +265,30 @@ STAGE PLANS:
                 keys: KEY._col0 (type: char(30)), KEY._col1 (type: char(20)), KEY._col2 (type: date)
                 mode: mergepartial
                 outputColumnNames: _col0, _col1, _col2
-                Statistics: Num rows: 4245017503 Data size: 1001320399808 Basic stats: COMPLETE Column stats: COMPLETE
+                Statistics: Num rows: 4245017503 Data size: 975094790228 Basic stats: COMPLETE Column stats: COMPLETE
                 Select Operator
                   expressions: _col2 (type: date), _col1 (type: char(20)), _col0 (type: char(30))
                   outputColumnNames: _col0, _col1, _col2
-                  Statistics: Num rows: 4245017503 Data size: 1001320399808 Basic stats: COMPLETE Column stats: COMPLETE
+                  Statistics: Num rows: 4245017503 Data size: 975094790228 Basic stats: COMPLETE Column stats: COMPLETE
                   Group By Operator
                     aggregations: count()
                     keys: _col2 (type: char(30)), _col1 (type: char(20)), _col0 (type: date)
                     mode: complete
                     outputColumnNames: _col0, _col1, _col2, _col3
-                    Statistics: Num rows: 4245017503 Data size: 1035280539832 Basic stats: COMPLETE Column stats: COMPLETE
+                    Statistics: Num rows: 4245017503 Data size: 1009054930252 Basic stats: COMPLETE Column stats: COMPLETE
                     Group By Operator
                       aggregations: count(_col3)
                       keys: _col0 (type: char(30)), _col1 (type: char(20)), _col2 (type: date)
                       minReductionHashAggr: 0.99
                       mode: hash
                       outputColumnNames: _col0, _col1, _col2, _col3
-                      Statistics: Num rows: 22109562293 Data size: 5393122124972 Basic stats: COMPLETE Column stats: COMPLETE
+                      Statistics: Num rows: 22109562293 Data size: 5195761782152 Basic stats: COMPLETE Column stats: COMPLETE
                       Reduce Output Operator
                         key expressions: _col0 (type: char(30)), _col1 (type: char(20)), _col2 (type: date)
                         null sort order: zzz
                         sort order: +++
                         Map-reduce partition columns: _col0 (type: char(30)), _col1 (type: char(20)), _col2 (type: date)
-                        Statistics: Num rows: 22109562293 Data size: 5393122124972 Basic stats: COMPLETE Column stats: COMPLETE
+                        Statistics: Num rows: 22109562293 Data size: 5195761782152 Basic stats: COMPLETE Column stats: COMPLETE
                         value expressions: _col3 (type: bigint)
         Reducer 2 
             Execution mode: vectorized, llap
@@ -302,20 +302,20 @@ STAGE PLANS:
                 outputColumnNames: _col3, _col5, _col6
                 input vertices:
                   1 Map 14
-                Statistics: Num rows: 15839433273 Data size: 3737602521528 Basic stats: COMPLETE Column stats: COMPLETE
+                Statistics: Num rows: 15839433273 Data size: 3638371067268 Basic stats: COMPLETE Column stats: COMPLETE
                 DynamicPartitionHashJoin: true
                 Group By Operator
                   keys: _col6 (type: char(30)), _col5 (type: char(20)), _col3 (type: date)
                   minReductionHashAggr: 0.99
                   mode: hash
                   outputColumnNames: _col0, _col1, _col2
-                  Statistics: Num rows: 15839433273 Data size: 3737602521528 Basic stats: COMPLETE Column stats: COMPLETE
+                  Statistics: Num rows: 15839433273 Data size: 3638371067268 Basic stats: COMPLETE Column stats: COMPLETE
                   Reduce Output Operator
                     key expressions: _col0 (type: char(30)), _col1 (type: char(20)), _col2 (type: date)
                     null sort order: zzz
                     sort order: +++
                     Map-reduce partition columns: _col0 (type: char(30)), _col1 (type: char(20)), _col2 (type: date)
-                    Statistics: Num rows: 15839433273 Data size: 3737602521528 Basic stats: COMPLETE Column stats: COMPLETE
+                    Statistics: Num rows: 15839433273 Data size: 3638371067268 Basic stats: COMPLETE Column stats: COMPLETE
         Reducer 3 
             Execution mode: vectorized, llap
             Reduce Operator Tree:
@@ -323,30 +323,30 @@ STAGE PLANS:
                 keys: KEY._col0 (type: char(30)), KEY._col1 (type: char(20)), KEY._col2 (type: date)
                 mode: mergepartial
                 outputColumnNames: _col0, _col1, _col2
-                Statistics: Num rows: 9490063044 Data size: 2239353072294 Basic stats: COMPLETE Column stats: COMPLETE
+                Statistics: Num rows: 9490063044 Data size: 2179899382254 Basic stats: COMPLETE Column stats: COMPLETE
                 Select Operator
                   expressions: _col2 (type: date), _col1 (type: char(20)), _col0 (type: char(30))
                   outputColumnNames: _col0, _col1, _col2
-                  Statistics: Num rows: 9490063044 Data size: 2239353072294 Basic stats: COMPLETE Column stats: COMPLETE
+                  Statistics: Num rows: 9490063044 Data size: 2179899382254 Basic stats: COMPLETE Column stats: COMPLETE
                   Group By Operator
                     aggregations: count()
                     keys: _col2 (type: char(30)), _col1 (type: char(20)), _col0 (type: date)
                     mode: complete
                     outputColumnNames: _col0, _col1, _col2, _col3
-                    Statistics: Num rows: 9490063044 Data size: 2315273576646 Basic stats: COMPLETE Column stats: COMPLETE
+                    Statistics: Num rows: 9490063044 Data size: 2255819886606 Basic stats: COMPLETE Column stats: COMPLETE
                     Group By Operator
                       aggregations: count(_col3)
                       keys: _col0 (type: char(30)), _col1 (type: char(20)), _col2 (type: date)
                       minReductionHashAggr: 0.99
                       mode: hash
                       outputColumnNames: _col0, _col1, _col2, _col3
-                      Statistics: Num rows: 22109562293 Data size: 5393122124972 Basic stats: COMPLETE Column stats: COMPLETE
+                      Statistics: Num rows: 22109562293 Data size: 5195761782152 Basic stats: COMPLETE Column stats: COMPLETE
                       Reduce Output Operator
                         key expressions: _col0 (type: char(30)), _col1 (type: char(20)), _col2 (type: date)
                         null sort order: zzz
                         sort order: +++
                         Map-reduce partition columns: _col0 (type: char(30)), _col1 (type: char(20)), _col2 (type: date)
-                        Statistics: Num rows: 22109562293 Data size: 5393122124972 Basic stats: COMPLETE Column stats: COMPLETE
+                        Statistics: Num rows: 22109562293 Data size: 5195761782152 Basic stats: COMPLETE Column stats: COMPLETE
                         value expressions: _col3 (type: bigint)
         Reducer 5 
             Execution mode: vectorized, llap
@@ -356,7 +356,7 @@ STAGE PLANS:
                 keys: KEY._col0 (type: char(30)), KEY._col1 (type: char(20)), KEY._col2 (type: date)
                 mode: mergepartial
                 outputColumnNames: _col0, _col1, _col2, _col3
-                Statistics: Num rows: 9490063044 Data size: 2314883863056 Basic stats: COMPLETE Column stats: COMPLETE
+                Statistics: Num rows: 9490063044 Data size: 2230171100796 Basic stats: COMPLETE Column stats: COMPLETE
                 Select Operator
                   expressions: _col3 (type: bigint)
                   outputColumnNames: _col3
@@ -404,20 +404,20 @@ STAGE PLANS:
                 outputColumnNames: _col3, _col5, _col6
                 input vertices:
                   1 Map 14
-                Statistics: Num rows: 8374481746 Data size: 1975873961156 Basic stats: COMPLETE Column stats: COMPLETE
+                Statistics: Num rows: 8374481746 Data size: 1923646607996 Basic stats: COMPLETE Column stats: COMPLETE
                 DynamicPartitionHashJoin: true
                 Group By Operator
                   keys: _col6 (type: char(30)), _col5 (type: char(20)), _col3 (type: date)
                   minReductionHashAggr: 0.99
                   mode: hash
                   outputColumnNames: _col0, _col1, _col2
-                  Statistics: Num rows: 8374481746 Data size: 1975873961156 Basic stats: COMPLETE Column stats: COMPLETE
+                  Statistics: Num rows: 8374481746 Data size: 1923646607996 Basic stats: COMPLETE Column stats: COMPLETE
                   Reduce Output Operator
                     key expressions: _col0 (type: char(30)), _col1 (type: char(20)), _col2 (type: date)
                     null sort order: zzz
                     sort order: +++
                     Map-reduce partition columns: _col0 (type: char(30)), _col1 (type: char(20)), _col2 (type: date)
-                    Statistics: Num rows: 8374481746 Data size: 1975873961156 Basic stats: COMPLETE Column stats: COMPLETE
+                    Statistics: Num rows: 8374481746 Data size: 1923646607996 Basic stats: COMPLETE Column stats: COMPLETE
         Reducer 9 
             Execution mode: vectorized, llap
             Reduce Operator Tree:
@@ -425,30 +425,30 @@ STAGE PLANS:
                 keys: KEY._col0 (type: char(30)), KEY._col1 (type: char(20)), KEY._col2 (type: date)
                 mode: mergepartial
                 outputColumnNames: _col0, _col1, _col2
-                Statistics: Num rows: 8374481746 Data size: 1975873961156 Basic stats: COMPLETE Column stats: COMPLETE
+                Statistics: Num rows: 8374481746 Data size: 1923646607996 Basic stats: COMPLETE Column stats: COMPLETE
                 Select Operator
                   expressions: _col2 (type: date), _col1 (type: char(20)), _col0 (type: char(30))
                   outputColumnNames: _col0, _col1, _col2
-                  Statistics: Num rows: 8374481746 Data size: 1975873961156 Basic stats: COMPLETE Column stats: COMPLETE
+                  Statistics: Num rows: 8374481746 Data size: 1923646607996 Basic stats: COMPLETE Column stats: COMPLETE
                   Group By Operator
                     aggregations: count()
                     keys: _col2 (type: char(30)), _col1 (type: char(20)), _col0 (type: date)
                     mode: complete
                     outputColumnNames: _col0, _col1, _col2, _col3
-                    Statistics: Num rows: 8374481746 Data size: 2042869815124 Basic stats: COMPLETE Column stats: COMPLETE
+                    Statistics: Num rows: 8374481746 Data size: 1990642461964 Basic stats: COMPLETE Column stats: COMPLETE
                     Group By Operator
                       aggregations: count(_col3)
                       keys: _col0 (type: char(30)), _col1 (type: char(20)), _col2 (type: date)
                       minReductionHashAggr: 0.99
                       mode: hash
                       outputColumnNames: _col0, _col1, _col2, _col3
-                      Statistics: Num rows: 22109562293 Data size: 5393122124972 Basic stats: COMPLETE Column stats: COMPLETE
+                      Statistics: Num rows: 22109562293 Data size: 5195761782152 Basic stats: COMPLETE Column stats: COMPLETE
                       Reduce Output Operator
                         key expressions: _col0 (type: char(30)), _col1 (type: char(20)), _col2 (type: date)
                         null sort order: zzz
                         sort order: +++
                         Map-reduce partition columns: _col0 (type: char(30)), _col1 (type: char(20)), _col2 (type: date)
-                        Statistics: Num rows: 22109562293 Data size: 5393122124972 Basic stats: COMPLETE Column stats: COMPLETE
+                        Statistics: Num rows: 22109562293 Data size: 5195761782152 Basic stats: COMPLETE Column stats: COMPLETE
                         value expressions: _col3 (type: bigint)
         Union 4 
             Vertex: Union 4

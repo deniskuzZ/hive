@@ -3188,11 +3188,11 @@ STAGE PLANS:
                   0 _col2 (type: double)
                   1 _col0 (type: double)
                 outputColumnNames: _col0, _col2, _col5
-                Statistics: Num rows: 2 Data size: 32 Basic stats: COMPLETE Column stats: COMPLETE
+                Statistics: Num rows: 3 Data size: 44 Basic stats: COMPLETE Column stats: COMPLETE
                 Reduce Output Operator
                   null sort order: 
                   sort order: 
-                  Statistics: Num rows: 2 Data size: 32 Basic stats: COMPLETE Column stats: COMPLETE
+                  Statistics: Num rows: 3 Data size: 44 Basic stats: COMPLETE Column stats: COMPLETE
                   value expressions: _col0 (type: int), _col2 (type: double), _col5 (type: boolean)
         Reducer 7 
             Execution mode: llap
@@ -3204,18 +3204,18 @@ STAGE PLANS:
                   0 
                   1 
                 outputColumnNames: _col0, _col2, _col5, _col6, _col7
-                Statistics: Num rows: 2 Data size: 64 Basic stats: COMPLETE Column stats: COMPLETE
+                Statistics: Num rows: 3 Data size: 92 Basic stats: COMPLETE Column stats: COMPLETE
                 Select Operator
                   expressions: _col0 (type: int), _col2 (type: double), _col6 (type: bigint), _col7 (type: bigint), _col5 (type: boolean)
                   outputColumnNames: _col0, _col2, _col4, _col5, _col7
-                  Statistics: Num rows: 2 Data size: 64 Basic stats: COMPLETE Column stats: COMPLETE
+                  Statistics: Num rows: 3 Data size: 92 Basic stats: COMPLETE Column stats: COMPLETE
                   Filter Operator
                     predicate: ((_col4 = 0L) or (_col7 is null and (_col5 >= _col4) and _col2 is not null)) (type: boolean)
-                    Statistics: Num rows: 2 Data size: 64 Basic stats: COMPLETE Column stats: COMPLETE
+                    Statistics: Num rows: 3 Data size: 92 Basic stats: COMPLETE Column stats: COMPLETE
                     Select Operator
                       expressions: _col0 (type: int)
                       outputColumnNames: _col0
-                      Statistics: Num rows: 2 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                      Statistics: Num rows: 3 Data size: 12 Basic stats: COMPLETE Column stats: COMPLETE
                       Group By Operator
                         keys: _col0 (type: int)
                         minReductionHashAggr: 0.4
