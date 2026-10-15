@@ -19,11 +19,14 @@
 package org.apache.hadoop.hive.ql.exec.tez;
 
 import static org.junit.Assert.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.atMost;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.security.PrivilegedExceptionAction;
 
 import org.apache.hadoop.hive.conf.HiveConf;
@@ -32,29 +35,29 @@ import org.apache.hadoop.hive.ql.exec.Operator;
 import org.apache.hadoop.hive.ql.exec.OperatorFactory;
 import org.apache.hadoop.hive.ql.exec.vector.VectorGroupByOperator;
 import org.apache.hadoop.hive.ql.io.HiveFileFormatUtils;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hive.ql.plan.BaseWork;
 import org.apache.hadoop.hive.ql.plan.GroupByDesc;
+import org.apache.hadoop.hive.ql.plan.MergeJoinWork;
 import org.apache.hadoop.hive.ql.plan.ReduceWork;
 import org.apache.hadoop.hive.ql.plan.TezEdgeProperty;
 import org.apache.hadoop.hive.ql.plan.TezEdgeProperty.EdgeType;
 import org.apache.hadoop.hive.ql.plan.TezWork;
-import org.apache.hadoop.io.BytesWritable;
+import org.apache.hadoop.hive.ql.plan.UnionWork;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapred.JobConf;
-import org.apache.hadoop.mapred.lib.HashPartitioner;
 import org.apache.hadoop.security.Credentials;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.security.token.Token;
 import org.apache.hadoop.security.token.TokenIdentifier;
 import org.apache.tez.common.TezUtils;
 import org.apache.tez.dag.api.DAG;
-import org.apache.tez.dag.api.ProcessorDescriptor;
 import org.apache.tez.dag.api.Vertex;
 import org.apache.tez.dag.api.VertexManagerPluginDescriptor;
 import org.apache.tez.dag.library.vertexmanager.ShuffleVertexManager;
-import org.apache.tez.runtime.library.api.TezRuntimeConfiguration;
-import org.junit.Test;
+import org.apache.tez.runtime.library.cartesianproduct.CartesianProductVertexManager;
 import org.mockito.ArgumentCaptor;
+import org.junit.Test;
 
 import org.junit.Assert;
 
@@ -146,9 +149,98 @@ public class TestDagUtils {
   }
 
   /**
-   * A GROUP BY over an unsorted shuffle aggregates whatever partitions a task reads, so its reducers keep Tez
-   * auto-reduce, vectorized or not, from one vertex or a union of them; other reducers of an unsorted edge keep their
-   * setup.
+   * The LLAP floor fixed a reduce-side merge join's main work at 96 tasks: the vertex must not auto-reduce, though both
+   * its inputs are shuffles (TPC-DS q51 ran 14 tasks while its vertex manager came from the second input's edge).
+   */
+  @Test
+  public void testMergeJoinFixedByItsMainWorkDoesNotAutoReduce() throws Exception {
+    ReduceWork main = new ReduceWork("Reducer 3");
+    main.setNumReduceTasks(96);
+    TezWork tezWork = new TezWork("q");
+    MergeJoinWork mergeJoin = mergeJoin(tezWork, main);
+    connect(tezWork, mergeJoin, EdgeType.SIMPLE_EDGE, EdgeType.SIMPLE_EDGE);
+
+    Vertex vertex = mock(Vertex.class);
+    DagUtils.getInstance().setupVertexManager(new JobConf(), vertex, mergeJoin, tezWork);
+
+    verify(vertex, never()).setVertexManagerPlugin(any());
+  }
+
+  /** An auto-reduced merge join auto-reduces from its main work's minimum. */
+  @Test
+  public void testMergeJoinAutoReducesFromItsMainWork() throws Exception {
+    ReduceWork main = new ReduceWork("Reducer 3");
+    main.setAutoReduceParallelism(true);
+    main.setMinReduceTasks(96);
+    main.setMaxReduceTasks(104);
+    main.setMinSrcFraction(0.25f);
+    main.setMaxSrcFraction(0.75f);
+    TezWork tezWork = new TezWork("q");
+    MergeJoinWork mergeJoin = mergeJoin(tezWork, main);
+    connect(tezWork, mergeJoin, EdgeType.SIMPLE_EDGE, EdgeType.SIMPLE_EDGE);
+    JobConf conf = new JobConf();
+    conf.setLong(HiveConf.ConfVars.BYTES_PER_REDUCER.varname, 256_000_000L);
+
+    VertexManagerPluginDescriptor plugin = vertexManager(conf, mergeJoin, tezWork);
+
+    Assert.assertEquals(ShuffleVertexManager.class.getName(), plugin.getClassName());
+    Configuration pluginConf = TezUtils.createConfFromUserPayload(plugin.getUserPayload());
+    Assert.assertTrue(pluginConf.getBoolean(ShuffleVertexManager.TEZ_SHUFFLE_VERTEX_MANAGER_ENABLE_AUTO_PARALLEL, false));
+    Assert.assertEquals(96, pluginConf.getInt(ShuffleVertexManager.TEZ_SHUFFLE_VERTEX_MANAGER_MIN_TASK_PARALLELISM, -1));
+    Assert.assertEquals(256_000_000L,
+        pluginConf.getLong(ShuffleVertexManager.TEZ_SHUFFLE_VERTEX_MANAGER_DESIRED_TASK_INPUT_SIZE, -1));
+    Assert.assertEquals(0.25f, pluginConf.getFloat(ShuffleVertexManager.TEZ_SHUFFLE_VERTEX_MANAGER_MIN_SRC_FRACTION, -1), 0);
+    Assert.assertEquals(0.75f, pluginConf.getFloat(ShuffleVertexManager.TEZ_SHUFFLE_VERTEX_MANAGER_MAX_SRC_FRACTION, -1), 0);
+  }
+
+  /** A bucket map join's CUSTOM_EDGE routes buckets: CustomPartitionVertex, though the work auto-reduces its shuffle. */
+  @Test
+  public void testCustomEdgeKeepsCustomPartitionVertex() throws Exception {
+    ReduceWork work = new ReduceWork("Reducer 2");
+    work.setAutoReduceParallelism(true);
+    TezWork tezWork = new TezWork("q");
+    tezWork.add(work);
+    connect(tezWork, work, EdgeType.SIMPLE_EDGE, EdgeType.CUSTOM_EDGE);
+    tezWork.setVertexType(work, TezWork.VertexType.INITIALIZED_EDGES);
+
+    Assert.assertEquals(CustomPartitionVertex.class.getName(),
+        vertexManager(new JobConf(), work, tezWork).getClassName());
+  }
+
+  /** A cross product needs CartesianProductVertexManager, whatever its other inputs. */
+  @Test
+  public void testCrossProductKeepsCartesianProductVertexManager() throws Exception {
+    ReduceWork main = new ReduceWork("Reducer 3");
+    main.setAutoReduceParallelism(true);
+    TezWork tezWork = new TezWork("q");
+    MergeJoinWork mergeJoin = mergeJoin(tezWork, main);
+    connect(tezWork, mergeJoin, EdgeType.XPROD_EDGE, EdgeType.XPROD_EDGE, EdgeType.SIMPLE_EDGE);
+
+    Assert.assertEquals(CartesianProductVertexManager.class.getName(),
+        vertexManager(new JobConf(), mergeJoin, tezWork).getClassName());
+  }
+
+  /** A work that does not wait for its sources (a semijoin bloom filter merge) starts without slow start. */
+  @Test
+  public void testQuickStart() throws Exception {
+    ReduceWork work = new ReduceWork("Reducer 2");
+    work.setSlowStart(false);
+    TezWork tezWork = new TezWork("q");
+    tezWork.add(work);
+    connect(tezWork, work, EdgeType.CUSTOM_SIMPLE_EDGE);
+
+    VertexManagerPluginDescriptor plugin = vertexManager(new JobConf(), work, tezWork);
+
+    Assert.assertEquals(ShuffleVertexManager.class.getName(), plugin.getClassName());
+    Configuration pluginConf = TezUtils.createConfFromUserPayload(plugin.getUserPayload());
+    Assert.assertEquals(0, pluginConf.getFloat(ShuffleVertexManager.TEZ_SHUFFLE_VERTEX_MANAGER_MIN_SRC_FRACTION, -1), 0);
+    Assert.assertEquals(0, pluginConf.getFloat(ShuffleVertexManager.TEZ_SHUFFLE_VERTEX_MANAGER_MAX_SRC_FRACTION, -1), 0);
+  }
+
+  /**
+   * A GROUP BY over an unsorted shuffle aggregates whatever partitions a task reads, so an auto-reduced one auto-reduces
+   * over its unsorted edge, vectorized or not, from one vertex or a union of them; other reducers of an unsorted edge
+   * do not.
    */
   @Test
   public void testUnsortedGroupByEdgeAutoReduces() throws Exception {
@@ -169,30 +261,79 @@ public class TestDagUtils {
     groupBy.setConf(desc);
     ReduceWork work = new ReduceWork("Reducer 2");
     work.setReducer(groupBy);
+    work.setAutoReduceParallelism(true);
+    work.setMinReduceTasks(1);
     return work;
   }
 
-  /** Whether an unsorted edge with auto-reduce into the work enables auto-parallelism on its vertex. */
+  /** Whether the work's vertex auto-reduces, its input an unsorted edge from one vertex or from a union. */
   private static boolean autoParallel(ReduceWork work, boolean union) throws Exception {
-    JobConf conf = new JobConf();
-    conf.set(TezRuntimeConfiguration.TEZ_RUNTIME_KEY_CLASS, BytesWritable.class.getName());
-    conf.set(TezRuntimeConfiguration.TEZ_RUNTIME_VALUE_CLASS, BytesWritable.class.getName());
-    conf.set("mapred.partitioner.class", HashPartitioner.class.getName());
-    TezEdgeProperty edge = new TezEdgeProperty(new HiveConf(), EdgeType.CUSTOM_SIMPLE_EDGE, true, true, 1, 100,
-        1L << 20, 0.25f, 0.75f);
-    Vertex w = mock(Vertex.class);
-    if (union) {
-      DAG dag = DAG.create("d");
-      Vertex v1 = Vertex.create("v1", ProcessorDescriptor.create("p")), v2 = Vertex.create("v2", ProcessorDescriptor.create("p"));
-      dag.addVertex(v1).addVertex(v2);
-      DagUtils.getInstance().createEdge(dag.createVertexGroup("g", v1, v2), conf, w, edge, work, new TezWork("q"));
-    } else {
-      DagUtils.getInstance().createEdge(conf, Vertex.create("v", ProcessorDescriptor.create("p")), w, edge, work,
-          new TezWork("q"));
-    }
+    TezWork tezWork = new TezWork("q");
+    tezWork.add(work);
+    BaseWork input = union ? new UnionWork("Union 3") : new ReduceWork("Reducer 1");
+    tezWork.add(input);
+    tezWork.connect(input, work, new TezEdgeProperty(EdgeType.CUSTOM_SIMPLE_EDGE));
+    Vertex vertex = mock(Vertex.class);
+    DagUtils.getInstance().setupVertexManager(new JobConf(), vertex, work, tezWork);
     ArgumentCaptor<VertexManagerPluginDescriptor> manager = ArgumentCaptor.forClass(VertexManagerPluginDescriptor.class);
-    verify(w, atMost(1)).setVertexManagerPlugin(manager.capture());
+    verify(vertex, atMost(1)).setVertexManagerPlugin(manager.capture());
     return !manager.getAllValues().isEmpty() && TezUtils.createConfFromUserPayload(manager.getValue().getUserPayload())
         .getBoolean(ShuffleVertexManager.TEZ_SHUFFLE_VERTEX_MANAGER_ENABLE_AUTO_PARALLEL, false);
+  }
+
+  /** A partitioned input of a work that waits for its sources keeps Tez's default slow start. */
+  @Test
+  public void testSlowStartKeepsTheDefaultVertexManager() throws Exception {
+    ReduceWork work = new ReduceWork("Reducer 2");
+    TezWork tezWork = new TezWork("q");
+    tezWork.add(work);
+    connect(tezWork, work, EdgeType.CUSTOM_SIMPLE_EDGE);
+
+    Vertex vertex = mock(Vertex.class);
+    DagUtils.getInstance().setupVertexManager(new JobConf(), vertex, work, tezWork);
+
+    verify(vertex, never()).setVertexManagerPlugin(any());
+  }
+
+  /**
+   * Only a shuffle input auto-reduces: the partitioned inputs of a dynamically partitioned hash join keep the partition
+   * count both sides were hashed into.
+   */
+  @Test
+  public void testPartitionedInputsDoNotAutoReduce() throws Exception {
+    ReduceWork work = groupByWork(false, false);
+    TezWork tezWork = new TezWork("q");
+    tezWork.add(work);
+    connect(tezWork, work, EdgeType.CUSTOM_SIMPLE_EDGE, EdgeType.CUSTOM_SIMPLE_EDGE);
+
+    Vertex vertex = mock(Vertex.class);
+    DagUtils.getInstance().setupVertexManager(new JobConf(), vertex, work, tezWork);
+
+    verify(vertex, never()).setVertexManagerPlugin(any());
+  }
+
+  private static MergeJoinWork mergeJoin(TezWork tezWork, ReduceWork main) {
+    MergeJoinWork mergeJoin = new MergeJoinWork();
+    mergeJoin.addMergedWork(main, null, new HashMap<>());
+    tezWork.add(mergeJoin);
+    return mergeJoin;
+  }
+
+  /** Connects one parent work per edge type to the given work. */
+  private static void connect(TezWork tezWork, BaseWork work, EdgeType... edgeTypes) {
+    for (int i = 0; i < edgeTypes.length; i++) {
+      ReduceWork parent = new ReduceWork("Reducer " + (10 + i));
+      tezWork.add(parent);
+      tezWork.connect(parent, work, new TezEdgeProperty(edgeTypes[i], edgeTypes[i] == EdgeType.CUSTOM_EDGE ? 8 : -1));
+    }
+  }
+
+  private static VertexManagerPluginDescriptor vertexManager(JobConf conf, BaseWork work, TezWork tezWork)
+      throws IOException {
+    Vertex vertex = mock(Vertex.class);
+    DagUtils.getInstance().setupVertexManager(conf, vertex, work, tezWork);
+    ArgumentCaptor<VertexManagerPluginDescriptor> plugin = ArgumentCaptor.forClass(VertexManagerPluginDescriptor.class);
+    verify(vertex).setVertexManagerPlugin(plugin.capture());
+    return plugin.getValue();
   }
 }
