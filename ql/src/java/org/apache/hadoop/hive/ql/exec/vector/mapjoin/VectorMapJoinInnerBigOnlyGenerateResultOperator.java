@@ -87,6 +87,10 @@ public abstract class VectorMapJoinInnerBigOnlyGenerateResultOperator
   // Pre-allocated member for storing index into the hashMultiSetResults for each spilled row.
   protected transient int[] spillHashMapResultIndices;
 
+  // Pre-allocated member for storing the selected rows of a batch with a repeated key, restored before each forward of
+  // it after the first.
+  protected transient int[] inputSelected;
+
   /** Kryo ctor. */
   protected VectorMapJoinInnerBigOnlyGenerateResultOperator() {
     super();
@@ -123,6 +127,8 @@ public abstract class VectorMapJoinInnerBigOnlyGenerateResultOperator
 
     spills = new int[VectorizedRowBatch.DEFAULT_SIZE];
     spillHashMapResultIndices = new int[VectorizedRowBatch.DEFAULT_SIZE];
+
+    inputSelected = new int[VectorizedRowBatch.DEFAULT_SIZE];
   }
 
   //-----------------------------------------------------------------------------------------------
@@ -297,9 +303,21 @@ public abstract class VectorMapJoinInnerBigOnlyGenerateResultOperator
       batch.selectedInUse = true;
     }
 
+    // A child changes the batch's size and selected rows as it forwards it (a big-only map join empties it), so each
+    // forward after the first starts from our input rows.
+    int inputLogicalSize = batch.size;
+    if (count > 1) {
+      System.arraycopy(batch.selected, 0, inputSelected, 0, inputLogicalSize);
+    }
+
     do {
       forwardBigTableBatch(batch);
       count--;
+      if (count > 0) {
+        batch.size = inputLogicalSize;
+        batch.selectedInUse = true;
+        System.arraycopy(inputSelected, 0, batch.selected, 0, inputLogicalSize);
+      }
     } while (count > 0);
 
     // We forwarded the batch in this method.
