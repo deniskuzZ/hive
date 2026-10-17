@@ -23,7 +23,8 @@ alter table returns update statistics for column reason set('numDVs'='10', 'numN
 explain
 select count(*) from sales s join returns r on s.item = r.item and s.ticket = r.ticket where r.reason = 1;
 
--- A bloom filter expecting more entries than the maximum is removed
+-- A composite filter expecting more entries than the maximum is not built: each single column semijoin is checked on
+-- its own, and none survives here
 set hive.tez.max.bloom.filter.entries=10000;
 
 explain
