@@ -195,11 +195,8 @@ public class GenTezUtils {
     // Iterate over child operators
     for (Operator<? extends OperatorDesc> childOp : operator.getChildOperators()) {
       // Check if this is a MapJoinOperator and is a Bucket Map Join
-      if (childOp instanceof MapJoinOperator) {
-        MapJoinOperator mjOp = (MapJoinOperator) childOp;
-        if (mjOp.getConf().isBucketMapJoin()) {
-          return true; // Found BMJ, no need to check further
-        }
+      if (childOp instanceof MapJoinOperator mjOp && mjOp.getConf().isBucketMapJoin() && isMapSideBucketMapJoin(mjOp)) {
+        return true; // Found BMJ, no need to check further
       }
 
       // Recursively check children
@@ -209,6 +206,25 @@ public class GenTezUtils {
     }
 
     return false; // No Bucket Map Join found
+  }
+
+  /**
+   * Whether the bucket map join reads its big table in its own vertex, its small tables arriving over a CUSTOM_EDGE
+   * routed by the bucket count. A bucket map join on a reducer's partitions gets its small tables over a scatter-gather
+   * edge, which Tez reconfigures with the reducer's other inputs when auto-reduce changes the reducer's parallelism.
+   */
+  private static boolean isMapSideBucketMapJoin(MapJoinOperator mapJoin) {
+    Operator<? extends OperatorDesc> op = mapJoin;
+    while (!(op instanceof TableScanOperator)) {
+      List<Operator<? extends OperatorDesc>> parents = op.getParentOperators();
+      int input = op instanceof MapJoinOperator join ? join.getConf().getPosBigTable() : 0;
+      if (op instanceof ReduceSinkOperator || input >= parents.size()) {
+        // a reducer's input: its ReduceSink, or the root of its work, already cut from that ReduceSink
+        return false;
+      }
+      op = parents.get(input);
+    }
+    return true;
   }
 
   private static void setupReduceSink(
