@@ -3371,6 +3371,13 @@ public class TestVectorGroupByOperator {
     assertEquals(VectorGroupByOperator.ProcessingModeHashAggregate.class,
         hashProcessingModeClass(new String[] {"k1"},
             new TypeInfo[] {TypeInfoFactory.getDecimalTypeInfo(10, 2)}));
+    // a decimal of at most 18 digits is serialized as its decimal64 value
+    assertEquals(VectorGroupByOperator.ProcessingModeHashAggregateSerializedKey.class,
+        hashProcessingModeClass(new String[] {"k1", "k2"},
+            new TypeInfo[] {TypeInfoFactory.intTypeInfo, TypeInfoFactory.getDecimalTypeInfo(18, 2)}));
+    assertEquals(VectorGroupByOperator.ProcessingModeHashAggregate.class,
+        hashProcessingModeClass(new String[] {"k1", "k2"},
+            new TypeInfo[] {TypeInfoFactory.intTypeInfo, TypeInfoFactory.getDecimalTypeInfo(19, 2)}));
     assertEquals(VectorGroupByOperator.ProcessingModeHashAggregate.class,
         hashProcessingModeClass(new String[] {"k1"},
             new TypeInfo[] {TypeInfoFactory.longTypeInfo}, desc -> {
@@ -3702,6 +3709,38 @@ public class TestVectorGroupByOperator {
         gby.mode().gcCanary.clear();
       }
       assertTrue(gby.mode().keyTable.startBatch());
+      assertEquals(expected, gby.close());
+    }
+  }
+
+  @Test
+  public void testSerializedKeyDecimal() throws HiveException {
+    // An int and a decimal(8,2) key: 1.5 and 1.50 are one key, NULL is a key, and a selection and a
+    // repeating decimal column are read as for a LONG key.
+    String[] decimals = {"0", "1.5", "1.50", "-1.5", "999999.99", "-999999.99", "0.01", "12345.6"};
+    for (boolean aggregationBuffers : new boolean[] {false, true}) {
+      Map<List<Object>, List<Long>> expected = new HashMap<>();
+      KeyTableGroupBy gby = new KeyTableGroupBy(new TypeInfo[] {
+          TypeInfoFactory.longTypeInfo, TypeInfoFactory.getDecimalTypeInfo(8, 2)}, aggregationBuffers);
+      Object[][] columns = new Object[2][VectorizedRowBatch.DEFAULT_SIZE];
+      for (int i = 0; i < columns[0].length; i++) {
+        columns[0][i] = (long) (i % 5);
+        columns[1][i] = i % 9 == 8 ? null : HiveDecimal.create(decimals[i % decimals.length]);
+      }
+      gby.process(multiKeyBatch(columns, null, expected));
+      int[] selected = new int[columns[0].length / 3];
+      for (int i = 0; i < selected.length; i++) {
+        selected[i] = 3 * i + 1;
+      }
+      gby.process(multiKeyBatch(columns, selected, expected));
+      Object[][] repeating = new Object[2][VectorizedRowBatch.DEFAULT_SIZE];
+      for (int i = 0; i < repeating[0].length; i++) {
+        repeating[0][i] = (long) (i % 5);
+        repeating[1][i] = HiveDecimal.create("1.50");
+      }
+      VectorizedRowBatch batch = multiKeyBatch(repeating, null, expected);
+      batch.cols[1].isRepeating = true;
+      gby.process(batch);
       assertEquals(expected, gby.close());
     }
   }
@@ -4721,7 +4760,8 @@ public class TestVectorGroupByOperator {
           Object field = fields[i];
           key.add(field == null ? null : field instanceof LongWritable
               ? (Object) ((LongWritable) field).get() : field instanceof IntWritable
-              ? (Object) (long) ((IntWritable) field).get() : keyString(field));
+              ? (Object) (long) ((IntWritable) field).get() : field instanceof HiveDecimalWritable
+              ? ((HiveDecimalWritable) field).getHiveDecimal() : keyString(field));
         }
         addCountSum(result, key, ((LongWritable) fields[keyCount]).get(),
             ((LongWritable) fields[keyCount + 1]).get());
@@ -4752,7 +4792,9 @@ public class TestVectorGroupByOperator {
     VectorizedRowBatch batch = new VectorizedRowBatch(columns.length + 1);
     for (int c = 0; c < columns.length; c++) {
       boolean isBytes = Arrays.stream(columns[c]).anyMatch(v -> v instanceof String);
-      ColumnVector column = isBytes ? new BytesColumnVector() : new LongColumnVector();
+      boolean isDecimal = Arrays.stream(columns[c]).anyMatch(v -> v instanceof HiveDecimal);
+      ColumnVector column = isBytes ? new BytesColumnVector()
+          : isDecimal ? new DecimalColumnVector(VectorizedRowBatch.DEFAULT_SIZE, 8, 2) : new LongColumnVector();
       if (isBytes) {
         ((BytesColumnVector) column).initBuffer();
       }
@@ -4763,6 +4805,8 @@ public class TestVectorGroupByOperator {
           column.isNull[i] = true;
         } else if (isBytes) {
           ((BytesColumnVector) column).setVal(i, bytes((String) value));
+        } else if (isDecimal) {
+          ((DecimalColumnVector) column).set(i, (HiveDecimal) value);
         } else {
           ((LongColumnVector) column).vector[i] = (Long) value;
         }
@@ -4796,6 +4840,8 @@ public class TestVectorGroupByOperator {
           key.add(null);
         } else if (column instanceof LongColumnVector) {
           key.add(((LongColumnVector) column).vector[r]);
+        } else if (column instanceof DecimalColumnVector) {
+          key.add(((DecimalColumnVector) column).vector[r].getHiveDecimal());
         } else {
           BytesColumnVector bytes = (BytesColumnVector) column;
           key.add(keyString(Arrays.copyOfRange(bytes.vector[r], bytes.start[r],

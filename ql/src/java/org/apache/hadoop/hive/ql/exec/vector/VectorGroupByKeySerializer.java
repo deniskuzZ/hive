@@ -22,11 +22,16 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.nio.ByteOrder;
 import java.util.Arrays;
+import org.apache.hadoop.hive.serde2.io.HiveDecimalWritable;
+import org.apache.hadoop.hive.serde2.typeinfo.DecimalTypeInfo;
+import org.apache.hadoop.hive.serde2.typeinfo.TypeInfo;
 
 /**
- * Serializes the GROUP BY keys of the rows of a batch, made of two or more LONG and BYTES columns,
- * into one byte array for a {@link VectorGroupByBytesKeyTable}, and writes a serialized key back
- * into the key columns of an output batch. A batch is serialized a column at a time.
+ * Serializes the GROUP BY keys of the rows of a batch, made of two or more LONG, BYTES and DECIMAL
+ * columns, into one byte array for a {@link VectorGroupByBytesKeyTable}, and writes a serialized key
+ * back into the key columns of an output batch. A batch is serialized a column at a time. A DECIMAL
+ * column of at most {@link HiveDecimalWritable#DECIMAL64_DECIMAL_DIGITS} digits is a LONG column of
+ * its decimal64 values at the column's scale, so equal decimals have equal values.
  * <p>
  * A key is the little-endian value of each LONG column, in 4 bytes when it fits in an int and in
  * 8 otherwise, then the bytes of each BYTES column, then the 4-byte little-endian length of each
@@ -49,9 +54,12 @@ final class VectorGroupByKeySerializer {
 
   private final int[] columnNums;
   private final int columnCount;
-  // Positions in the key of the LONG and of the BYTES columns.
+  // Positions in the key of the LONG (DECIMAL included) and of the BYTES columns.
   private final int[] longKeys;
   private final int[] bytesKeys;
+  // Per key, the scale of a DECIMAL column and its decimal64 values in the batch; -1 and null otherwise.
+  private final int[] decimalScales;
+  private final LongColumnVector[] decimalValues;
   private final int bitsLength;
   // The lengths of the BYTES columns and the bits.
   private final int trailerLength;
@@ -67,29 +75,41 @@ final class VectorGroupByKeySerializer {
   /**
    * Returns whether keys of columns of these types can be serialized.
    */
-  static boolean covers(ColumnVector.Type[] types) {
-    for (ColumnVector.Type type : types) {
-      if (type != ColumnVector.Type.LONG && type != ColumnVector.Type.BYTES) {
+  static boolean covers(ColumnVector.Type[] types, TypeInfo[] typeInfos) {
+    for (int key = 0; key < types.length; key++) {
+      if (types[key] != ColumnVector.Type.BYTES && !isLong(types[key], typeInfos[key])) {
         return false;
       }
     }
     return types.length > 1;
   }
 
-  VectorGroupByKeySerializer(ColumnVector.Type[] types, int[] columnNums) {
+  private static boolean isLong(ColumnVector.Type type, TypeInfo typeInfo) {
+    return type == ColumnVector.Type.LONG || type == ColumnVector.Type.DECIMAL
+        && HiveDecimalWritable.isPrecisionDecimal64(((DecimalTypeInfo) typeInfo).getPrecision());
+  }
+
+  VectorGroupByKeySerializer(ColumnVector.Type[] types, TypeInfo[] typeInfos, int[] columnNums) {
     this.columnNums = columnNums;
     columnCount = types.length;
     int longCount = 0;
-    for (ColumnVector.Type type : types) {
-      if (type == ColumnVector.Type.LONG) {
+    for (int key = 0; key < types.length; key++) {
+      if (isLong(types[key], typeInfos[key])) {
         longCount++;
       }
     }
     longKeys = new int[longCount];
     bytesKeys = new int[types.length - longCount];
+    decimalScales = new int[types.length];
+    decimalValues = new LongColumnVector[types.length];
     for (int key = 0, l = 0, b = 0; key < types.length; key++) {
-      if (types[key] == ColumnVector.Type.LONG) {
+      decimalScales[key] = -1;
+      if (isLong(types[key], typeInfos[key])) {
         longKeys[l++] = key;
+        if (types[key] == ColumnVector.Type.DECIMAL) {
+          decimalScales[key] = ((DecimalTypeInfo) typeInfos[key]).getScale();
+          decimalValues[key] = new LongColumnVector(VectorizedRowBatch.DEFAULT_SIZE);
+        }
       } else {
         bytesKeys[b++] = key;
       }
@@ -120,7 +140,13 @@ final class VectorGroupByKeySerializer {
     final int[] lengths = this.lengths;
     Arrays.fill(lengths, 0, size, trailerLength);
     for (int key : longKeys) {
-      final LongColumnVector column = (LongColumnVector) batch.cols[columnNums[key]];
+      if (decimalValues[key] != null) {
+        toDecimal64((DecimalColumnVector) batch.cols[columnNums[key]], decimalScales[key], decimalValues[key], size,
+            selectedInUse, selected);
+      }
+    }
+    for (int key : longKeys) {
+      final LongColumnVector column = longColumn(batch, key);
       final long[] vector = column.vector;
       if (column.isRepeating) {
         final int width = !column.noNulls && column.isNull[0] ? 0 : width(vector[0]);
@@ -175,7 +201,7 @@ final class VectorGroupByKeySerializer {
     final int[] offsets = this.offsets;
     System.arraycopy(starts, 0, offsets, 0, size);
     for (int l = 0; l < longKeys.length; l++) {
-      serializeLongs((LongColumnVector) batch.cols[columnNums[longKeys[l]]], longKeys[l],
+      serializeLongs(longColumn(batch, longKeys[l]), longKeys[l],
           columnCount + l, size, selectedInUse, selected, offsets);
     }
     for (int b = 0; b < bytesKeys.length; b++) {
@@ -183,6 +209,24 @@ final class VectorGroupByKeySerializer {
       final int lengthFromEnd = b < bytesKeys.length - 1 ? trailerLength - Integer.BYTES * b : 0;
       serializeBytes((BytesColumnVector) batch.cols[columnNums[bytesKeys[b]]], bytesKeys[b],
           lengthFromEnd, size, selectedInUse, selected, offsets);
+    }
+  }
+
+  private LongColumnVector longColumn(VectorizedRowBatch batch, int key) {
+    return decimalValues[key] != null ? decimalValues[key] : (LongColumnVector) batch.cols[columnNums[key]];
+  }
+
+  private static void toDecimal64(DecimalColumnVector column, int scale, LongColumnVector values, int size,
+      boolean selectedInUse, int[] selected) {
+    values.noNulls = column.noNulls;
+    values.isRepeating = column.isRepeating;
+    final int count = column.isRepeating ? 1 : size;
+    for (int i = 0; i < count; i++) {
+      final int row = column.isRepeating ? 0 : selectedInUse ? selected[i] : i;
+      values.isNull[row] = !column.noNulls && column.isNull[row];
+      if (!values.isNull[row]) {
+        values.vector[row] = column.vector[row].serialize64(scale);
+      }
     }
   }
 
@@ -253,18 +297,24 @@ final class VectorGroupByKeySerializer {
     int offset = 0;
     for (int l = 0; l < longKeys.length; l++) {
       final int k = longKeys[l];
-      final LongColumnVector column = (LongColumnVector) batch.cols[k];
+      final ColumnVector column = batch.cols[k];
       if (isSet(key, bitsStart, k)) {
         column.noNulls = false;
         column.isNull[row] = true;
       } else {
         column.isNull[row] = false;
+        final long value;
         if (isSet(key, bitsStart, columnCount + l)) {
-          column.vector[row] = (long) LONG_LE.get(key, offset);
+          value = (long) LONG_LE.get(key, offset);
           offset += Long.BYTES;
         } else {
-          column.vector[row] = (int) INT_LE.get(key, offset);
+          value = (int) INT_LE.get(key, offset);
           offset += Integer.BYTES;
+        }
+        if (decimalScales[k] >= 0) {
+          ((DecimalColumnVector) column).vector[row].deserialize64(value, decimalScales[k]);
+        } else {
+          ((LongColumnVector) column).vector[row] = value;
         }
       }
     }

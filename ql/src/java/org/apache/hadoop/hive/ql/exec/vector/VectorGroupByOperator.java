@@ -1333,7 +1333,7 @@ public class VectorGroupByOperator extends Operator<GroupByDesc>
         keyColumnNums[i] = keyExpressions[i].getOutputColumnNum();
       }
       keySerializer =
-          new VectorGroupByKeySerializer(keyWrappersBatch.columnVectorTypes, keyColumnNums);
+          new VectorGroupByKeySerializer(keyWrappersBatch.columnVectorTypes, keyTypeInfos(), keyColumnNums);
     }
 
     @Override
@@ -1853,12 +1853,20 @@ public class VectorGroupByOperator extends Operator<GroupByDesc>
   }
 
   /**
-   * Returns whether the keys are two or more LONG and BYTES columns, which the bytes key table
-   * looks up once serialized. Grouping sets are excluded.
+   * Returns whether the keys are two or more LONG, BYTES and decimal64-sized DECIMAL columns, which
+   * the bytes key table looks up once serialized. Grouping sets are excluded.
    */
   private boolean isSerializedKey() {
     return !groupingSetsPresent
-        && VectorGroupByKeySerializer.covers(keyWrappersBatch.columnVectorTypes);
+        && VectorGroupByKeySerializer.covers(keyWrappersBatch.columnVectorTypes, keyTypeInfos());
+  }
+
+  private TypeInfo[] keyTypeInfos() {
+    TypeInfo[] typeInfos = new TypeInfo[keyExpressions.length];
+    for (int i = 0; i < keyExpressions.length; i++) {
+      typeInfos[i] = keyExpressions[i].getOutputTypeInfo();
+    }
+    return typeInfos;
   }
 
   @VisibleForTesting
