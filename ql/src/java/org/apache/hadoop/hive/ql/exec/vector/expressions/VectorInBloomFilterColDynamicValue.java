@@ -26,6 +26,7 @@ import java.util.concurrent.Callable;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hive.common.io.NonSyncByteArrayInputStream;
 import org.apache.hadoop.hive.common.type.HiveDecimal;
+import org.apache.hadoop.hive.common.NoDynamicValuesException;
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.ql.exec.ObjectCache;
 import org.apache.hadoop.hive.ql.exec.ObjectCacheFactory;
@@ -148,6 +149,12 @@ public class VectorInBloomFilterColDynamicValue extends VectorExpression {
     }
 
     if (!initialized) {
+      try {
+        bloomFilterDynamicValue.getValue();
+      } catch (NoDynamicValuesException e) {
+        // The bloom filter has not arrived: the batch passes until it does.
+        return;
+      }
       initValue();
     }
 

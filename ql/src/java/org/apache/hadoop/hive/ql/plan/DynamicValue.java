@@ -100,7 +100,17 @@ public class DynamicValue implements LiteralDelegate, Serializable {
     return objectInspector.getPrimitiveWritableObject(getValue());
   }
 
+  /** The value, or {@link NoDynamicValuesException} while it has not arrived. */
   public Object getValue() {
+    return getValue(false);
+  }
+
+  /** The value, waiting for it to arrive; for consumers that cannot pass rows without it. */
+  public Object waitForValue() {
+    return getValue(true);
+  }
+
+  private Object getValue(boolean wait) {
     if (initialized) {
       return val;
     }
@@ -123,7 +133,7 @@ public class DynamicValue implements LiteralDelegate, Serializable {
       if (valueRegistry == null) {
         throw new NoDynamicValuesException("DynamicValueRegistry not available");
       }
-      val = valueRegistry.getValue(id);
+      val = wait ? valueRegistry.waitForValue(id) : valueRegistry.getValue(id);
       initialized = true;
     } catch (NoDynamicValuesException err) {
       throw err;

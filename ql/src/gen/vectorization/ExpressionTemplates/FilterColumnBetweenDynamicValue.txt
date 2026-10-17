@@ -19,6 +19,7 @@
 package org.apache.hadoop.hive.ql.exec.vector.expressions.gen;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hive.common.NoDynamicValuesException;
 import org.apache.hadoop.hive.ql.exec.vector.VectorizedRowBatch;
 import org.apache.hadoop.hive.ql.exec.vector.expressions.gen.Filter<TypeName>ColumnBetween;
 import org.apache.hadoop.hive.ql.plan.DynamicValue;
@@ -85,8 +86,15 @@ public class <ClassName> extends Filter<TypeName>ColumnBetween {
   @Override
   public void evaluate(VectorizedRowBatch batch) throws HiveException {
     if (!initialized) {
-      Object lVal = leftDynamicValue.getValue();
-      Object rVal = rightDynamicValue.getValue();
+      Object lVal;
+      Object rVal;
+      try {
+        lVal = leftDynamicValue.getValue();
+        rVal = rightDynamicValue.getValue();
+      } catch (NoDynamicValuesException e) {
+        // The runtime values have not arrived: the batch passes until they do.
+        return;
+      }
       if (lVal == null || rVal == null) {
         isLeftOrRightNull = true;
       } else {

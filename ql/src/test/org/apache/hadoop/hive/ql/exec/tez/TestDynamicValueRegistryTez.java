@@ -21,7 +21,11 @@ package org.apache.hadoop.hive.ql.exec.tez;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyCollection;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -35,8 +39,10 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hive.common.NoDynamicValuesException;
 import org.apache.hadoop.hive.ql.exec.tez.DynamicValueRegistryTez.RegistryConfTez;
 import org.apache.hadoop.hive.ql.parse.RuntimeValuesInfo;
 import org.apache.hadoop.hive.ql.plan.ExprNodeColumnDesc;
@@ -133,21 +139,22 @@ public class TestDynamicValueRegistryTez {
     ExecutorService pool = Executors.newFixedThreadPool(tasks);
     try {
       CountDownLatch start = new CountDownLatch(1);
-      List<Future<Object>> values = new ArrayList<>();
+      List<Future<?>> inits = new ArrayList<>();
       for (LogicalInput input : inputs) {
-        values.add(pool.submit(() -> {
+        inits.add(pool.submit(() -> {
           start.await();
           registry.init(conf(1, input));
-          return registry.getValue(VALUE_ID);
+          return null;
         }));
       }
       start.countDown();
-      for (Future<Object> value : values) {
-        assertEquals(new LongWritable(42), value.get());
+      for (Future<?> init : inits) {
+        init.get();
       }
     } finally {
       pool.shutdownNow();
     }
+    assertEquals(new LongWritable(42), registry.getValue(VALUE_ID));
     int reads = 0;
     for (LogicalInput input : inputs) {
       reads += Mockito.mockingDetails(input).getInvocations().stream()
@@ -170,14 +177,148 @@ public class TestDynamicValueRegistryTez {
     assertEquals(new LongWritable(7), registry.getValue(VALUE_ID));
   }
 
-  private RegistryConfTez conf(int dagIdentifier, LogicalInput input) {
+  /** A task does not wait for a runtime value source: the value is missing until its input is ready. */
+  @Test
+  public void testInitDoesNotWaitForASource() throws Exception {
+    DynamicValueRegistryTez registry = new DynamicValueRegistryTez();
+    LogicalInput input = input(42L);
+    AtomicBoolean ready = new AtomicBoolean();
+    RegistryConfTez conf = conf(1, input, ready);
+    ExecutorService task = Executors.newSingleThreadExecutor();
+    try {
+      task.submit(() -> {
+        registry.init(conf);
+        return null;
+      }).get();
+      verify(input, times(1)).start();
+      assertMissing(task, registry);
+
+      ready.set(true);
+      assertEquals(new LongWritable(42), task.submit(() -> registry.getValue(VALUE_ID)).get());
+      verify(conf.processorContext, never()).waitForAllInputsReady(anyCollection());
+    } finally {
+      task.shutdownNow();
+    }
+  }
+
+  /** While one task fetches a source, the other tasks of the vertex do not start their own input for it. */
+  @Test
+  public void testOneTaskFetchesASource() throws Exception {
+    DynamicValueRegistryTez registry = new DynamicValueRegistryTez();
+    LogicalInput first = input(42L);
+    LogicalInput second = input(42L);
+    AtomicBoolean ready = new AtomicBoolean();
+    ExecutorService firstTask = Executors.newSingleThreadExecutor();
+    ExecutorService secondTask = Executors.newSingleThreadExecutor();
+    try {
+      firstTask.submit(() -> {
+        registry.init(conf(1, first, ready));
+        return null;
+      }).get();
+      secondTask.submit(() -> {
+        registry.init(conf(1, second, ready));
+        return null;
+      }).get();
+      assertMissing(secondTask, registry);
+
+      ready.set(true);
+      assertMissing(secondTask, registry);
+      assertEquals(new LongWritable(42), firstTask.submit(() -> registry.getValue(VALUE_ID)).get());
+      assertEquals(new LongWritable(42), secondTask.submit(() -> registry.getValue(VALUE_ID)).get());
+      verify(second, never()).start();
+    } finally {
+      firstTask.shutdownNow();
+      secondTask.shutdownNow();
+    }
+  }
+
+  /** A task that ends before its source arrives hands the source to the next task that needs the value. */
+  @Test
+  public void testAReleasedSourceGoesToTheNextTask() throws Exception {
+    DynamicValueRegistryTez registry = new DynamicValueRegistryTez();
+    LogicalInput first = input(42L);
+    LogicalInput second = input(42L);
+    AtomicBoolean ready = new AtomicBoolean();
+    ExecutorService firstTask = Executors.newSingleThreadExecutor();
+    ExecutorService secondTask = Executors.newSingleThreadExecutor();
+    try {
+      firstTask.submit(() -> {
+        registry.init(conf(1, first, ready));
+        registry.release();
+        return null;
+      }).get();
+      secondTask.submit(() -> {
+        registry.init(conf(1, second, ready));
+        return null;
+      }).get();
+
+      ready.set(true);
+      assertEquals(new LongWritable(42), secondTask.submit(() -> registry.getValue(VALUE_ID)).get());
+      verify(second, times(1)).start();
+    } finally {
+      firstTask.shutdownNow();
+      secondTask.shutdownNow();
+    }
+  }
+
+  /** A consumer that cannot pass rows waits for the source, on its own task's input. */
+  @Test
+  public void testWaitForValueWaitsOnItsOwnInput() throws Exception {
+    DynamicValueRegistryTez registry = new DynamicValueRegistryTez();
+    LogicalInput first = input(42L);
+    LogicalInput second = input(42L);
+    RegistryConfTez secondConf = conf(1, second, new AtomicBoolean());
+    ExecutorService firstTask = Executors.newSingleThreadExecutor();
+    ExecutorService secondTask = Executors.newSingleThreadExecutor();
+    try {
+      firstTask.submit(() -> {
+        registry.init(conf(1, first, new AtomicBoolean()));
+        return null;
+      }).get();
+      Object value = secondTask.submit(() -> {
+        registry.init(secondConf);
+        return registry.waitForValue(VALUE_ID);
+      }).get();
+
+      assertEquals(new LongWritable(42), value);
+      verify(second, times(1)).start();
+      verify(secondConf.processorContext, times(1)).waitForAllInputsReady(anyCollection());
+    } finally {
+      firstTask.shutdownNow();
+      secondTask.shutdownNow();
+    }
+  }
+
+  private static void assertMissing(ExecutorService task, DynamicValueRegistryTez registry) throws Exception {
+    assertEquals(NoDynamicValuesException.class, task.submit(() -> {
+      try {
+        registry.getValue(VALUE_ID);
+        return null;
+      } catch (NoDynamicValuesException e) {
+        return e.getClass();
+      }
+    }).get());
+  }
+
+  private RegistryConfTez conf(int dagIdentifier, LogicalInput input) throws Exception {
     return conf(APPLICATION, dagIdentifier, input);
   }
 
-  private RegistryConfTez conf(ApplicationId application, int dagIdentifier, LogicalInput input) {
+  private RegistryConfTez conf(int dagIdentifier, LogicalInput input, AtomicBoolean ready) throws Exception {
+    return conf(APPLICATION, dagIdentifier, input, ready);
+  }
+
+  private RegistryConfTez conf(ApplicationId application, int dagIdentifier, LogicalInput input) throws Exception {
+    return conf(application, dagIdentifier, input, new AtomicBoolean(true));
+  }
+
+  /** A task's registry configuration whose input is ready once {@code ready} is set. */
+  private RegistryConfTez conf(ApplicationId application, int dagIdentifier, LogicalInput input, AtomicBoolean ready)
+      throws Exception {
     ProcessorContext context = mock(ProcessorContext.class);
     when(context.getApplicationId()).thenReturn(application);
     when(context.getDagIdentifier()).thenReturn(dagIdentifier);
+    when(context.waitForAllInputsReady(any(), anyLong())).thenAnswer(invocation -> ready.get());
     return new RegistryConfTez(conf, work, context, Collections.singletonMap(SOURCE, input));
   }
 
