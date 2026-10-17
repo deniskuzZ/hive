@@ -1,0 +1,722 @@
+PREHOOK: query: create table bigonly_big (v int) partitioned by (k int) stored as orc
+PREHOOK: type: CREATETABLE
+PREHOOK: Output: database:default
+PREHOOK: Output: default@bigonly_big
+POSTHOOK: query: create table bigonly_big (v int) partitioned by (k int) stored as orc
+POSTHOOK: type: CREATETABLE
+POSTHOOK: Output: database:default
+POSTHOOK: Output: default@bigonly_big
+PREHOOK: query: create table bigonly_dup1 (k int) stored as orc
+PREHOOK: type: CREATETABLE
+PREHOOK: Output: database:default
+PREHOOK: Output: default@bigonly_dup1
+POSTHOOK: query: create table bigonly_dup1 (k int) stored as orc
+POSTHOOK: type: CREATETABLE
+POSTHOOK: Output: database:default
+POSTHOOK: Output: default@bigonly_dup1
+PREHOOK: query: create table bigonly_dup2 (k int) stored as orc
+PREHOOK: type: CREATETABLE
+PREHOOK: Output: database:default
+PREHOOK: Output: default@bigonly_dup2
+POSTHOOK: query: create table bigonly_dup2 (k int) stored as orc
+POSTHOOK: type: CREATETABLE
+POSTHOOK: Output: database:default
+POSTHOOK: Output: default@bigonly_dup2
+PREHOOK: query: insert into bigonly_big partition (k = 37) values (1), (2), (3)
+PREHOOK: type: QUERY
+PREHOOK: Input: _dummy_database@_dummy_table
+PREHOOK: Output: default@bigonly_big@k=37
+POSTHOOK: query: insert into bigonly_big partition (k = 37) values (1), (2), (3)
+POSTHOOK: type: QUERY
+POSTHOOK: Input: _dummy_database@_dummy_table
+POSTHOOK: Output: default@bigonly_big@k=37
+POSTHOOK: Lineage: bigonly_big PARTITION(k=37).v SCRIPT []
+PREHOOK: query: insert into bigonly_dup1 values (37), (37), (58)
+PREHOOK: type: QUERY
+PREHOOK: Input: _dummy_database@_dummy_table
+PREHOOK: Output: default@bigonly_dup1
+POSTHOOK: query: insert into bigonly_dup1 values (37), (37), (58)
+POSTHOOK: type: QUERY
+POSTHOOK: Input: _dummy_database@_dummy_table
+POSTHOOK: Output: default@bigonly_dup1
+POSTHOOK: Lineage: bigonly_dup1.k SCRIPT []
+PREHOOK: query: insert into bigonly_dup2 values (37), (37), (67)
+PREHOOK: type: QUERY
+PREHOOK: Input: _dummy_database@_dummy_table
+PREHOOK: Output: default@bigonly_dup2
+POSTHOOK: query: insert into bigonly_dup2 values (37), (37), (67)
+POSTHOOK: type: QUERY
+POSTHOOK: Input: _dummy_database@_dummy_table
+POSTHOOK: Output: default@bigonly_dup2
+POSTHOOK: Lineage: bigonly_dup2.k SCRIPT []
+PREHOOK: query: alter table bigonly_big partition (k = 37) update statistics set('numRows'='10000000', 'rawDataSize'='40000000')
+PREHOOK: type: ALTERTABLE_UPDATEPARTSTATS
+PREHOOK: Input: default@bigonly_big
+PREHOOK: Output: default@bigonly_big@k=37
+POSTHOOK: query: alter table bigonly_big partition (k = 37) update statistics set('numRows'='10000000', 'rawDataSize'='40000000')
+POSTHOOK: type: ALTERTABLE_UPDATEPARTSTATS
+POSTHOOK: Input: default@bigonly_big
+POSTHOOK: Input: default@bigonly_big@k=37
+POSTHOOK: Output: default@bigonly_big@k=37
+PREHOOK: query: explain vectorization detail
+select b.v from bigonly_big b
+join bigonly_dup1 d1 on b.k = d1.k
+join bigonly_dup2 d2 on b.k = (d2.k + 0)
+PREHOOK: type: QUERY
+PREHOOK: Input: default@bigonly_big
+PREHOOK: Input: default@bigonly_big@k=37
+PREHOOK: Input: default@bigonly_dup1
+PREHOOK: Input: default@bigonly_dup2
+#### A masked pattern was here ####
+POSTHOOK: query: explain vectorization detail
+select b.v from bigonly_big b
+join bigonly_dup1 d1 on b.k = d1.k
+join bigonly_dup2 d2 on b.k = (d2.k + 0)
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@bigonly_big
+POSTHOOK: Input: default@bigonly_big@k=37
+POSTHOOK: Input: default@bigonly_dup1
+POSTHOOK: Input: default@bigonly_dup2
+#### A masked pattern was here ####
+PLAN VECTORIZATION:
+  enabled: true
+  enabledConditionsMet: [hive.vectorized.execution.enabled IS true]
+
+STAGE DEPENDENCIES:
+  Stage-1 is a root stage
+  Stage-0 depends on stages: Stage-1
+
+STAGE PLANS:
+  Stage: Stage-1
+    Tez
+#### A masked pattern was here ####
+      Edges:
+        Map 1 <- Map 2 (BROADCAST_EDGE), Map 3 (BROADCAST_EDGE)
+#### A masked pattern was here ####
+      Vertices:
+        Map 1 
+            Map Operator Tree:
+                TableScan
+                  alias: b
+                  Statistics: Num rows: 10000000 Data size: 80000000 Basic stats: COMPLETE Column stats: COMPLETE
+                  TableScan Vectorization:
+                      native: true
+                      vectorizationSchemaColumns: [0:v:int, 1:k:int, 2:ROW__ID:struct<writeid:bigint,bucketid:int,rowid:bigint>, 3:ROW__IS__DELETED:boolean]
+                  Select Operator
+                    expressions: v (type: int), k (type: int)
+                    outputColumnNames: _col0, _col1
+                    Select Vectorization:
+                        className: VectorSelectOperator
+                        native: true
+                        projectedOutputColumnNums: [0, 1]
+                    Statistics: Num rows: 10000000 Data size: 80000000 Basic stats: COMPLETE Column stats: COMPLETE
+                    Map Join Operator
+                      condition map:
+                           Inner Join 0 to 1
+                      keys:
+                        0 _col1 (type: int)
+                        1 _col0 (type: int)
+                      Map Join Vectorization:
+                          bigTableKeyColumns: 1:int
+                          bigTableRetainColumnNums: [0, 1]
+                          bigTableValueColumns: 0:int, 1:int
+                          className: VectorMapJoinInnerBigOnlyLongOperator
+                          native: true
+                          nativeConditionsMet: hive.mapjoin.optimized.hashtable IS true, hive.vectorized.execution.mapjoin.native.enabled IS true, hive.execution.engine tez IN [tez] IS true, One MapJoin Condition IS true, No nullsafe IS true, Small table vectorizes IS true, Optimized Table and Supports Key Types IS true
+                          nonOuterSmallTableKeyMapping: []
+                          projectedOutput: 0:int, 1:int
+                          hashTableImplementationType: OPTIMIZED
+                      outputColumnNames: _col0, _col1
+                      input vertices:
+                        1 Map 2
+                      Statistics: Num rows: 15000000 Data size: 120000000 Basic stats: COMPLETE Column stats: COMPLETE
+                      Map Join Operator
+                        condition map:
+                             Inner Join 0 to 1
+                        keys:
+                          0 _col1 (type: int)
+                          1 _col0 (type: int)
+                        Map Join Vectorization:
+                            bigTableKeyColumns: 1:int
+                            bigTableRetainColumnNums: [0]
+                            bigTableValueColumns: 0:int
+                            className: VectorMapJoinInnerBigOnlyLongOperator
+                            native: true
+                            nativeConditionsMet: hive.mapjoin.optimized.hashtable IS true, hive.vectorized.execution.mapjoin.native.enabled IS true, hive.execution.engine tez IN [tez] IS true, One MapJoin Condition IS true, No nullsafe IS true, Small table vectorizes IS true, Optimized Table and Supports Key Types IS true
+                            nonOuterSmallTableKeyMapping: []
+                            projectedOutput: 0:int
+                            hashTableImplementationType: OPTIMIZED
+                        outputColumnNames: _col0
+                        input vertices:
+                          1 Map 3
+                        Statistics: Num rows: 22500000 Data size: 90000000 Basic stats: COMPLETE Column stats: COMPLETE
+                        File Output Operator
+                          compressed: false
+                          File Sink Vectorization:
+                              className: VectorFileSinkOperator
+                              native: false
+                          Statistics: Num rows: 22500000 Data size: 90000000 Basic stats: COMPLETE Column stats: COMPLETE
+                          table:
+                              input format: org.apache.hadoop.mapred.SequenceFileInputFormat
+                              output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
+                              serde: org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+            Map Vectorization:
+                enabled: true
+                enabledConditionsMet: hive.vectorized.use.vectorized.input.format IS true
+                inputFormatFeatureSupport: [DECIMAL_64]
+                featureSupportInUse: [DECIMAL_64]
+                inputFileFormats: org.apache.hadoop.hive.ql.io.orc.OrcInputFormat
+                allNative: false
+                usesVectorUDFAdaptor: false
+                vectorized: true
+                rowBatchContext:
+                    dataColumnCount: 1
+                    includeColumns: [0]
+                    dataColumns: v:int
+                    partitionColumnCount: 1
+                    partitionColumns: k:int
+                    scratchColumnTypeNames: []
+        Map 2 
+            Map Operator Tree:
+                TableScan
+                  alias: d1
+                  filterExpr: k is not null (type: boolean)
+                  Statistics: Num rows: 3 Data size: 12 Basic stats: COMPLETE Column stats: COMPLETE
+                  TableScan Vectorization:
+                      native: true
+                      vectorizationSchemaColumns: [0:k:int, 1:ROW__ID:struct<writeid:bigint,bucketid:int,rowid:bigint>, 2:ROW__IS__DELETED:boolean]
+                  Filter Operator
+                    Filter Vectorization:
+                        className: VectorFilterOperator
+                        native: true
+                        predicateExpression: SelectColumnIsNotNull(col 0:int)
+                    predicate: k is not null (type: boolean)
+                    Statistics: Num rows: 3 Data size: 12 Basic stats: COMPLETE Column stats: COMPLETE
+                    Select Operator
+                      expressions: k (type: int)
+                      outputColumnNames: _col0
+                      Select Vectorization:
+                          className: VectorSelectOperator
+                          native: true
+                          projectedOutputColumnNums: [0]
+                      Statistics: Num rows: 3 Data size: 12 Basic stats: COMPLETE Column stats: COMPLETE
+                      Reduce Output Operator
+                        key expressions: _col0 (type: int)
+                        null sort order: z
+                        sort order: +
+                        Map-reduce partition columns: _col0 (type: int)
+                        Reduce Sink Vectorization:
+                            className: VectorReduceSinkLongOperator
+                            keyColumns: 0:int
+                            native: true
+                            nativeConditionsMet: hive.vectorized.execution.reducesink.new.enabled IS true, hive.execution.engine tez IN [tez] IS true, No PTF TopN IS true, No DISTINCT columns IS true, BinarySortableSerDe for keys IS true, LazyBinarySerDe for values IS true
+                        Statistics: Num rows: 3 Data size: 12 Basic stats: COMPLETE Column stats: COMPLETE
+                      Select Operator
+                        expressions: _col0 (type: int)
+                        outputColumnNames: _col0
+                        Select Vectorization:
+                            className: VectorSelectOperator
+                            native: true
+                            projectedOutputColumnNums: [0]
+                        Statistics: Num rows: 3 Data size: 12 Basic stats: COMPLETE Column stats: COMPLETE
+                        Group By Operator
+                          Group By Vectorization:
+                              className: VectorGroupByOperator
+                              groupByMode: HASH
+                              keyExpressions: col 0:int
+                              native: false
+                              vectorProcessingMode: HASH
+                              projectedOutputColumnNums: []
+                          keys: _col0 (type: int)
+                          minReductionHashAggr: 0.4
+                          mode: hash
+                          outputColumnNames: _col0
+                          Statistics: Num rows: 2 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                          Dynamic Partitioning Event Operator
+                            Target column: k (int)
+                            App Master Event Vectorization:
+                                className: VectorAppMasterEventOperator
+                                native: true
+                            Target Input: b
+                            Partition key expr: k
+                            Statistics: Num rows: 2 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                            Target Vertex: Map 1
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+            Map Vectorization:
+                enabled: true
+                enabledConditionsMet: hive.vectorized.use.vectorized.input.format IS true
+                inputFormatFeatureSupport: [DECIMAL_64]
+                featureSupportInUse: [DECIMAL_64]
+                inputFileFormats: org.apache.hadoop.hive.ql.io.orc.OrcInputFormat
+                allNative: false
+                usesVectorUDFAdaptor: false
+                vectorized: true
+                rowBatchContext:
+                    dataColumnCount: 1
+                    includeColumns: [0]
+                    dataColumns: k:int
+                    partitionColumnCount: 0
+                    scratchColumnTypeNames: []
+        Map 3 
+            Map Operator Tree:
+                TableScan
+                  alias: d2
+                  filterExpr: k is not null (type: boolean)
+                  Statistics: Num rows: 3 Data size: 12 Basic stats: COMPLETE Column stats: COMPLETE
+                  TableScan Vectorization:
+                      native: true
+                      vectorizationSchemaColumns: [0:k:int, 1:ROW__ID:struct<writeid:bigint,bucketid:int,rowid:bigint>, 2:ROW__IS__DELETED:boolean]
+                  Filter Operator
+                    Filter Vectorization:
+                        className: VectorFilterOperator
+                        native: true
+                        predicateExpression: SelectColumnIsNotNull(col 0:int)
+                    predicate: k is not null (type: boolean)
+                    Statistics: Num rows: 3 Data size: 12 Basic stats: COMPLETE Column stats: COMPLETE
+                    Select Operator
+                      expressions: k (type: int)
+                      outputColumnNames: _col0
+                      Select Vectorization:
+                          className: VectorSelectOperator
+                          native: true
+                          projectedOutputColumnNums: [0]
+                      Statistics: Num rows: 3 Data size: 12 Basic stats: COMPLETE Column stats: COMPLETE
+                      Reduce Output Operator
+                        key expressions: _col0 (type: int)
+                        null sort order: z
+                        sort order: +
+                        Map-reduce partition columns: _col0 (type: int)
+                        Reduce Sink Vectorization:
+                            className: VectorReduceSinkLongOperator
+                            keyColumns: 0:int
+                            native: true
+                            nativeConditionsMet: hive.vectorized.execution.reducesink.new.enabled IS true, hive.execution.engine tez IN [tez] IS true, No PTF TopN IS true, No DISTINCT columns IS true, BinarySortableSerDe for keys IS true, LazyBinarySerDe for values IS true
+                        Statistics: Num rows: 3 Data size: 12 Basic stats: COMPLETE Column stats: COMPLETE
+                      Select Operator
+                        expressions: _col0 (type: int)
+                        outputColumnNames: _col0
+                        Select Vectorization:
+                            className: VectorSelectOperator
+                            native: true
+                            projectedOutputColumnNums: [0]
+                        Statistics: Num rows: 3 Data size: 12 Basic stats: COMPLETE Column stats: COMPLETE
+                        Group By Operator
+                          Group By Vectorization:
+                              className: VectorGroupByOperator
+                              groupByMode: HASH
+                              keyExpressions: col 0:int
+                              native: false
+                              vectorProcessingMode: HASH
+                              projectedOutputColumnNums: []
+                          keys: _col0 (type: int)
+                          minReductionHashAggr: 0.4
+                          mode: hash
+                          outputColumnNames: _col0
+                          Statistics: Num rows: 2 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                          Dynamic Partitioning Event Operator
+                            Target column: k (int)
+                            App Master Event Vectorization:
+                                className: VectorAppMasterEventOperator
+                                native: true
+                            Target Input: b
+                            Partition key expr: k
+                            Statistics: Num rows: 2 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                            Target Vertex: Map 1
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+            Map Vectorization:
+                enabled: true
+                enabledConditionsMet: hive.vectorized.use.vectorized.input.format IS true
+                inputFormatFeatureSupport: [DECIMAL_64]
+                featureSupportInUse: [DECIMAL_64]
+                inputFileFormats: org.apache.hadoop.hive.ql.io.orc.OrcInputFormat
+                allNative: false
+                usesVectorUDFAdaptor: false
+                vectorized: true
+                rowBatchContext:
+                    dataColumnCount: 1
+                    includeColumns: [0]
+                    dataColumns: k:int
+                    partitionColumnCount: 0
+                    scratchColumnTypeNames: []
+
+  Stage: Stage-0
+    Fetch Operator
+      limit: -1
+      Processor Tree:
+        ListSink
+
+PREHOOK: query: select b.v from bigonly_big b
+join bigonly_dup1 d1 on b.k = d1.k
+join bigonly_dup2 d2 on b.k = (d2.k + 0)
+order by b.v
+PREHOOK: type: QUERY
+PREHOOK: Input: default@bigonly_big
+PREHOOK: Input: default@bigonly_big@k=37
+PREHOOK: Input: default@bigonly_dup1
+PREHOOK: Input: default@bigonly_dup2
+#### A masked pattern was here ####
+POSTHOOK: query: select b.v from bigonly_big b
+join bigonly_dup1 d1 on b.k = d1.k
+join bigonly_dup2 d2 on b.k = (d2.k + 0)
+order by b.v
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@bigonly_big
+POSTHOOK: Input: default@bigonly_big@k=37
+POSTHOOK: Input: default@bigonly_dup1
+POSTHOOK: Input: default@bigonly_dup2
+#### A masked pattern was here ####
+1
+1
+1
+1
+2
+2
+2
+2
+3
+3
+3
+3
+PREHOOK: query: select b.v from bigonly_big b
+join bigonly_dup1 d1 on b.k = d1.k
+join bigonly_dup2 d2 on b.k = (d2.k + 0)
+order by b.v
+PREHOOK: type: QUERY
+PREHOOK: Input: default@bigonly_big
+PREHOOK: Input: default@bigonly_big@k=37
+PREHOOK: Input: default@bigonly_dup1
+PREHOOK: Input: default@bigonly_dup2
+#### A masked pattern was here ####
+POSTHOOK: query: select b.v from bigonly_big b
+join bigonly_dup1 d1 on b.k = d1.k
+join bigonly_dup2 d2 on b.k = (d2.k + 0)
+order by b.v
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@bigonly_big
+POSTHOOK: Input: default@bigonly_big@k=37
+POSTHOOK: Input: default@bigonly_dup1
+POSTHOOK: Input: default@bigonly_dup2
+#### A masked pattern was here ####
+1
+1
+1
+1
+2
+2
+2
+2
+3
+3
+3
+3
+PREHOOK: query: create table bigonly_one (v int) stored as orc
+PREHOOK: type: CREATETABLE
+PREHOOK: Output: database:default
+PREHOOK: Output: default@bigonly_one
+POSTHOOK: query: create table bigonly_one (v int) stored as orc
+POSTHOOK: type: CREATETABLE
+POSTHOOK: Output: database:default
+POSTHOOK: Output: default@bigonly_one
+PREHOOK: query: insert into bigonly_one values (2)
+PREHOOK: type: QUERY
+PREHOOK: Input: _dummy_database@_dummy_table
+PREHOOK: Output: default@bigonly_one
+POSTHOOK: query: insert into bigonly_one values (2)
+POSTHOOK: type: QUERY
+POSTHOOK: Input: _dummy_database@_dummy_table
+POSTHOOK: Output: default@bigonly_one
+POSTHOOK: Lineage: bigonly_one.v SCRIPT []
+PREHOOK: query: explain vectorization detail
+select b.v from bigonly_big b
+join bigonly_dup1 d1 on b.k = d1.k
+join bigonly_one o on b.v = o.v
+PREHOOK: type: QUERY
+PREHOOK: Input: default@bigonly_big
+PREHOOK: Input: default@bigonly_big@k=37
+PREHOOK: Input: default@bigonly_dup1
+PREHOOK: Input: default@bigonly_one
+#### A masked pattern was here ####
+POSTHOOK: query: explain vectorization detail
+select b.v from bigonly_big b
+join bigonly_dup1 d1 on b.k = d1.k
+join bigonly_one o on b.v = o.v
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@bigonly_big
+POSTHOOK: Input: default@bigonly_big@k=37
+POSTHOOK: Input: default@bigonly_dup1
+POSTHOOK: Input: default@bigonly_one
+#### A masked pattern was here ####
+PLAN VECTORIZATION:
+  enabled: true
+  enabledConditionsMet: [hive.vectorized.execution.enabled IS true]
+
+STAGE DEPENDENCIES:
+  Stage-1 is a root stage
+  Stage-0 depends on stages: Stage-1
+
+STAGE PLANS:
+  Stage: Stage-1
+    Tez
+#### A masked pattern was here ####
+      Edges:
+        Map 1 <- Map 2 (BROADCAST_EDGE), Map 3 (BROADCAST_EDGE)
+#### A masked pattern was here ####
+      Vertices:
+        Map 1 
+            Map Operator Tree:
+                TableScan
+                  alias: b
+                  filterExpr: v is not null (type: boolean)
+                  probeDecodeDetails: cacheKey:HASH_MAP_MAPJOIN_37_container, bigKeyColName:v, smallTablePos:1, keyRatio:0.3333333333333333
+                  Statistics: Num rows: 10000000 Data size: 80000000 Basic stats: COMPLETE Column stats: COMPLETE
+                  TableScan Vectorization:
+                      native: true
+                      vectorizationSchemaColumns: [0:v:int, 1:k:int, 2:ROW__ID:struct<writeid:bigint,bucketid:int,rowid:bigint>, 3:ROW__IS__DELETED:boolean]
+                  Filter Operator
+                    Filter Vectorization:
+                        className: VectorFilterOperator
+                        native: true
+                        predicateExpression: SelectColumnIsNotNull(col 0:int)
+                    predicate: v is not null (type: boolean)
+                    Statistics: Num rows: 10000000 Data size: 80000000 Basic stats: COMPLETE Column stats: COMPLETE
+                    Map Join Operator
+                      condition map:
+                           Inner Join 0 to 1
+                      keys:
+                        0 k (type: int)
+                        1 k (type: int)
+                      Map Join Vectorization:
+                          bigTableKeyColumns: 1:int
+                          bigTableRetainColumnNums: [0]
+                          bigTableValueColumns: 0:int
+                          className: VectorMapJoinInnerBigOnlyLongOperator
+                          native: true
+                          nativeConditionsMet: hive.mapjoin.optimized.hashtable IS true, hive.vectorized.execution.mapjoin.native.enabled IS true, hive.execution.engine tez IN [tez] IS true, One MapJoin Condition IS true, No nullsafe IS true, Small table vectorizes IS true, Optimized Table and Supports Key Types IS true
+                          nonOuterSmallTableKeyMapping: []
+                          projectedOutput: 0:int
+                          hashTableImplementationType: OPTIMIZED
+                      outputColumnNames: _col0
+                      input vertices:
+                        1 Map 2
+                      Statistics: Num rows: 15000000 Data size: 60000000 Basic stats: COMPLETE Column stats: COMPLETE
+                      Map Join Operator
+                        condition map:
+                             Inner Join 0 to 1
+                        keys:
+                          0 _col0 (type: int)
+                          1 v (type: int)
+                        Map Join Vectorization:
+                            bigTableKeyColumns: 0:int
+                            bigTableRetainColumnNums: [0]
+                            bigTableValueColumns: 0:int
+                            className: VectorMapJoinInnerBigOnlyLongOperator
+                            native: true
+                            nativeConditionsMet: hive.mapjoin.optimized.hashtable IS true, hive.vectorized.execution.mapjoin.native.enabled IS true, hive.execution.engine tez IN [tez] IS true, One MapJoin Condition IS true, No nullsafe IS true, Small table vectorizes IS true, Optimized Table and Supports Key Types IS true
+                            nonOuterSmallTableKeyMapping: []
+                            projectedOutput: 0:int
+                            hashTableImplementationType: OPTIMIZED
+                        outputColumnNames: _col0
+                        input vertices:
+                          1 Map 3
+                        Statistics: Num rows: 5000000 Data size: 20000000 Basic stats: COMPLETE Column stats: COMPLETE
+                        File Output Operator
+                          compressed: false
+                          File Sink Vectorization:
+                              className: VectorFileSinkOperator
+                              native: false
+                          Statistics: Num rows: 5000000 Data size: 20000000 Basic stats: COMPLETE Column stats: COMPLETE
+                          table:
+                              input format: org.apache.hadoop.mapred.SequenceFileInputFormat
+                              output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
+                              serde: org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+            Map Vectorization:
+                enabled: true
+                enabledConditionsMet: hive.vectorized.use.vectorized.input.format IS true
+                inputFormatFeatureSupport: [DECIMAL_64]
+                featureSupportInUse: [DECIMAL_64]
+                inputFileFormats: org.apache.hadoop.hive.ql.io.orc.OrcInputFormat
+                allNative: false
+                usesVectorUDFAdaptor: false
+                vectorized: true
+                rowBatchContext:
+                    dataColumnCount: 1
+                    includeColumns: [0]
+                    dataColumns: v:int
+                    partitionColumnCount: 1
+                    partitionColumns: k:int
+                    scratchColumnTypeNames: []
+        Map 2 
+            Map Operator Tree:
+                TableScan
+                  alias: d1
+                  filterExpr: k is not null (type: boolean)
+                  Statistics: Num rows: 3 Data size: 12 Basic stats: COMPLETE Column stats: COMPLETE
+                  TableScan Vectorization:
+                      native: true
+                      vectorizationSchemaColumns: [0:k:int, 1:ROW__ID:struct<writeid:bigint,bucketid:int,rowid:bigint>, 2:ROW__IS__DELETED:boolean]
+                  Filter Operator
+                    Filter Vectorization:
+                        className: VectorFilterOperator
+                        native: true
+                        predicateExpression: SelectColumnIsNotNull(col 0:int)
+                    predicate: k is not null (type: boolean)
+                    Statistics: Num rows: 3 Data size: 12 Basic stats: COMPLETE Column stats: COMPLETE
+                    Reduce Output Operator
+                      key expressions: k (type: int)
+                      null sort order: z
+                      sort order: +
+                      Map-reduce partition columns: k (type: int)
+                      Reduce Sink Vectorization:
+                          className: VectorReduceSinkLongOperator
+                          keyColumns: 0:int
+                          native: true
+                          nativeConditionsMet: hive.vectorized.execution.reducesink.new.enabled IS true, hive.execution.engine tez IN [tez] IS true, No PTF TopN IS true, No DISTINCT columns IS true, BinarySortableSerDe for keys IS true, LazyBinarySerDe for values IS true
+                      Statistics: Num rows: 3 Data size: 12 Basic stats: COMPLETE Column stats: COMPLETE
+                    Select Operator
+                      expressions: k (type: int)
+                      outputColumnNames: _col0
+                      Select Vectorization:
+                          className: VectorSelectOperator
+                          native: true
+                          projectedOutputColumnNums: [0]
+                      Statistics: Num rows: 3 Data size: 12 Basic stats: COMPLETE Column stats: COMPLETE
+                      Group By Operator
+                        Group By Vectorization:
+                            className: VectorGroupByOperator
+                            groupByMode: HASH
+                            keyExpressions: col 0:int
+                            native: false
+                            vectorProcessingMode: HASH
+                            projectedOutputColumnNums: []
+                        keys: _col0 (type: int)
+                        minReductionHashAggr: 0.4
+                        mode: hash
+                        outputColumnNames: _col0
+                        Statistics: Num rows: 2 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                        Dynamic Partitioning Event Operator
+                          Target column: k (int)
+                          App Master Event Vectorization:
+                              className: VectorAppMasterEventOperator
+                              native: true
+                          Target Input: b
+                          Partition key expr: k
+                          Statistics: Num rows: 2 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                          Target Vertex: Map 1
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+            Map Vectorization:
+                enabled: true
+                enabledConditionsMet: hive.vectorized.use.vectorized.input.format IS true
+                inputFormatFeatureSupport: [DECIMAL_64]
+                featureSupportInUse: [DECIMAL_64]
+                inputFileFormats: org.apache.hadoop.hive.ql.io.orc.OrcInputFormat
+                allNative: false
+                usesVectorUDFAdaptor: false
+                vectorized: true
+                rowBatchContext:
+                    dataColumnCount: 1
+                    includeColumns: [0]
+                    dataColumns: k:int
+                    partitionColumnCount: 0
+                    scratchColumnTypeNames: []
+        Map 3 
+            Map Operator Tree:
+                TableScan
+                  alias: o
+                  filterExpr: v is not null (type: boolean)
+                  Statistics: Num rows: 1 Data size: 4 Basic stats: COMPLETE Column stats: COMPLETE
+                  TableScan Vectorization:
+                      native: true
+                      vectorizationSchemaColumns: [0:v:int, 1:ROW__ID:struct<writeid:bigint,bucketid:int,rowid:bigint>, 2:ROW__IS__DELETED:boolean]
+                  Filter Operator
+                    Filter Vectorization:
+                        className: VectorFilterOperator
+                        native: true
+                        predicateExpression: SelectColumnIsNotNull(col 0:int)
+                    predicate: v is not null (type: boolean)
+                    Statistics: Num rows: 1 Data size: 4 Basic stats: COMPLETE Column stats: COMPLETE
+                    Reduce Output Operator
+                      key expressions: v (type: int)
+                      null sort order: z
+                      sort order: +
+                      Map-reduce partition columns: v (type: int)
+                      Reduce Sink Vectorization:
+                          className: VectorReduceSinkLongOperator
+                          keyColumns: 0:int
+                          native: true
+                          nativeConditionsMet: hive.vectorized.execution.reducesink.new.enabled IS true, hive.execution.engine tez IN [tez] IS true, No PTF TopN IS true, No DISTINCT columns IS true, BinarySortableSerDe for keys IS true, LazyBinarySerDe for values IS true
+                      Statistics: Num rows: 1 Data size: 4 Basic stats: COMPLETE Column stats: COMPLETE
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+            Map Vectorization:
+                enabled: true
+                enabledConditionsMet: hive.vectorized.use.vectorized.input.format IS true
+                inputFormatFeatureSupport: [DECIMAL_64]
+                featureSupportInUse: [DECIMAL_64]
+                inputFileFormats: org.apache.hadoop.hive.ql.io.orc.OrcInputFormat
+                allNative: true
+                usesVectorUDFAdaptor: false
+                vectorized: true
+                rowBatchContext:
+                    dataColumnCount: 1
+                    includeColumns: [0]
+                    dataColumns: v:int
+                    partitionColumnCount: 0
+                    scratchColumnTypeNames: []
+
+  Stage: Stage-0
+    Fetch Operator
+      limit: -1
+      Processor Tree:
+        ListSink
+
+PREHOOK: query: select b.v from bigonly_big b
+join bigonly_dup1 d1 on b.k = d1.k
+join bigonly_one o on b.v = o.v
+order by b.v
+PREHOOK: type: QUERY
+PREHOOK: Input: default@bigonly_big
+PREHOOK: Input: default@bigonly_big@k=37
+PREHOOK: Input: default@bigonly_dup1
+PREHOOK: Input: default@bigonly_one
+#### A masked pattern was here ####
+POSTHOOK: query: select b.v from bigonly_big b
+join bigonly_dup1 d1 on b.k = d1.k
+join bigonly_one o on b.v = o.v
+order by b.v
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@bigonly_big
+POSTHOOK: Input: default@bigonly_big@k=37
+POSTHOOK: Input: default@bigonly_dup1
+POSTHOOK: Input: default@bigonly_one
+#### A masked pattern was here ####
+2
+2
+PREHOOK: query: select b.v from bigonly_big b
+join bigonly_dup1 d1 on b.k = d1.k
+join bigonly_one o on b.v = o.v
+order by b.v
+PREHOOK: type: QUERY
+PREHOOK: Input: default@bigonly_big
+PREHOOK: Input: default@bigonly_big@k=37
+PREHOOK: Input: default@bigonly_dup1
+PREHOOK: Input: default@bigonly_one
+#### A masked pattern was here ####
+POSTHOOK: query: select b.v from bigonly_big b
+join bigonly_dup1 d1 on b.k = d1.k
+join bigonly_one o on b.v = o.v
+order by b.v
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@bigonly_big
+POSTHOOK: Input: default@bigonly_big@k=37
+POSTHOOK: Input: default@bigonly_dup1
+POSTHOOK: Input: default@bigonly_one
+#### A masked pattern was here ####
+2
+2
