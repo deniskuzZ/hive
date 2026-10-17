@@ -386,8 +386,10 @@ public final class LazyBinaryDeserializeRead extends DeserializeRead {
         //   \002\006\255\114\197\131\083\105
         //           \255\114\197\131\083\105
 
-        currentHiveDecimalWritable.setFromBigIntegerBytesAndScale(
-            bytes, saveStart, length, readScale);
+        if (!readDecimal64(saveStart, length, readScale)) {
+          currentHiveDecimalWritable.setFromBigIntegerBytesAndScale(
+              bytes, saveStart, length, readScale);
+        }
         boolean decimalIsNull = !currentHiveDecimalWritable.isSet();
         if (!decimalIsNull) {
 
@@ -406,6 +408,26 @@ public final class LazyBinaryDeserializeRead extends DeserializeRead {
     default:
       throw new Error("Unexpected primitive category " + primitiveCategory.name());
     }
+    return true;
+  }
+
+  /**
+   * Reads a decimal of at most {@link HiveDecimalWritable#DECIMAL64_DECIMAL_DIGITS} digits and scale from its
+   * two's-complement bytes, without the general decimal conversion; false for any other decimal.
+   */
+  private boolean readDecimal64(int start, int length, int scale) {
+    if (length > Long.BYTES || scale > HiveDecimalWritable.DECIMAL64_DECIMAL_DIGITS) {
+      return false;
+    }
+    long unscaled = bytes[start];
+    for (int i = start + 1; i < start + length; i++) {
+      unscaled = (unscaled << Byte.SIZE) | (bytes[i] & 0xFF);
+    }
+    long absMax = HiveDecimalWritable.getDecimal64AbsMax(HiveDecimalWritable.DECIMAL64_DECIMAL_DIGITS);
+    if (unscaled < -absMax || unscaled > absMax) {
+      return false;
+    }
+    currentHiveDecimalWritable.deserialize64(unscaled, scale);
     return true;
   }
 
