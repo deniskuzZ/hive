@@ -1,3 +1,4 @@
+-- SORT_QUERY_RESULTS
 -- HIVE-27069
 set hive.query.results.cache.enabled=false;
 set hive.compute.query.using.stats=false;
