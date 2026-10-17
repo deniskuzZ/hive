@@ -720,9 +720,16 @@ public class ConvertJoinMapJoin implements SemanticNodeProcessor {
         continue;
       }
       int numBuckets = partitioner.getConf().getNumReducers();
+      int minPartitions = minPartitions(partitioner, context.conf);
       MapJoinConversion mapJoinConversion =
-          getMapJoinConversion(joinOp, context, minPartitions(partitioner.getConf(), context.conf), false,
-              maxJoinMemory, false);
+          getMapJoinConversion(joinOp, context, minPartitions, false, maxJoinMemory, false);
+      boolean pinned = false;
+      if (mapJoinConversion == null && minPartitions < numBuckets) {
+        // the small inputs fit only in the partitions the GROUP BY is estimated to run with: it runs with that many and
+        // no longer auto-reduces, as the vertex of the dynamically partitioned hash join it replaces never does
+        mapJoinConversion = getMapJoinConversion(joinOp, context, numBuckets, false, maxJoinMemory, false);
+        pinned = true;
+      }
       if (mapJoinConversion == null || mapJoinConversion.getBigTablePos() != pos
           || mapJoinConversion.getIsFullOuterJoin()
               && !mapJoinConversion.getIsFullOuterEnabledForDynamicPartitionHashJoin()) {
@@ -731,6 +738,9 @@ public class ConvertJoinMapJoin implements SemanticNodeProcessor {
       MapJoinOperator mapJoinOp = convertJoinMapJoin(joinOp, context, mapJoinConversion, true);
       if (mapJoinOp == null) {
         return false;
+      }
+      if (pinned) {
+        partitioner.getConf().getReducerTraits().remove(ReducerTraits.AUTOPARALLEL);
       }
       MapJoinDesc joinDesc = mapJoinOp.getConf();
       joinDesc.setBucketMapJoin(true);
@@ -758,12 +768,16 @@ public class ConvertJoinMapJoin implements SemanticNodeProcessor {
   }
 
   /**
-   * The fewest partitions the ReduceSink's vertex may run with: auto-reduce may merge its estimated partitions down to
-   * this many at run time, and each holds its share of the small inputs (as GenTezUtils#createReduceWork decides).
+   * The fewest partitions the partitioner's vertex may run with: auto-reduce may merge the estimated partitions of a
+   * GROUP BY's vertex down to this many at run time, and each holds its share of the small inputs (as
+   * GenTezUtils#createReduceWork decides). The vertex of a dynamically partitioned hash join, whose inputs are all
+   * partitioned edges, never auto-reduces (DagUtils#setupVertexManager) and runs with at least its estimate.
    */
-  private static int minPartitions(ReduceSinkDesc partitioning, HiveConf conf) {
+  private static int minPartitions(ReduceSinkOperator partitioner, HiveConf conf) {
+    ReduceSinkDesc partitioning = partitioner.getConf();
     int numPartitions = partitioning.getNumReducers();
-    if (!conf.getBoolVar(HiveConf.ConfVars.TEZ_AUTO_REDUCER_PARALLELISM)
+    if (!(partitioner.getChildOperators().get(0) instanceof GroupByOperator)
+        || !conf.getBoolVar(HiveConf.ConfVars.TEZ_AUTO_REDUCER_PARALLELISM)
         || !partitioning.getReducerTraits().contains(ReducerTraits.AUTOPARALLEL)) {
       return numPartitions;
     }

@@ -132,13 +132,35 @@ select count(*), count(a.k), count(b.k), count(case when a.k = b.k then 1 end), 
 from (select a_k k, sum(a_v) s from ps_a group by a_k) a
 full outer join (select b_k k, count(*) c from ps_b group by b_k) b on a.k = b.k;
 
--- at the default minimum (a quarter of the partitions) a partition of the small input would not fit, so it shuffles
+-- at the default minimum (a quarter of the partitions) a partition of the small input would not fit, but it fits at the
+-- estimated partitions: the join runs in the aggregate's reducer, which runs with that many and no longer auto-reduces,
+-- as the dynamically partitioned hash join it replaces
 set hive.tez.min.partition.factor=0.25;
 set hive.convert.join.bucket.mapjoin.tez=true;
 explain
 select *
 from (select a_k k, sum(a_v) s from ps_a group by a_k) a
 full outer join (select b_k k, count(*) c from ps_b group by b_k) b on a.k = b.k;
+
+select count(*), count(a.k), count(b.k), count(case when a.k = b.k then 1 end), sum(a.s), sum(b.c),
+  sum(pmod(hash(a.k, b.k), 1000003) * pmod(hash(a.s, b.c), 1000033))
+from (select a_k k, sum(a_v) s from ps_a group by a_k) a
+full outer join (select b_k k, count(*) c from ps_b group by b_k) b on a.k = b.k;
+
+set hive.convert.join.bucket.mapjoin.tez=false;
+select count(*), count(a.k), count(b.k), count(case when a.k = b.k then 1 end), sum(a.s), sum(b.c),
+  sum(pmod(hash(a.k, b.k), 1000003) * pmod(hash(a.s, b.c), 1000033))
+from (select a_k k, sum(a_v) s from ps_a group by a_k) a
+full outer join (select b_k k, count(*) c from ps_b group by b_k) b on a.k = b.k;
+
+-- a partition of the small input that would not fit even at the estimated partitions: it shuffles
+set hive.auto.convert.join.noconditionaltask.size=250000;
+set hive.convert.join.bucket.mapjoin.tez=true;
+explain
+select *
+from (select a_k k, sum(a_v) s from ps_a group by a_k) a
+full outer join (select b_k k, count(*) c from ps_b group by b_k) b on a.k = b.k;
+set hive.auto.convert.join.noconditionaltask.size=1000000;
 
 -- a join the aggregate's reducer can broadcast to keeps its broadcast: partitioning the small input would remove no shuffle
 set hive.tez.auto.reducer.parallelism=false;
