@@ -107,11 +107,11 @@ STAGE PLANS:
             Map Operator Tree:
                 TableScan
                   alias: d2
-                  filterExpr: (d_week_seq is not null and d_week_seq BETWEEN DynamicValue(RS_16_d1_d_week_seq_min) AND DynamicValue(RS_16_d1_d_week_seq_max) and in_bloom_filter(d_week_seq, DynamicValue(RS_16_d1_d_week_seq_bloom_filter))) (type: boolean)
+                  filterExpr: (d_week_seq is not null and d_week_seq BETWEEN DynamicValue(RS_16_d1_d_week_seq_min, wait) AND DynamicValue(RS_16_d1_d_week_seq_max, wait) and in_bloom_filter(d_week_seq, DynamicValue(RS_16_d1_d_week_seq_bloom_filter, wait))) (type: boolean)
                   probeDecodeDetails: cacheKey:HASH_MAP_MAPJOIN_251_container, bigKeyColName:d_week_seq, smallTablePos:1, keyRatio:0.03248650084093122
                   Statistics: Num rows: 73049 Data size: 876588 Basic stats: COMPLETE Column stats: COMPLETE
                   Filter Operator
-                    predicate: (d_week_seq is not null and d_week_seq BETWEEN DynamicValue(RS_16_d1_d_week_seq_min) AND DynamicValue(RS_16_d1_d_week_seq_max) and in_bloom_filter(d_week_seq, DynamicValue(RS_16_d1_d_week_seq_bloom_filter))) (type: boolean)
+                    predicate: (d_week_seq is not null and d_week_seq BETWEEN DynamicValue(RS_16_d1_d_week_seq_min, wait) AND DynamicValue(RS_16_d1_d_week_seq_max, wait) and in_bloom_filter(d_week_seq, DynamicValue(RS_16_d1_d_week_seq_bloom_filter, wait))) (type: boolean)
                     Statistics: Num rows: 73049 Data size: 876588 Basic stats: COMPLETE Column stats: COMPLETE
                     Select Operator
                       expressions: d_date_sk (type: bigint), d_week_seq (type: int)

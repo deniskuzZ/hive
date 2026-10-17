@@ -4864,6 +4864,11 @@ public class HiveConf extends Configuration {
     TEZ_DYNAMIC_SEMIJOIN_REDUCTION("hive.tez.dynamic.semijoin.reduction", true,
         "When dynamic semijoin is enabled, shuffle joins will perform a leaky semijoin before shuffle. This " +
         "requires hive.tez.dynamic.partition.pruning to be enabled."),
+    HIVE_TEZ_DYNAMIC_SEMIJOIN_REDUCTION_WAIT_TIME("hive.tez.dynamic.semijoin.reduction.wait.time", "0ms",
+        new TimeValidator(TimeUnit.MILLISECONDS),
+        "How long a task waits at its start for the runtime values of its semijoin filters (min, max, bloom filter)\n"
+        + "before it reads rows without them; the rows it reads before the values arrive pass the filters. 0 does not\n"
+        + "wait. A value a scan's rows feed (a dynamic partition pruning event, a semijoin source) is always waited for."),
     TEZ_MIN_BLOOM_FILTER_ENTRIES("hive.tez.min.bloom.filter.entries", 1000000L,
             "Bloom filter should be of at min certain size to be effective"),
     TEZ_MAX_BLOOM_FILTER_ENTRIES("hive.tez.max.bloom.filter.entries", 100000000L,

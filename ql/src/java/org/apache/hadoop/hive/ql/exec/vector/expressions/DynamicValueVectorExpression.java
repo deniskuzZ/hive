@@ -149,7 +149,7 @@ public class DynamicValueVectorExpression extends VectorExpression {
   }
 
   private void initValue() {
-    Object val = dynamicValue.getValue();
+    Object val = dynamicValue.waitForValue();
 
     if (val == null) {
       isNullValue = true;
