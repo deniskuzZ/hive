@@ -21,7 +21,7 @@ STAGE PLANS:
                 TableScan
                   alias: web_returns
                   filterExpr: (wr_returning_cdemo_sk is not null and wr_refunded_cdemo_sk is not null and wr_reason_sk is not null and wr_refunded_addr_sk is not null) (type: boolean)
-                  probeDecodeDetails: cacheKey:HASH_MAP_MAPJOIN_193_container, bigKeyColName:wr_refunded_addr_sk, smallTablePos:1, keyRatio:0.08490567287735817
+                  probeDecodeDetails: cacheKey:HASH_MAP_MAPJOIN_188_container, bigKeyColName:wr_refunded_addr_sk, smallTablePos:1, keyRatio:0.08490567287735817
                   Statistics: Num rows: 2160007345 Data size: 562637317992 Basic stats: COMPLETE Column stats: COMPLETE
                   Filter Operator
                     predicate: (wr_returning_cdemo_sk is not null and wr_refunded_cdemo_sk is not null and wr_reason_sk is not null and wr_refunded_addr_sk is not null) (type: boolean)
@@ -197,10 +197,10 @@ STAGE PLANS:
             Map Operator Tree:
                 TableScan
                   alias: web_sales
-                  filterExpr: (ws_sales_price is not null and ws_web_page_sk is not null and ws_net_profit is not null and ws_item_sk BETWEEN DynamicValue(RS[192]_col0) AND DynamicValue(RS[192]_col1) and ws_order_number BETWEEN DynamicValue(RS[192]_col2) AND DynamicValue(RS[192]_col3) and in_bloom_filter(hash(ws_item_sk,ws_order_number), DynamicValue(RS[192]_col4))) (type: boolean)
+                  filterExpr: (ws_sales_price is not null and ws_web_page_sk is not null and ws_net_profit is not null and ws_item_sk BETWEEN DynamicValue(RS[187]_col0) AND DynamicValue(RS[187]_col1) and ws_order_number BETWEEN DynamicValue(RS[187]_col2) AND DynamicValue(RS[187]_col3) and in_bloom_filter(hash(ws_item_sk,ws_order_number), DynamicValue(RS[187]_col4))) (type: boolean)
                   Statistics: Num rows: 21594638446 Data size: 5614271174532 Basic stats: COMPLETE Column stats: COMPLETE
                   Filter Operator
-                    predicate: (ws_sales_price is not null and ws_web_page_sk is not null and ws_net_profit is not null and ws_item_sk BETWEEN DynamicValue(RS[192]_col0) AND DynamicValue(RS[192]_col1) and ws_order_number BETWEEN DynamicValue(RS[192]_col2) AND DynamicValue(RS[192]_col3) and in_bloom_filter(hash(ws_item_sk,ws_order_number), DynamicValue(RS[192]_col4))) (type: boolean)
+                    predicate: (ws_sales_price is not null and ws_web_page_sk is not null and ws_net_profit is not null and ws_item_sk BETWEEN DynamicValue(RS[187]_col0) AND DynamicValue(RS[187]_col1) and ws_order_number BETWEEN DynamicValue(RS[187]_col2) AND DynamicValue(RS[187]_col3) and in_bloom_filter(hash(ws_item_sk,ws_order_number), DynamicValue(RS[187]_col4))) (type: boolean)
                     Statistics: Num rows: 21589239696 Data size: 5612867583224 Basic stats: COMPLETE Column stats: COMPLETE
                     Select Operator
                       expressions: ws_item_sk (type: bigint), ws_order_number (type: bigint), ws_quantity (type: int), ws_sold_date_sk (type: bigint), ws_net_profit BETWEEN 100 AND 200 (type: boolean), ws_net_profit BETWEEN 150 AND 300 (type: boolean), ws_net_profit BETWEEN 50 AND 250 (type: boolean), ws_sales_price BETWEEN 100 AND 150 (type: boolean), ws_sales_price BETWEEN 50 AND 100 (type: boolean), ws_sales_price BETWEEN 150 AND 200 (type: boolean)

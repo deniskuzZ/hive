@@ -20,6 +20,7 @@
 package org.apache.hadoop.hive.ql.optimizer.stats.annotation;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -49,6 +50,16 @@ public class AnnotateWithStatistics extends Transform {
 
   @Override
   public ParseContext transform(ParseContext pctx) throws SemanticException {
+    annotate(pctx, pctx.getTopOps().values());
+    return pctx;
+  }
+
+  /**
+   * Annotates the start nodes, whose parents carry statistics already, and the operators below them whose parents are
+   * all annotated by this walk: operators that a transformation adds after the plan is annotated get their statistics
+   * from the same rules.
+   */
+  public void annotate(ParseContext pctx, Collection<? extends Node> startNodes) throws SemanticException {
     AnnotateStatsProcCtx aspCtx = new AnnotateStatsProcCtx(pctx);
 
     // create a walker which walks the tree in a BFS manner while maintaining the
@@ -79,11 +90,6 @@ public class AnnotateWithStatistics extends Transform {
         aspCtx);
     SemanticGraphWalker ogw = new LevelOrderWalker(disp, 0);
 
-    // Create a list of topop nodes
-    ArrayList<Node> topNodes = new ArrayList<Node>();
-    topNodes.addAll(pctx.getTopOps().values());
-    ogw.startWalking(topNodes, null);
-
-    return pctx;
+    ogw.startWalking(new ArrayList<>(startNodes), null);
   }
 }
