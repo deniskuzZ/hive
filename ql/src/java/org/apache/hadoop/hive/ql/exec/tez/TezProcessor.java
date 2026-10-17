@@ -41,6 +41,8 @@ import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.OutputCollector;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.tez.common.TezUtils;
+import org.apache.tez.dag.records.TezDAGID;
+import org.apache.tez.mapreduce.input.MRInput;
 import org.apache.tez.mapreduce.processor.MRTaskReporter;
 import org.apache.tez.runtime.api.AbstractLogicalIOProcessor;
 import org.apache.tez.runtime.api.Event;
@@ -201,6 +203,9 @@ public class TezProcessor extends AbstractLogicalIOProcessor {
     jobConf.setInt(HIVE_TEZ_VERTEX_INDEX, processorContext.getTaskVertexIndex());
     jobConf.setInt(HIVE_TEZ_TASK_INDEX, processorContext.getTaskIndex());
     jobConf.setInt(HIVE_TEZ_TASK_ATTEMPT_NUMBER, processorContext.getTaskAttemptNumber());
+    // as MRInput sets it in the conf of its readers
+    jobConf.set(MRInput.TEZ_MAPREDUCE_DAG_ID,
+        TezDAGID.getInstance(processorContext.getApplicationId(), processorContext.getDagIdentifier()).toString());
   }
 
   private void setupMRLegacyConfigs(ProcessorContext processorContext) {

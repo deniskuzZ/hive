@@ -95,6 +95,7 @@ public class MapRecordProcessor extends RecordProcessor {
   private List<MapWork> mergeWorkList;
   private final List<String> cacheKeys = new ArrayList<>();
   private final List<String> dynamicValueCacheKeys = new ArrayList<>();
+  private DynamicValueRegistryTez registryTez;
   private final ObjectCache cache, dynamicValueCache;
   // is this part of the query-based compaction process
   private final boolean isInCompaction;
@@ -305,10 +306,9 @@ public class MapRecordProcessor extends RecordProcessor {
 
       // Setup values registry
       checkAbortCondition();
-      String valueRegistryKey = DynamicValue.DYNAMIC_VALUE_REGISTRY_CACHE_KEY;
+      String valueRegistryKey = DynamicValue.registryKey(jconf);
       // On LLAP dynamic value registry might already be cached.
-      final DynamicValueRegistryTez registryTez = dynamicValueCache.retrieve(valueRegistryKey,
-          () -> new DynamicValueRegistryTez());
+      registryTez = dynamicValueCache.retrieve(valueRegistryKey, () -> new DynamicValueRegistryTez());
       dynamicValueCacheKeys.add(valueRegistryKey);
       RegistryConfTez registryConf = new RegistryConfTez(jconf, mapWork, processorContext, inputs);
       registryTez.init(registryConf);
@@ -446,6 +446,10 @@ public class MapRecordProcessor extends RecordProcessor {
       for (String k: cacheKeys) {
         cache.release(k);
       }
+    }
+
+    if (registryTez != null) {
+      registryTez.release();
     }
 
     if (dynamicValueCache != null) {

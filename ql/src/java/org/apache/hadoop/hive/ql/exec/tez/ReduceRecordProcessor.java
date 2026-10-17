@@ -74,6 +74,7 @@ public class ReduceRecordProcessor extends RecordProcessor {
   private final List<BaseWork> mergeWorkList;
   private final List<String> cacheKeys;
   private final List<String> dynamicValueCacheKeys = new ArrayList<>();
+  private DynamicValueRegistryTez registryTez;
 
   private final Map<Integer, DummyStoreOperator> connectOps = new TreeMap<>();
   private final Map<Integer, ReduceWork> tagToReducerMap = new HashMap<>();
@@ -158,9 +159,8 @@ public class ReduceRecordProcessor extends RecordProcessor {
     OperatorUtils.setMemoryAvailable(reducer.getChildOperators(), memoryAvailableToTask);
 
     // Setup values registry
-    String valueRegistryKey = DynamicValue.DYNAMIC_VALUE_REGISTRY_CACHE_KEY;
-    DynamicValueRegistryTez registryTez =
-        dynamicValueCache.retrieve(valueRegistryKey, () -> new DynamicValueRegistryTez());
+    String valueRegistryKey = DynamicValue.registryKey(jconf);
+    registryTez = dynamicValueCache.retrieve(valueRegistryKey, () -> new DynamicValueRegistryTez());
     dynamicValueCacheKeys.add(valueRegistryKey);
     RegistryConfTez registryConf = new RegistryConfTez(jconf, reduceWork, processorContext, inputs);
     registryTez.init(registryConf);
@@ -343,6 +343,10 @@ public class ReduceRecordProcessor extends RecordProcessor {
       for (String key : cacheKeys) {
         cache.release(key);
       }
+    }
+
+    if (registryTez != null) {
+      registryTez.release();
     }
 
     if (dynamicValueCache != null) {

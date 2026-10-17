@@ -26,6 +26,7 @@ import java.util.concurrent.Callable;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hive.common.io.NonSyncByteArrayInputStream;
 import org.apache.hadoop.hive.common.type.HiveDecimal;
+import org.apache.hadoop.hive.common.NoDynamicValuesException;
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.ql.exec.ObjectCache;
 import org.apache.hadoop.hive.ql.exec.ObjectCacheFactory;
@@ -56,6 +57,7 @@ public class VectorInBloomFilterColDynamicValue extends VectorExpression {
   protected transient ColumnVector.Type colVectorType;
 
   private ObjectCache runtimeCache;
+  private String runtimeCacheKey;
 
   public VectorInBloomFilterColDynamicValue(int colNum, DynamicValue bloomFilterDynamicValue) {
     super(colNum, -1);
@@ -105,11 +107,12 @@ public class VectorInBloomFilterColDynamicValue extends VectorExpression {
 
     String queryId = HiveConf.getVar(conf, HiveConf.ConfVars.HIVE_QUERY_ID);
     runtimeCache = ObjectCacheFactory.getCache(conf, queryId, false, true);
+    runtimeCacheKey = DynamicValue.registryKey(conf) + ":" + bloomFilterDynamicValue.getId();
   }
 
   private void initValue() {
     try {
-      bloomFilter = (BloomKFilter) runtimeCache.retrieve(bloomFilterDynamicValue.getId(),
+      bloomFilter = (BloomKFilter) runtimeCache.retrieve(runtimeCacheKey,
           new Callable<Object>() {
             @Override
             public Object call() throws IOException {
@@ -148,6 +151,12 @@ public class VectorInBloomFilterColDynamicValue extends VectorExpression {
     }
 
     if (!initialized) {
+      try {
+        bloomFilterDynamicValue.getValue();
+      } catch (NoDynamicValuesException e) {
+        // The bloom filter has not arrived: the batch passes until it does.
+        return;
+      }
       initValue();
     }
 
