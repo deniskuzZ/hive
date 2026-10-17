@@ -13,6 +13,9 @@ set hive.tez.bigtable.minsize.semijoin.reduction=6000;
 -- Use TezSummaryPrinter hook to verify the impact of bloom filters by
 -- comparing the RECORDS_OUT of the respective operators.
 set hive.exec.post.hooks=org.apache.hadoop.hive.ql.hooks.PostExecTezSummaryPrinter;
+-- row mode: a vectorized scan reads its rows without waiting for its runtime filters, row mode waits for them, so the
+-- counters show what the filters remove
+set hive.vectorized.execution.enabled=false;
 
 -- Case 1: No semi-join reducers in the query
 set hive.tez.dynamic.semijoin.reduction=false;

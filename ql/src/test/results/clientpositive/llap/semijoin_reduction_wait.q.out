@@ -1,0 +1,961 @@
+PREHOOK: query: create table sjw_big (key string, value string) stored as orc
+PREHOOK: type: CREATETABLE
+PREHOOK: Output: database:default
+PREHOOK: Output: default@sjw_big
+POSTHOOK: query: create table sjw_big (key string, value string) stored as orc
+POSTHOOK: type: CREATETABLE
+POSTHOOK: Output: database:default
+POSTHOOK: Output: default@sjw_big
+PREHOOK: query: create table sjw_small (key1 string, value1 string) stored as orc
+PREHOOK: type: CREATETABLE
+PREHOOK: Output: database:default
+PREHOOK: Output: default@sjw_small
+POSTHOOK: query: create table sjw_small (key1 string, value1 string) stored as orc
+POSTHOOK: type: CREATETABLE
+POSTHOOK: Output: database:default
+POSTHOOK: Output: default@sjw_small
+PREHOOK: query: insert overwrite table sjw_big select key, value from srcpart where ds = '2008-04-08'
+PREHOOK: type: QUERY
+PREHOOK: Input: default@srcpart
+PREHOOK: Input: default@srcpart@ds=2008-04-08/hr=11
+PREHOOK: Input: default@srcpart@ds=2008-04-08/hr=12
+PREHOOK: Output: default@sjw_big
+POSTHOOK: query: insert overwrite table sjw_big select key, value from srcpart where ds = '2008-04-08'
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@srcpart
+POSTHOOK: Input: default@srcpart@ds=2008-04-08/hr=11
+POSTHOOK: Input: default@srcpart@ds=2008-04-08/hr=12
+POSTHOOK: Output: default@sjw_big
+POSTHOOK: Lineage: sjw_big.key SIMPLE [(srcpart)srcpart.FieldSchema(name:key, type:string, comment:default), ]
+POSTHOOK: Lineage: sjw_big.value SIMPLE [(srcpart)srcpart.FieldSchema(name:value, type:string, comment:default), ]
+PREHOOK: query: insert overwrite table sjw_small select key, value from srcpart where ds = '2008-04-09' limit 20
+PREHOOK: type: QUERY
+PREHOOK: Input: default@srcpart
+PREHOOK: Input: default@srcpart@ds=2008-04-09/hr=11
+PREHOOK: Input: default@srcpart@ds=2008-04-09/hr=12
+PREHOOK: Output: default@sjw_small
+POSTHOOK: query: insert overwrite table sjw_small select key, value from srcpart where ds = '2008-04-09' limit 20
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@srcpart
+POSTHOOK: Input: default@srcpart@ds=2008-04-09/hr=11
+POSTHOOK: Input: default@srcpart@ds=2008-04-09/hr=12
+POSTHOOK: Output: default@sjw_small
+POSTHOOK: Lineage: sjw_small.key1 SIMPLE [(srcpart)srcpart.FieldSchema(name:key, type:string, comment:default), ]
+POSTHOOK: Lineage: sjw_small.value1 SIMPLE [(srcpart)srcpart.FieldSchema(name:value, type:string, comment:default), ]
+PREHOOK: query: analyze table sjw_big compute statistics for columns
+PREHOOK: type: ANALYZE_TABLE
+PREHOOK: Input: default@sjw_big
+PREHOOK: Output: default@sjw_big
+#### A masked pattern was here ####
+POSTHOOK: query: analyze table sjw_big compute statistics for columns
+POSTHOOK: type: ANALYZE_TABLE
+POSTHOOK: Input: default@sjw_big
+POSTHOOK: Output: default@sjw_big
+#### A masked pattern was here ####
+PREHOOK: query: analyze table sjw_small compute statistics for columns
+PREHOOK: type: ANALYZE_TABLE
+PREHOOK: Input: default@sjw_small
+PREHOOK: Output: default@sjw_small
+#### A masked pattern was here ####
+POSTHOOK: query: analyze table sjw_small compute statistics for columns
+POSTHOOK: type: ANALYZE_TABLE
+POSTHOOK: Input: default@sjw_small
+POSTHOOK: Output: default@sjw_small
+#### A masked pattern was here ####
+PREHOOK: query: explain select count(*) from sjw_big join sjw_small on (sjw_big.key = sjw_small.key1)
+PREHOOK: type: QUERY
+PREHOOK: Input: default@sjw_big
+PREHOOK: Input: default@sjw_small
+#### A masked pattern was here ####
+POSTHOOK: query: explain select count(*) from sjw_big join sjw_small on (sjw_big.key = sjw_small.key1)
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@sjw_big
+POSTHOOK: Input: default@sjw_small
+#### A masked pattern was here ####
+STAGE DEPENDENCIES:
+  Stage-1 is a root stage
+  Stage-0 depends on stages: Stage-1
+
+STAGE PLANS:
+  Stage: Stage-1
+    Tez
+#### A masked pattern was here ####
+      Edges:
+        Map 1 <- Reducer 5 (BROADCAST_EDGE)
+        Reducer 2 <- Map 1 (SIMPLE_EDGE), Map 4 (SIMPLE_EDGE)
+        Reducer 3 <- Reducer 2 (CUSTOM_SIMPLE_EDGE)
+        Reducer 5 <- Map 4 (CUSTOM_SIMPLE_EDGE)
+#### A masked pattern was here ####
+      Vertices:
+        Map 1 
+            Map Operator Tree:
+                TableScan
+                  alias: sjw_big
+                  filterExpr: (key is not null and key BETWEEN DynamicValue(RS_7_sjw_small_key1_min) AND DynamicValue(RS_7_sjw_small_key1_max) and in_bloom_filter(key, DynamicValue(RS_7_sjw_small_key1_bloom_filter))) (type: boolean)
+                  Statistics: Num rows: 1000 Data size: 87000 Basic stats: COMPLETE Column stats: COMPLETE
+                  Filter Operator
+                    predicate: (key is not null and key BETWEEN DynamicValue(RS_7_sjw_small_key1_min) AND DynamicValue(RS_7_sjw_small_key1_max) and in_bloom_filter(key, DynamicValue(RS_7_sjw_small_key1_bloom_filter))) (type: boolean)
+                    Statistics: Num rows: 1000 Data size: 87000 Basic stats: COMPLETE Column stats: COMPLETE
+                    Select Operator
+                      expressions: key (type: string)
+                      outputColumnNames: _col0
+                      Statistics: Num rows: 1000 Data size: 87000 Basic stats: COMPLETE Column stats: COMPLETE
+                      Reduce Output Operator
+                        key expressions: _col0 (type: string)
+                        null sort order: z
+                        sort order: +
+                        Map-reduce partition columns: _col0 (type: string)
+                        Statistics: Num rows: 1000 Data size: 87000 Basic stats: COMPLETE Column stats: COMPLETE
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Map 4 
+            Map Operator Tree:
+                TableScan
+                  alias: sjw_small
+                  filterExpr: key1 is not null (type: boolean)
+                  Statistics: Num rows: 20 Data size: 1740 Basic stats: COMPLETE Column stats: COMPLETE
+                  Filter Operator
+                    predicate: key1 is not null (type: boolean)
+                    Statistics: Num rows: 20 Data size: 1740 Basic stats: COMPLETE Column stats: COMPLETE
+                    Select Operator
+                      expressions: key1 (type: string)
+                      outputColumnNames: _col0
+                      Statistics: Num rows: 20 Data size: 1740 Basic stats: COMPLETE Column stats: COMPLETE
+                      Reduce Output Operator
+                        key expressions: _col0 (type: string)
+                        null sort order: z
+                        sort order: +
+                        Map-reduce partition columns: _col0 (type: string)
+                        Statistics: Num rows: 20 Data size: 1740 Basic stats: COMPLETE Column stats: COMPLETE
+                      Select Operator
+                        expressions: _col0 (type: string)
+                        outputColumnNames: _col0
+                        Statistics: Num rows: 20 Data size: 1740 Basic stats: COMPLETE Column stats: COMPLETE
+                        Group By Operator
+                          aggregations: min(_col0), max(_col0), bloom_filter(_col0, expectedEntries=20)
+                          minReductionHashAggr: 0.95
+                          mode: hash
+                          outputColumnNames: _col0, _col1, _col2
+                          Statistics: Num rows: 1 Data size: 512 Basic stats: COMPLETE Column stats: COMPLETE
+                          Reduce Output Operator
+                            null sort order: 
+                            sort order: 
+                            Statistics: Num rows: 1 Data size: 512 Basic stats: COMPLETE Column stats: COMPLETE
+                            value expressions: _col0 (type: string), _col1 (type: string), _col2 (type: binary)
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Reducer 2 
+            Execution mode: llap
+            Reduce Operator Tree:
+              Merge Join Operator
+                condition map:
+                     Inner Join 0 to 1
+                keys:
+                  0 _col0 (type: string)
+                  1 _col0 (type: string)
+                Statistics: Num rows: 63 Data size: 504 Basic stats: COMPLETE Column stats: COMPLETE
+                Group By Operator
+                  aggregations: count()
+                  minReductionHashAggr: 0.984127
+                  mode: hash
+                  outputColumnNames: _col0
+                  Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                  Reduce Output Operator
+                    null sort order: 
+                    sort order: 
+                    Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                    value expressions: _col0 (type: bigint)
+        Reducer 3 
+            Execution mode: vectorized, llap
+            Reduce Operator Tree:
+              Group By Operator
+                aggregations: count(VALUE._col0)
+                mode: mergepartial
+                outputColumnNames: _col0
+                Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                File Output Operator
+                  compressed: false
+                  Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                  table:
+                      input format: org.apache.hadoop.mapred.SequenceFileInputFormat
+                      output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
+                      serde: org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe
+        Reducer 5 
+            Execution mode: vectorized, llap
+            Reduce Operator Tree:
+              Group By Operator
+                aggregations: min(VALUE._col0), max(VALUE._col1), bloom_filter(VALUE._col2, 1, expectedEntries=20)
+                mode: final
+                outputColumnNames: _col0, _col1, _col2
+                Statistics: Num rows: 1 Data size: 512 Basic stats: COMPLETE Column stats: COMPLETE
+                Reduce Output Operator
+                  null sort order: 
+                  sort order: 
+                  Statistics: Num rows: 1 Data size: 512 Basic stats: COMPLETE Column stats: COMPLETE
+                  value expressions: _col0 (type: string), _col1 (type: string), _col2 (type: binary)
+
+  Stage: Stage-0
+    Fetch Operator
+      limit: -1
+      Processor Tree:
+        ListSink
+
+PREHOOK: query: select count(*) from sjw_big join sjw_small on (sjw_big.key = sjw_small.key1)
+PREHOOK: type: QUERY
+PREHOOK: Input: default@sjw_big
+PREHOOK: Input: default@sjw_small
+#### A masked pattern was here ####
+POSTHOOK: query: select count(*) from sjw_big join sjw_small on (sjw_big.key = sjw_small.key1)
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@sjw_big
+POSTHOOK: Input: default@sjw_small
+#### A masked pattern was here ####
+88
+PREHOOK: query: create table sjw_fact (v int) partitioned by (d_sk int) stored as orc
+PREHOOK: type: CREATETABLE
+PREHOOK: Output: database:default
+PREHOOK: Output: default@sjw_fact
+POSTHOOK: query: create table sjw_fact (v int) partitioned by (d_sk int) stored as orc
+POSTHOOK: type: CREATETABLE
+POSTHOOK: Output: database:default
+POSTHOOK: Output: default@sjw_fact
+PREHOOK: query: create table sjw_date (d_sk int, d_date string, d_week int) stored as orc
+PREHOOK: type: CREATETABLE
+PREHOOK: Output: database:default
+PREHOOK: Output: default@sjw_date
+POSTHOOK: query: create table sjw_date (d_sk int, d_date string, d_week int) stored as orc
+POSTHOOK: type: CREATETABLE
+POSTHOOK: Output: database:default
+POSTHOOK: Output: default@sjw_date
+PREHOOK: query: insert overwrite table sjw_fact partition (d_sk) select pos % 7, pos % 40 from (select posexplode(split(space(799), ' '))) t
+PREHOOK: type: QUERY
+PREHOOK: Input: _dummy_database@_dummy_table
+PREHOOK: Output: default@sjw_fact
+POSTHOOK: query: insert overwrite table sjw_fact partition (d_sk) select pos % 7, pos % 40 from (select posexplode(split(space(799), ' '))) t
+POSTHOOK: type: QUERY
+POSTHOOK: Input: _dummy_database@_dummy_table
+POSTHOOK: Output: default@sjw_fact
+POSTHOOK: Output: default@sjw_fact@d_sk=0
+POSTHOOK: Output: default@sjw_fact@d_sk=1
+POSTHOOK: Output: default@sjw_fact@d_sk=10
+POSTHOOK: Output: default@sjw_fact@d_sk=11
+POSTHOOK: Output: default@sjw_fact@d_sk=12
+POSTHOOK: Output: default@sjw_fact@d_sk=13
+POSTHOOK: Output: default@sjw_fact@d_sk=14
+POSTHOOK: Output: default@sjw_fact@d_sk=15
+POSTHOOK: Output: default@sjw_fact@d_sk=16
+POSTHOOK: Output: default@sjw_fact@d_sk=17
+POSTHOOK: Output: default@sjw_fact@d_sk=18
+POSTHOOK: Output: default@sjw_fact@d_sk=19
+POSTHOOK: Output: default@sjw_fact@d_sk=2
+POSTHOOK: Output: default@sjw_fact@d_sk=20
+POSTHOOK: Output: default@sjw_fact@d_sk=21
+POSTHOOK: Output: default@sjw_fact@d_sk=22
+POSTHOOK: Output: default@sjw_fact@d_sk=23
+POSTHOOK: Output: default@sjw_fact@d_sk=24
+POSTHOOK: Output: default@sjw_fact@d_sk=25
+POSTHOOK: Output: default@sjw_fact@d_sk=26
+POSTHOOK: Output: default@sjw_fact@d_sk=27
+POSTHOOK: Output: default@sjw_fact@d_sk=28
+POSTHOOK: Output: default@sjw_fact@d_sk=29
+POSTHOOK: Output: default@sjw_fact@d_sk=3
+POSTHOOK: Output: default@sjw_fact@d_sk=30
+POSTHOOK: Output: default@sjw_fact@d_sk=31
+POSTHOOK: Output: default@sjw_fact@d_sk=32
+POSTHOOK: Output: default@sjw_fact@d_sk=33
+POSTHOOK: Output: default@sjw_fact@d_sk=34
+POSTHOOK: Output: default@sjw_fact@d_sk=35
+POSTHOOK: Output: default@sjw_fact@d_sk=36
+POSTHOOK: Output: default@sjw_fact@d_sk=37
+POSTHOOK: Output: default@sjw_fact@d_sk=38
+POSTHOOK: Output: default@sjw_fact@d_sk=39
+POSTHOOK: Output: default@sjw_fact@d_sk=4
+POSTHOOK: Output: default@sjw_fact@d_sk=5
+POSTHOOK: Output: default@sjw_fact@d_sk=6
+POSTHOOK: Output: default@sjw_fact@d_sk=7
+POSTHOOK: Output: default@sjw_fact@d_sk=8
+POSTHOOK: Output: default@sjw_fact@d_sk=9
+POSTHOOK: Lineage: sjw_fact PARTITION(d_sk=0).v SCRIPT []
+POSTHOOK: Lineage: sjw_fact PARTITION(d_sk=10).v SCRIPT []
+POSTHOOK: Lineage: sjw_fact PARTITION(d_sk=11).v SCRIPT []
+POSTHOOK: Lineage: sjw_fact PARTITION(d_sk=12).v SCRIPT []
+POSTHOOK: Lineage: sjw_fact PARTITION(d_sk=13).v SCRIPT []
+POSTHOOK: Lineage: sjw_fact PARTITION(d_sk=14).v SCRIPT []
+POSTHOOK: Lineage: sjw_fact PARTITION(d_sk=15).v SCRIPT []
+POSTHOOK: Lineage: sjw_fact PARTITION(d_sk=16).v SCRIPT []
+POSTHOOK: Lineage: sjw_fact PARTITION(d_sk=17).v SCRIPT []
+POSTHOOK: Lineage: sjw_fact PARTITION(d_sk=18).v SCRIPT []
+POSTHOOK: Lineage: sjw_fact PARTITION(d_sk=19).v SCRIPT []
+POSTHOOK: Lineage: sjw_fact PARTITION(d_sk=1).v SCRIPT []
+POSTHOOK: Lineage: sjw_fact PARTITION(d_sk=20).v SCRIPT []
+POSTHOOK: Lineage: sjw_fact PARTITION(d_sk=21).v SCRIPT []
+POSTHOOK: Lineage: sjw_fact PARTITION(d_sk=22).v SCRIPT []
+POSTHOOK: Lineage: sjw_fact PARTITION(d_sk=23).v SCRIPT []
+POSTHOOK: Lineage: sjw_fact PARTITION(d_sk=24).v SCRIPT []
+POSTHOOK: Lineage: sjw_fact PARTITION(d_sk=25).v SCRIPT []
+POSTHOOK: Lineage: sjw_fact PARTITION(d_sk=26).v SCRIPT []
+POSTHOOK: Lineage: sjw_fact PARTITION(d_sk=27).v SCRIPT []
+POSTHOOK: Lineage: sjw_fact PARTITION(d_sk=28).v SCRIPT []
+POSTHOOK: Lineage: sjw_fact PARTITION(d_sk=29).v SCRIPT []
+POSTHOOK: Lineage: sjw_fact PARTITION(d_sk=2).v SCRIPT []
+POSTHOOK: Lineage: sjw_fact PARTITION(d_sk=30).v SCRIPT []
+POSTHOOK: Lineage: sjw_fact PARTITION(d_sk=31).v SCRIPT []
+POSTHOOK: Lineage: sjw_fact PARTITION(d_sk=32).v SCRIPT []
+POSTHOOK: Lineage: sjw_fact PARTITION(d_sk=33).v SCRIPT []
+POSTHOOK: Lineage: sjw_fact PARTITION(d_sk=34).v SCRIPT []
+POSTHOOK: Lineage: sjw_fact PARTITION(d_sk=35).v SCRIPT []
+POSTHOOK: Lineage: sjw_fact PARTITION(d_sk=36).v SCRIPT []
+POSTHOOK: Lineage: sjw_fact PARTITION(d_sk=37).v SCRIPT []
+POSTHOOK: Lineage: sjw_fact PARTITION(d_sk=38).v SCRIPT []
+POSTHOOK: Lineage: sjw_fact PARTITION(d_sk=39).v SCRIPT []
+POSTHOOK: Lineage: sjw_fact PARTITION(d_sk=3).v SCRIPT []
+POSTHOOK: Lineage: sjw_fact PARTITION(d_sk=4).v SCRIPT []
+POSTHOOK: Lineage: sjw_fact PARTITION(d_sk=5).v SCRIPT []
+POSTHOOK: Lineage: sjw_fact PARTITION(d_sk=6).v SCRIPT []
+POSTHOOK: Lineage: sjw_fact PARTITION(d_sk=7).v SCRIPT []
+POSTHOOK: Lineage: sjw_fact PARTITION(d_sk=8).v SCRIPT []
+POSTHOOK: Lineage: sjw_fact PARTITION(d_sk=9).v SCRIPT []
+PREHOOK: query: insert overwrite table sjw_date select pos, concat('2000-01-', pos), pos div 7 from (select posexplode(split(space(39), ' '))) t
+PREHOOK: type: QUERY
+PREHOOK: Input: _dummy_database@_dummy_table
+PREHOOK: Output: default@sjw_date
+POSTHOOK: query: insert overwrite table sjw_date select pos, concat('2000-01-', pos), pos div 7 from (select posexplode(split(space(39), ' '))) t
+POSTHOOK: type: QUERY
+POSTHOOK: Input: _dummy_database@_dummy_table
+POSTHOOK: Output: default@sjw_date
+POSTHOOK: Lineage: sjw_date.d_date SCRIPT []
+POSTHOOK: Lineage: sjw_date.d_sk SCRIPT []
+POSTHOOK: Lineage: sjw_date.d_week SCRIPT []
+PREHOOK: query: analyze table sjw_fact compute statistics for columns
+PREHOOK: type: ANALYZE_TABLE
+PREHOOK: Input: default@sjw_fact
+PREHOOK: Input: default@sjw_fact@d_sk=0
+PREHOOK: Input: default@sjw_fact@d_sk=1
+PREHOOK: Input: default@sjw_fact@d_sk=10
+PREHOOK: Input: default@sjw_fact@d_sk=11
+PREHOOK: Input: default@sjw_fact@d_sk=12
+PREHOOK: Input: default@sjw_fact@d_sk=13
+PREHOOK: Input: default@sjw_fact@d_sk=14
+PREHOOK: Input: default@sjw_fact@d_sk=15
+PREHOOK: Input: default@sjw_fact@d_sk=16
+PREHOOK: Input: default@sjw_fact@d_sk=17
+PREHOOK: Input: default@sjw_fact@d_sk=18
+PREHOOK: Input: default@sjw_fact@d_sk=19
+PREHOOK: Input: default@sjw_fact@d_sk=2
+PREHOOK: Input: default@sjw_fact@d_sk=20
+PREHOOK: Input: default@sjw_fact@d_sk=21
+PREHOOK: Input: default@sjw_fact@d_sk=22
+PREHOOK: Input: default@sjw_fact@d_sk=23
+PREHOOK: Input: default@sjw_fact@d_sk=24
+PREHOOK: Input: default@sjw_fact@d_sk=25
+PREHOOK: Input: default@sjw_fact@d_sk=26
+PREHOOK: Input: default@sjw_fact@d_sk=27
+PREHOOK: Input: default@sjw_fact@d_sk=28
+PREHOOK: Input: default@sjw_fact@d_sk=29
+PREHOOK: Input: default@sjw_fact@d_sk=3
+PREHOOK: Input: default@sjw_fact@d_sk=30
+PREHOOK: Input: default@sjw_fact@d_sk=31
+PREHOOK: Input: default@sjw_fact@d_sk=32
+PREHOOK: Input: default@sjw_fact@d_sk=33
+PREHOOK: Input: default@sjw_fact@d_sk=34
+PREHOOK: Input: default@sjw_fact@d_sk=35
+PREHOOK: Input: default@sjw_fact@d_sk=36
+PREHOOK: Input: default@sjw_fact@d_sk=37
+PREHOOK: Input: default@sjw_fact@d_sk=38
+PREHOOK: Input: default@sjw_fact@d_sk=39
+PREHOOK: Input: default@sjw_fact@d_sk=4
+PREHOOK: Input: default@sjw_fact@d_sk=5
+PREHOOK: Input: default@sjw_fact@d_sk=6
+PREHOOK: Input: default@sjw_fact@d_sk=7
+PREHOOK: Input: default@sjw_fact@d_sk=8
+PREHOOK: Input: default@sjw_fact@d_sk=9
+PREHOOK: Output: default@sjw_fact
+PREHOOK: Output: default@sjw_fact@d_sk=0
+PREHOOK: Output: default@sjw_fact@d_sk=1
+PREHOOK: Output: default@sjw_fact@d_sk=10
+PREHOOK: Output: default@sjw_fact@d_sk=11
+PREHOOK: Output: default@sjw_fact@d_sk=12
+PREHOOK: Output: default@sjw_fact@d_sk=13
+PREHOOK: Output: default@sjw_fact@d_sk=14
+PREHOOK: Output: default@sjw_fact@d_sk=15
+PREHOOK: Output: default@sjw_fact@d_sk=16
+PREHOOK: Output: default@sjw_fact@d_sk=17
+PREHOOK: Output: default@sjw_fact@d_sk=18
+PREHOOK: Output: default@sjw_fact@d_sk=19
+PREHOOK: Output: default@sjw_fact@d_sk=2
+PREHOOK: Output: default@sjw_fact@d_sk=20
+PREHOOK: Output: default@sjw_fact@d_sk=21
+PREHOOK: Output: default@sjw_fact@d_sk=22
+PREHOOK: Output: default@sjw_fact@d_sk=23
+PREHOOK: Output: default@sjw_fact@d_sk=24
+PREHOOK: Output: default@sjw_fact@d_sk=25
+PREHOOK: Output: default@sjw_fact@d_sk=26
+PREHOOK: Output: default@sjw_fact@d_sk=27
+PREHOOK: Output: default@sjw_fact@d_sk=28
+PREHOOK: Output: default@sjw_fact@d_sk=29
+PREHOOK: Output: default@sjw_fact@d_sk=3
+PREHOOK: Output: default@sjw_fact@d_sk=30
+PREHOOK: Output: default@sjw_fact@d_sk=31
+PREHOOK: Output: default@sjw_fact@d_sk=32
+PREHOOK: Output: default@sjw_fact@d_sk=33
+PREHOOK: Output: default@sjw_fact@d_sk=34
+PREHOOK: Output: default@sjw_fact@d_sk=35
+PREHOOK: Output: default@sjw_fact@d_sk=36
+PREHOOK: Output: default@sjw_fact@d_sk=37
+PREHOOK: Output: default@sjw_fact@d_sk=38
+PREHOOK: Output: default@sjw_fact@d_sk=39
+PREHOOK: Output: default@sjw_fact@d_sk=4
+PREHOOK: Output: default@sjw_fact@d_sk=5
+PREHOOK: Output: default@sjw_fact@d_sk=6
+PREHOOK: Output: default@sjw_fact@d_sk=7
+PREHOOK: Output: default@sjw_fact@d_sk=8
+PREHOOK: Output: default@sjw_fact@d_sk=9
+#### A masked pattern was here ####
+POSTHOOK: query: analyze table sjw_fact compute statistics for columns
+POSTHOOK: type: ANALYZE_TABLE
+POSTHOOK: Input: default@sjw_fact
+POSTHOOK: Input: default@sjw_fact@d_sk=0
+POSTHOOK: Input: default@sjw_fact@d_sk=1
+POSTHOOK: Input: default@sjw_fact@d_sk=10
+POSTHOOK: Input: default@sjw_fact@d_sk=11
+POSTHOOK: Input: default@sjw_fact@d_sk=12
+POSTHOOK: Input: default@sjw_fact@d_sk=13
+POSTHOOK: Input: default@sjw_fact@d_sk=14
+POSTHOOK: Input: default@sjw_fact@d_sk=15
+POSTHOOK: Input: default@sjw_fact@d_sk=16
+POSTHOOK: Input: default@sjw_fact@d_sk=17
+POSTHOOK: Input: default@sjw_fact@d_sk=18
+POSTHOOK: Input: default@sjw_fact@d_sk=19
+POSTHOOK: Input: default@sjw_fact@d_sk=2
+POSTHOOK: Input: default@sjw_fact@d_sk=20
+POSTHOOK: Input: default@sjw_fact@d_sk=21
+POSTHOOK: Input: default@sjw_fact@d_sk=22
+POSTHOOK: Input: default@sjw_fact@d_sk=23
+POSTHOOK: Input: default@sjw_fact@d_sk=24
+POSTHOOK: Input: default@sjw_fact@d_sk=25
+POSTHOOK: Input: default@sjw_fact@d_sk=26
+POSTHOOK: Input: default@sjw_fact@d_sk=27
+POSTHOOK: Input: default@sjw_fact@d_sk=28
+POSTHOOK: Input: default@sjw_fact@d_sk=29
+POSTHOOK: Input: default@sjw_fact@d_sk=3
+POSTHOOK: Input: default@sjw_fact@d_sk=30
+POSTHOOK: Input: default@sjw_fact@d_sk=31
+POSTHOOK: Input: default@sjw_fact@d_sk=32
+POSTHOOK: Input: default@sjw_fact@d_sk=33
+POSTHOOK: Input: default@sjw_fact@d_sk=34
+POSTHOOK: Input: default@sjw_fact@d_sk=35
+POSTHOOK: Input: default@sjw_fact@d_sk=36
+POSTHOOK: Input: default@sjw_fact@d_sk=37
+POSTHOOK: Input: default@sjw_fact@d_sk=38
+POSTHOOK: Input: default@sjw_fact@d_sk=39
+POSTHOOK: Input: default@sjw_fact@d_sk=4
+POSTHOOK: Input: default@sjw_fact@d_sk=5
+POSTHOOK: Input: default@sjw_fact@d_sk=6
+POSTHOOK: Input: default@sjw_fact@d_sk=7
+POSTHOOK: Input: default@sjw_fact@d_sk=8
+POSTHOOK: Input: default@sjw_fact@d_sk=9
+POSTHOOK: Output: default@sjw_fact
+POSTHOOK: Output: default@sjw_fact@d_sk=0
+POSTHOOK: Output: default@sjw_fact@d_sk=1
+POSTHOOK: Output: default@sjw_fact@d_sk=10
+POSTHOOK: Output: default@sjw_fact@d_sk=11
+POSTHOOK: Output: default@sjw_fact@d_sk=12
+POSTHOOK: Output: default@sjw_fact@d_sk=13
+POSTHOOK: Output: default@sjw_fact@d_sk=14
+POSTHOOK: Output: default@sjw_fact@d_sk=15
+POSTHOOK: Output: default@sjw_fact@d_sk=16
+POSTHOOK: Output: default@sjw_fact@d_sk=17
+POSTHOOK: Output: default@sjw_fact@d_sk=18
+POSTHOOK: Output: default@sjw_fact@d_sk=19
+POSTHOOK: Output: default@sjw_fact@d_sk=2
+POSTHOOK: Output: default@sjw_fact@d_sk=20
+POSTHOOK: Output: default@sjw_fact@d_sk=21
+POSTHOOK: Output: default@sjw_fact@d_sk=22
+POSTHOOK: Output: default@sjw_fact@d_sk=23
+POSTHOOK: Output: default@sjw_fact@d_sk=24
+POSTHOOK: Output: default@sjw_fact@d_sk=25
+POSTHOOK: Output: default@sjw_fact@d_sk=26
+POSTHOOK: Output: default@sjw_fact@d_sk=27
+POSTHOOK: Output: default@sjw_fact@d_sk=28
+POSTHOOK: Output: default@sjw_fact@d_sk=29
+POSTHOOK: Output: default@sjw_fact@d_sk=3
+POSTHOOK: Output: default@sjw_fact@d_sk=30
+POSTHOOK: Output: default@sjw_fact@d_sk=31
+POSTHOOK: Output: default@sjw_fact@d_sk=32
+POSTHOOK: Output: default@sjw_fact@d_sk=33
+POSTHOOK: Output: default@sjw_fact@d_sk=34
+POSTHOOK: Output: default@sjw_fact@d_sk=35
+POSTHOOK: Output: default@sjw_fact@d_sk=36
+POSTHOOK: Output: default@sjw_fact@d_sk=37
+POSTHOOK: Output: default@sjw_fact@d_sk=38
+POSTHOOK: Output: default@sjw_fact@d_sk=39
+POSTHOOK: Output: default@sjw_fact@d_sk=4
+POSTHOOK: Output: default@sjw_fact@d_sk=5
+POSTHOOK: Output: default@sjw_fact@d_sk=6
+POSTHOOK: Output: default@sjw_fact@d_sk=7
+POSTHOOK: Output: default@sjw_fact@d_sk=8
+POSTHOOK: Output: default@sjw_fact@d_sk=9
+#### A masked pattern was here ####
+PREHOOK: query: analyze table sjw_date compute statistics for columns
+PREHOOK: type: ANALYZE_TABLE
+PREHOOK: Input: default@sjw_date
+PREHOOK: Output: default@sjw_date
+#### A masked pattern was here ####
+POSTHOOK: query: analyze table sjw_date compute statistics for columns
+POSTHOOK: type: ANALYZE_TABLE
+POSTHOOK: Input: default@sjw_date
+POSTHOOK: Output: default@sjw_date
+#### A masked pattern was here ####
+PREHOOK: query: explain
+select count(*), sum(f.v) from sjw_fact f
+join sjw_date d on f.d_sk = d.d_sk
+join (select d_date from sjw_date where d_week = 3) w on d.d_date = w.d_date
+PREHOOK: type: QUERY
+PREHOOK: Input: default@sjw_date
+PREHOOK: Input: default@sjw_fact
+PREHOOK: Input: default@sjw_fact@d_sk=0
+PREHOOK: Input: default@sjw_fact@d_sk=1
+PREHOOK: Input: default@sjw_fact@d_sk=10
+PREHOOK: Input: default@sjw_fact@d_sk=11
+PREHOOK: Input: default@sjw_fact@d_sk=12
+PREHOOK: Input: default@sjw_fact@d_sk=13
+PREHOOK: Input: default@sjw_fact@d_sk=14
+PREHOOK: Input: default@sjw_fact@d_sk=15
+PREHOOK: Input: default@sjw_fact@d_sk=16
+PREHOOK: Input: default@sjw_fact@d_sk=17
+PREHOOK: Input: default@sjw_fact@d_sk=18
+PREHOOK: Input: default@sjw_fact@d_sk=19
+PREHOOK: Input: default@sjw_fact@d_sk=2
+PREHOOK: Input: default@sjw_fact@d_sk=20
+PREHOOK: Input: default@sjw_fact@d_sk=21
+PREHOOK: Input: default@sjw_fact@d_sk=22
+PREHOOK: Input: default@sjw_fact@d_sk=23
+PREHOOK: Input: default@sjw_fact@d_sk=24
+PREHOOK: Input: default@sjw_fact@d_sk=25
+PREHOOK: Input: default@sjw_fact@d_sk=26
+PREHOOK: Input: default@sjw_fact@d_sk=27
+PREHOOK: Input: default@sjw_fact@d_sk=28
+PREHOOK: Input: default@sjw_fact@d_sk=29
+PREHOOK: Input: default@sjw_fact@d_sk=3
+PREHOOK: Input: default@sjw_fact@d_sk=30
+PREHOOK: Input: default@sjw_fact@d_sk=31
+PREHOOK: Input: default@sjw_fact@d_sk=32
+PREHOOK: Input: default@sjw_fact@d_sk=33
+PREHOOK: Input: default@sjw_fact@d_sk=34
+PREHOOK: Input: default@sjw_fact@d_sk=35
+PREHOOK: Input: default@sjw_fact@d_sk=36
+PREHOOK: Input: default@sjw_fact@d_sk=37
+PREHOOK: Input: default@sjw_fact@d_sk=38
+PREHOOK: Input: default@sjw_fact@d_sk=39
+PREHOOK: Input: default@sjw_fact@d_sk=4
+PREHOOK: Input: default@sjw_fact@d_sk=5
+PREHOOK: Input: default@sjw_fact@d_sk=6
+PREHOOK: Input: default@sjw_fact@d_sk=7
+PREHOOK: Input: default@sjw_fact@d_sk=8
+PREHOOK: Input: default@sjw_fact@d_sk=9
+#### A masked pattern was here ####
+POSTHOOK: query: explain
+select count(*), sum(f.v) from sjw_fact f
+join sjw_date d on f.d_sk = d.d_sk
+join (select d_date from sjw_date where d_week = 3) w on d.d_date = w.d_date
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@sjw_date
+POSTHOOK: Input: default@sjw_fact
+POSTHOOK: Input: default@sjw_fact@d_sk=0
+POSTHOOK: Input: default@sjw_fact@d_sk=1
+POSTHOOK: Input: default@sjw_fact@d_sk=10
+POSTHOOK: Input: default@sjw_fact@d_sk=11
+POSTHOOK: Input: default@sjw_fact@d_sk=12
+POSTHOOK: Input: default@sjw_fact@d_sk=13
+POSTHOOK: Input: default@sjw_fact@d_sk=14
+POSTHOOK: Input: default@sjw_fact@d_sk=15
+POSTHOOK: Input: default@sjw_fact@d_sk=16
+POSTHOOK: Input: default@sjw_fact@d_sk=17
+POSTHOOK: Input: default@sjw_fact@d_sk=18
+POSTHOOK: Input: default@sjw_fact@d_sk=19
+POSTHOOK: Input: default@sjw_fact@d_sk=2
+POSTHOOK: Input: default@sjw_fact@d_sk=20
+POSTHOOK: Input: default@sjw_fact@d_sk=21
+POSTHOOK: Input: default@sjw_fact@d_sk=22
+POSTHOOK: Input: default@sjw_fact@d_sk=23
+POSTHOOK: Input: default@sjw_fact@d_sk=24
+POSTHOOK: Input: default@sjw_fact@d_sk=25
+POSTHOOK: Input: default@sjw_fact@d_sk=26
+POSTHOOK: Input: default@sjw_fact@d_sk=27
+POSTHOOK: Input: default@sjw_fact@d_sk=28
+POSTHOOK: Input: default@sjw_fact@d_sk=29
+POSTHOOK: Input: default@sjw_fact@d_sk=3
+POSTHOOK: Input: default@sjw_fact@d_sk=30
+POSTHOOK: Input: default@sjw_fact@d_sk=31
+POSTHOOK: Input: default@sjw_fact@d_sk=32
+POSTHOOK: Input: default@sjw_fact@d_sk=33
+POSTHOOK: Input: default@sjw_fact@d_sk=34
+POSTHOOK: Input: default@sjw_fact@d_sk=35
+POSTHOOK: Input: default@sjw_fact@d_sk=36
+POSTHOOK: Input: default@sjw_fact@d_sk=37
+POSTHOOK: Input: default@sjw_fact@d_sk=38
+POSTHOOK: Input: default@sjw_fact@d_sk=39
+POSTHOOK: Input: default@sjw_fact@d_sk=4
+POSTHOOK: Input: default@sjw_fact@d_sk=5
+POSTHOOK: Input: default@sjw_fact@d_sk=6
+POSTHOOK: Input: default@sjw_fact@d_sk=7
+POSTHOOK: Input: default@sjw_fact@d_sk=8
+POSTHOOK: Input: default@sjw_fact@d_sk=9
+#### A masked pattern was here ####
+STAGE DEPENDENCIES:
+  Stage-1 is a root stage
+  Stage-0 depends on stages: Stage-1
+
+STAGE PLANS:
+  Stage: Stage-1
+    Tez
+#### A masked pattern was here ####
+      Edges:
+        Map 1 <- Map 2 (BROADCAST_EDGE), Reducer 3 (BROADCAST_EDGE)
+        Map 4 <- Map 1 (BROADCAST_EDGE)
+        Reducer 3 <- Map 2 (CUSTOM_SIMPLE_EDGE)
+        Reducer 5 <- Map 4 (CUSTOM_SIMPLE_EDGE)
+#### A masked pattern was here ####
+      Vertices:
+        Map 1 
+            Map Operator Tree:
+                TableScan
+                  alias: d
+                  filterExpr: (d_sk is not null and d_date is not null and d_date BETWEEN DynamicValue(RS_10_sjw_date_d_date_min, wait) AND DynamicValue(RS_10_sjw_date_d_date_max, wait) and in_bloom_filter(d_date, DynamicValue(RS_10_sjw_date_d_date_bloom_filter, wait))) (type: boolean)
+                  probeDecodeDetails: cacheKey:HASH_MAP_MAPJOIN_42_container, bigKeyColName:d_date, smallTablePos:1, keyRatio:0.175
+                  Statistics: Num rows: 40 Data size: 3920 Basic stats: COMPLETE Column stats: COMPLETE
+                  Filter Operator
+                    predicate: (d_sk is not null and d_date is not null and d_date BETWEEN DynamicValue(RS_10_sjw_date_d_date_min, wait) AND DynamicValue(RS_10_sjw_date_d_date_max, wait) and in_bloom_filter(d_date, DynamicValue(RS_10_sjw_date_d_date_bloom_filter, wait))) (type: boolean)
+                    Statistics: Num rows: 40 Data size: 3920 Basic stats: COMPLETE Column stats: COMPLETE
+                    Select Operator
+                      expressions: d_sk (type: int), d_date (type: string)
+                      outputColumnNames: _col0, _col1
+                      Statistics: Num rows: 40 Data size: 3920 Basic stats: COMPLETE Column stats: COMPLETE
+                      Map Join Operator
+                        condition map:
+                             Inner Join 0 to 1
+                        keys:
+                          0 _col1 (type: string)
+                          1 _col0 (type: string)
+                        outputColumnNames: _col0
+                        input vertices:
+                          1 Map 2
+                        Statistics: Num rows: 7 Data size: 28 Basic stats: COMPLETE Column stats: COMPLETE
+                        Reduce Output Operator
+                          key expressions: _col0 (type: int)
+                          null sort order: z
+                          sort order: +
+                          Map-reduce partition columns: _col0 (type: int)
+                          Statistics: Num rows: 7 Data size: 28 Basic stats: COMPLETE Column stats: COMPLETE
+                        Select Operator
+                          expressions: _col0 (type: int)
+                          outputColumnNames: _col0
+                          Statistics: Num rows: 7 Data size: 28 Basic stats: COMPLETE Column stats: COMPLETE
+                          Group By Operator
+                            keys: _col0 (type: int)
+                            minReductionHashAggr: 0.4
+                            mode: hash
+                            outputColumnNames: _col0
+                            Statistics: Num rows: 7 Data size: 28 Basic stats: COMPLETE Column stats: COMPLETE
+                            Dynamic Partitioning Event Operator
+                              Target column: d_sk (int)
+                              Target Input: f
+                              Partition key expr: d_sk
+                              Statistics: Num rows: 7 Data size: 28 Basic stats: COMPLETE Column stats: COMPLETE
+                              Target Vertex: Map 4
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Map 2 
+            Map Operator Tree:
+                TableScan
+                  alias: sjw_date
+                  filterExpr: ((d_week = 3) and d_date is not null) (type: boolean)
+                  Statistics: Num rows: 40 Data size: 3920 Basic stats: COMPLETE Column stats: COMPLETE
+                  Filter Operator
+                    predicate: ((d_week = 3) and d_date is not null) (type: boolean)
+                    Statistics: Num rows: 7 Data size: 686 Basic stats: COMPLETE Column stats: COMPLETE
+                    Select Operator
+                      expressions: d_date (type: string)
+                      outputColumnNames: _col0
+                      Statistics: Num rows: 7 Data size: 658 Basic stats: COMPLETE Column stats: COMPLETE
+                      Reduce Output Operator
+                        key expressions: _col0 (type: string)
+                        null sort order: z
+                        sort order: +
+                        Map-reduce partition columns: _col0 (type: string)
+                        Statistics: Num rows: 7 Data size: 658 Basic stats: COMPLETE Column stats: COMPLETE
+                      Select Operator
+                        expressions: _col0 (type: string)
+                        outputColumnNames: _col0
+                        Statistics: Num rows: 7 Data size: 658 Basic stats: COMPLETE Column stats: COMPLETE
+                        Group By Operator
+                          aggregations: min(_col0), max(_col0), bloom_filter(_col0, expectedEntries=7)
+                          minReductionHashAggr: 0.85714287
+                          mode: hash
+                          outputColumnNames: _col0, _col1, _col2
+                          Statistics: Num rows: 1 Data size: 512 Basic stats: COMPLETE Column stats: COMPLETE
+                          Reduce Output Operator
+                            null sort order: 
+                            sort order: 
+                            Statistics: Num rows: 1 Data size: 512 Basic stats: COMPLETE Column stats: COMPLETE
+                            value expressions: _col0 (type: string), _col1 (type: string), _col2 (type: binary)
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Map 4 
+            Map Operator Tree:
+                TableScan
+                  alias: f
+                  filterExpr: d_sk is not null (type: boolean)
+                  Statistics: Num rows: 800 Data size: 6400 Basic stats: COMPLETE Column stats: COMPLETE
+                  Select Operator
+                    expressions: v (type: int), d_sk (type: int)
+                    outputColumnNames: _col0, _col1
+                    Statistics: Num rows: 800 Data size: 6400 Basic stats: COMPLETE Column stats: COMPLETE
+                    Map Join Operator
+                      condition map:
+                           Inner Join 0 to 1
+                      keys:
+                        0 _col0 (type: int)
+                        1 _col1 (type: int)
+                      outputColumnNames: _col3
+                      input vertices:
+                        0 Map 1
+                      Statistics: Num rows: 140 Data size: 560 Basic stats: COMPLETE Column stats: COMPLETE
+                      Group By Operator
+                        aggregations: count(), sum(_col3)
+                        minReductionHashAggr: 0.99
+                        mode: hash
+                        outputColumnNames: _col0, _col1
+                        Statistics: Num rows: 1 Data size: 16 Basic stats: COMPLETE Column stats: COMPLETE
+                        Reduce Output Operator
+                          null sort order: 
+                          sort order: 
+                          Statistics: Num rows: 1 Data size: 16 Basic stats: COMPLETE Column stats: COMPLETE
+                          value expressions: _col0 (type: bigint), _col1 (type: bigint)
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Reducer 3 
+            Execution mode: vectorized, llap
+            Reduce Operator Tree:
+              Group By Operator
+                aggregations: min(VALUE._col0), max(VALUE._col1), bloom_filter(VALUE._col2, 1, expectedEntries=7)
+                mode: final
+                outputColumnNames: _col0, _col1, _col2
+                Statistics: Num rows: 1 Data size: 512 Basic stats: COMPLETE Column stats: COMPLETE
+                Reduce Output Operator
+                  null sort order: 
+                  sort order: 
+                  Statistics: Num rows: 1 Data size: 512 Basic stats: COMPLETE Column stats: COMPLETE
+                  value expressions: _col0 (type: string), _col1 (type: string), _col2 (type: binary)
+        Reducer 5 
+            Execution mode: vectorized, llap
+            Reduce Operator Tree:
+              Group By Operator
+                aggregations: count(VALUE._col0), sum(VALUE._col1)
+                mode: mergepartial
+                outputColumnNames: _col0, _col1
+                Statistics: Num rows: 1 Data size: 16 Basic stats: COMPLETE Column stats: COMPLETE
+                File Output Operator
+                  compressed: false
+                  Statistics: Num rows: 1 Data size: 16 Basic stats: COMPLETE Column stats: COMPLETE
+                  table:
+                      input format: org.apache.hadoop.mapred.SequenceFileInputFormat
+                      output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
+                      serde: org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe
+
+  Stage: Stage-0
+    Fetch Operator
+      limit: -1
+      Processor Tree:
+        ListSink
+
+PREHOOK: query: select count(*), sum(f.v) from sjw_fact f
+join sjw_date d on f.d_sk = d.d_sk
+join (select d_date from sjw_date where d_week = 3) w on d.d_date = w.d_date
+PREHOOK: type: QUERY
+PREHOOK: Input: default@sjw_date
+PREHOOK: Input: default@sjw_fact
+PREHOOK: Input: default@sjw_fact@d_sk=0
+PREHOOK: Input: default@sjw_fact@d_sk=1
+PREHOOK: Input: default@sjw_fact@d_sk=10
+PREHOOK: Input: default@sjw_fact@d_sk=11
+PREHOOK: Input: default@sjw_fact@d_sk=12
+PREHOOK: Input: default@sjw_fact@d_sk=13
+PREHOOK: Input: default@sjw_fact@d_sk=14
+PREHOOK: Input: default@sjw_fact@d_sk=15
+PREHOOK: Input: default@sjw_fact@d_sk=16
+PREHOOK: Input: default@sjw_fact@d_sk=17
+PREHOOK: Input: default@sjw_fact@d_sk=18
+PREHOOK: Input: default@sjw_fact@d_sk=19
+PREHOOK: Input: default@sjw_fact@d_sk=2
+PREHOOK: Input: default@sjw_fact@d_sk=20
+PREHOOK: Input: default@sjw_fact@d_sk=21
+PREHOOK: Input: default@sjw_fact@d_sk=22
+PREHOOK: Input: default@sjw_fact@d_sk=23
+PREHOOK: Input: default@sjw_fact@d_sk=24
+PREHOOK: Input: default@sjw_fact@d_sk=25
+PREHOOK: Input: default@sjw_fact@d_sk=26
+PREHOOK: Input: default@sjw_fact@d_sk=27
+PREHOOK: Input: default@sjw_fact@d_sk=28
+PREHOOK: Input: default@sjw_fact@d_sk=29
+PREHOOK: Input: default@sjw_fact@d_sk=3
+PREHOOK: Input: default@sjw_fact@d_sk=30
+PREHOOK: Input: default@sjw_fact@d_sk=31
+PREHOOK: Input: default@sjw_fact@d_sk=32
+PREHOOK: Input: default@sjw_fact@d_sk=33
+PREHOOK: Input: default@sjw_fact@d_sk=34
+PREHOOK: Input: default@sjw_fact@d_sk=35
+PREHOOK: Input: default@sjw_fact@d_sk=36
+PREHOOK: Input: default@sjw_fact@d_sk=37
+PREHOOK: Input: default@sjw_fact@d_sk=38
+PREHOOK: Input: default@sjw_fact@d_sk=39
+PREHOOK: Input: default@sjw_fact@d_sk=4
+PREHOOK: Input: default@sjw_fact@d_sk=5
+PREHOOK: Input: default@sjw_fact@d_sk=6
+PREHOOK: Input: default@sjw_fact@d_sk=7
+PREHOOK: Input: default@sjw_fact@d_sk=8
+PREHOOK: Input: default@sjw_fact@d_sk=9
+#### A masked pattern was here ####
+POSTHOOK: query: select count(*), sum(f.v) from sjw_fact f
+join sjw_date d on f.d_sk = d.d_sk
+join (select d_date from sjw_date where d_week = 3) w on d.d_date = w.d_date
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@sjw_date
+POSTHOOK: Input: default@sjw_fact
+POSTHOOK: Input: default@sjw_fact@d_sk=0
+POSTHOOK: Input: default@sjw_fact@d_sk=1
+POSTHOOK: Input: default@sjw_fact@d_sk=10
+POSTHOOK: Input: default@sjw_fact@d_sk=11
+POSTHOOK: Input: default@sjw_fact@d_sk=12
+POSTHOOK: Input: default@sjw_fact@d_sk=13
+POSTHOOK: Input: default@sjw_fact@d_sk=14
+POSTHOOK: Input: default@sjw_fact@d_sk=15
+POSTHOOK: Input: default@sjw_fact@d_sk=16
+POSTHOOK: Input: default@sjw_fact@d_sk=17
+POSTHOOK: Input: default@sjw_fact@d_sk=18
+POSTHOOK: Input: default@sjw_fact@d_sk=19
+POSTHOOK: Input: default@sjw_fact@d_sk=2
+POSTHOOK: Input: default@sjw_fact@d_sk=20
+POSTHOOK: Input: default@sjw_fact@d_sk=21
+POSTHOOK: Input: default@sjw_fact@d_sk=22
+POSTHOOK: Input: default@sjw_fact@d_sk=23
+POSTHOOK: Input: default@sjw_fact@d_sk=24
+POSTHOOK: Input: default@sjw_fact@d_sk=25
+POSTHOOK: Input: default@sjw_fact@d_sk=26
+POSTHOOK: Input: default@sjw_fact@d_sk=27
+POSTHOOK: Input: default@sjw_fact@d_sk=28
+POSTHOOK: Input: default@sjw_fact@d_sk=29
+POSTHOOK: Input: default@sjw_fact@d_sk=3
+POSTHOOK: Input: default@sjw_fact@d_sk=30
+POSTHOOK: Input: default@sjw_fact@d_sk=31
+POSTHOOK: Input: default@sjw_fact@d_sk=32
+POSTHOOK: Input: default@sjw_fact@d_sk=33
+POSTHOOK: Input: default@sjw_fact@d_sk=34
+POSTHOOK: Input: default@sjw_fact@d_sk=35
+POSTHOOK: Input: default@sjw_fact@d_sk=36
+POSTHOOK: Input: default@sjw_fact@d_sk=37
+POSTHOOK: Input: default@sjw_fact@d_sk=38
+POSTHOOK: Input: default@sjw_fact@d_sk=39
+POSTHOOK: Input: default@sjw_fact@d_sk=4
+POSTHOOK: Input: default@sjw_fact@d_sk=5
+POSTHOOK: Input: default@sjw_fact@d_sk=6
+POSTHOOK: Input: default@sjw_fact@d_sk=7
+POSTHOOK: Input: default@sjw_fact@d_sk=8
+POSTHOOK: Input: default@sjw_fact@d_sk=9
+#### A masked pattern was here ####
+140	420
+PREHOOK: query: select count(*), sum(f.v) from sjw_fact f
+join sjw_date d on f.d_sk = d.d_sk
+join (select d_date from sjw_date where d_week = 3) w on d.d_date = w.d_date
+PREHOOK: type: QUERY
+PREHOOK: Input: default@sjw_date
+PREHOOK: Input: default@sjw_fact
+PREHOOK: Input: default@sjw_fact@d_sk=0
+PREHOOK: Input: default@sjw_fact@d_sk=1
+PREHOOK: Input: default@sjw_fact@d_sk=10
+PREHOOK: Input: default@sjw_fact@d_sk=11
+PREHOOK: Input: default@sjw_fact@d_sk=12
+PREHOOK: Input: default@sjw_fact@d_sk=13
+PREHOOK: Input: default@sjw_fact@d_sk=14
+PREHOOK: Input: default@sjw_fact@d_sk=15
+PREHOOK: Input: default@sjw_fact@d_sk=16
+PREHOOK: Input: default@sjw_fact@d_sk=17
+PREHOOK: Input: default@sjw_fact@d_sk=18
+PREHOOK: Input: default@sjw_fact@d_sk=19
+PREHOOK: Input: default@sjw_fact@d_sk=2
+PREHOOK: Input: default@sjw_fact@d_sk=20
+PREHOOK: Input: default@sjw_fact@d_sk=21
+PREHOOK: Input: default@sjw_fact@d_sk=22
+PREHOOK: Input: default@sjw_fact@d_sk=23
+PREHOOK: Input: default@sjw_fact@d_sk=24
+PREHOOK: Input: default@sjw_fact@d_sk=25
+PREHOOK: Input: default@sjw_fact@d_sk=26
+PREHOOK: Input: default@sjw_fact@d_sk=27
+PREHOOK: Input: default@sjw_fact@d_sk=28
+PREHOOK: Input: default@sjw_fact@d_sk=29
+PREHOOK: Input: default@sjw_fact@d_sk=3
+PREHOOK: Input: default@sjw_fact@d_sk=30
+PREHOOK: Input: default@sjw_fact@d_sk=31
+PREHOOK: Input: default@sjw_fact@d_sk=32
+PREHOOK: Input: default@sjw_fact@d_sk=33
+PREHOOK: Input: default@sjw_fact@d_sk=34
+PREHOOK: Input: default@sjw_fact@d_sk=35
+PREHOOK: Input: default@sjw_fact@d_sk=36
+PREHOOK: Input: default@sjw_fact@d_sk=37
+PREHOOK: Input: default@sjw_fact@d_sk=38
+PREHOOK: Input: default@sjw_fact@d_sk=39
+PREHOOK: Input: default@sjw_fact@d_sk=4
+PREHOOK: Input: default@sjw_fact@d_sk=5
+PREHOOK: Input: default@sjw_fact@d_sk=6
+PREHOOK: Input: default@sjw_fact@d_sk=7
+PREHOOK: Input: default@sjw_fact@d_sk=8
+PREHOOK: Input: default@sjw_fact@d_sk=9
+#### A masked pattern was here ####
+POSTHOOK: query: select count(*), sum(f.v) from sjw_fact f
+join sjw_date d on f.d_sk = d.d_sk
+join (select d_date from sjw_date where d_week = 3) w on d.d_date = w.d_date
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@sjw_date
+POSTHOOK: Input: default@sjw_fact
+POSTHOOK: Input: default@sjw_fact@d_sk=0
+POSTHOOK: Input: default@sjw_fact@d_sk=1
+POSTHOOK: Input: default@sjw_fact@d_sk=10
+POSTHOOK: Input: default@sjw_fact@d_sk=11
+POSTHOOK: Input: default@sjw_fact@d_sk=12
+POSTHOOK: Input: default@sjw_fact@d_sk=13
+POSTHOOK: Input: default@sjw_fact@d_sk=14
+POSTHOOK: Input: default@sjw_fact@d_sk=15
+POSTHOOK: Input: default@sjw_fact@d_sk=16
+POSTHOOK: Input: default@sjw_fact@d_sk=17
+POSTHOOK: Input: default@sjw_fact@d_sk=18
+POSTHOOK: Input: default@sjw_fact@d_sk=19
+POSTHOOK: Input: default@sjw_fact@d_sk=2
+POSTHOOK: Input: default@sjw_fact@d_sk=20
+POSTHOOK: Input: default@sjw_fact@d_sk=21
+POSTHOOK: Input: default@sjw_fact@d_sk=22
+POSTHOOK: Input: default@sjw_fact@d_sk=23
+POSTHOOK: Input: default@sjw_fact@d_sk=24
+POSTHOOK: Input: default@sjw_fact@d_sk=25
+POSTHOOK: Input: default@sjw_fact@d_sk=26
+POSTHOOK: Input: default@sjw_fact@d_sk=27
+POSTHOOK: Input: default@sjw_fact@d_sk=28
+POSTHOOK: Input: default@sjw_fact@d_sk=29
+POSTHOOK: Input: default@sjw_fact@d_sk=3
+POSTHOOK: Input: default@sjw_fact@d_sk=30
+POSTHOOK: Input: default@sjw_fact@d_sk=31
+POSTHOOK: Input: default@sjw_fact@d_sk=32
+POSTHOOK: Input: default@sjw_fact@d_sk=33
+POSTHOOK: Input: default@sjw_fact@d_sk=34
+POSTHOOK: Input: default@sjw_fact@d_sk=35
+POSTHOOK: Input: default@sjw_fact@d_sk=36
+POSTHOOK: Input: default@sjw_fact@d_sk=37
+POSTHOOK: Input: default@sjw_fact@d_sk=38
+POSTHOOK: Input: default@sjw_fact@d_sk=39
+POSTHOOK: Input: default@sjw_fact@d_sk=4
+POSTHOOK: Input: default@sjw_fact@d_sk=5
+POSTHOOK: Input: default@sjw_fact@d_sk=6
+POSTHOOK: Input: default@sjw_fact@d_sk=7
+POSTHOOK: Input: default@sjw_fact@d_sk=8
+POSTHOOK: Input: default@sjw_fact@d_sk=9
+#### A masked pattern was here ####
+140	420

@@ -3626,11 +3626,11 @@ STAGE PLANS:
             Map Operator Tree:
                 TableScan
                   alias: srcpart_small_n3
-                  filterExpr: (key1 is not null and key1 BETWEEN DynamicValue(RS_10_srcpart_small10_key1_min) AND DynamicValue(RS_10_srcpart_small10_key1_max) and in_bloom_filter(key1, DynamicValue(RS_10_srcpart_small10_key1_bloom_filter))) (type: boolean)
+                  filterExpr: (key1 is not null and key1 BETWEEN DynamicValue(RS_10_srcpart_small10_key1_min, wait) AND DynamicValue(RS_10_srcpart_small10_key1_max, wait) and in_bloom_filter(key1, DynamicValue(RS_10_srcpart_small10_key1_bloom_filter, wait))) (type: boolean)
                   probeDecodeDetails: cacheKey:HASH_MAP_MAPJOIN_45_container, bigKeyColName:key1, smallTablePos:1, keyRatio:0.5
                   Statistics: Num rows: 20 Data size: 5420 Basic stats: PARTIAL Column stats: PARTIAL
                   Filter Operator
-                    predicate: (key1 is not null and key1 BETWEEN DynamicValue(RS_10_srcpart_small10_key1_min) AND DynamicValue(RS_10_srcpart_small10_key1_max) and in_bloom_filter(key1, DynamicValue(RS_10_srcpart_small10_key1_bloom_filter))) (type: boolean)
+                    predicate: (key1 is not null and key1 BETWEEN DynamicValue(RS_10_srcpart_small10_key1_min, wait) AND DynamicValue(RS_10_srcpart_small10_key1_max, wait) and in_bloom_filter(key1, DynamicValue(RS_10_srcpart_small10_key1_bloom_filter, wait))) (type: boolean)
                     Statistics: Num rows: 20 Data size: 5420 Basic stats: PARTIAL Column stats: PARTIAL
                     Select Operator
                       expressions: key1 (type: string), ds (type: string)
@@ -3833,11 +3833,11 @@ STAGE PLANS:
             Map Operator Tree:
                 TableScan
                   alias: srcpart_small_n3
-                  filterExpr: (key1 is not null and key1 BETWEEN DynamicValue(RS_10_srcpart_small10_key1_min) AND DynamicValue(RS_10_srcpart_small10_key1_max) and in_bloom_filter(key1, DynamicValue(RS_10_srcpart_small10_key1_bloom_filter))) (type: boolean)
+                  filterExpr: (key1 is not null and key1 BETWEEN DynamicValue(RS_10_srcpart_small10_key1_min, wait) AND DynamicValue(RS_10_srcpart_small10_key1_max, wait) and in_bloom_filter(key1, DynamicValue(RS_10_srcpart_small10_key1_bloom_filter, wait))) (type: boolean)
                   probeDecodeDetails: cacheKey:HASH_MAP_MAPJOIN_45_container, bigKeyColName:key1, smallTablePos:1, keyRatio:0.5
                   Statistics: Num rows: 20 Data size: 5420 Basic stats: PARTIAL Column stats: PARTIAL
                   Filter Operator
-                    predicate: (key1 is not null and key1 BETWEEN DynamicValue(RS_10_srcpart_small10_key1_min) AND DynamicValue(RS_10_srcpart_small10_key1_max) and in_bloom_filter(key1, DynamicValue(RS_10_srcpart_small10_key1_bloom_filter))) (type: boolean)
+                    predicate: (key1 is not null and key1 BETWEEN DynamicValue(RS_10_srcpart_small10_key1_min, wait) AND DynamicValue(RS_10_srcpart_small10_key1_max, wait) and in_bloom_filter(key1, DynamicValue(RS_10_srcpart_small10_key1_bloom_filter, wait))) (type: boolean)
                     Statistics: Num rows: 20 Data size: 5420 Basic stats: PARTIAL Column stats: PARTIAL
                     Select Operator
                       expressions: key1 (type: string), ds (type: string)

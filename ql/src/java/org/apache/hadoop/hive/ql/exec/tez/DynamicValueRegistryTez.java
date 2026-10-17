@@ -20,6 +20,7 @@
 package org.apache.hadoop.hive.ql.exec.tez;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.ql.exec.DynamicValueRegistry;
 import org.apache.hadoop.hive.ql.exec.ExprNodeEvaluator;
 import org.apache.hadoop.hive.ql.exec.ExprNodeEvaluatorFactory;
@@ -39,10 +40,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -70,24 +73,77 @@ public class DynamicValueRegistryTez implements DynamicValueRegistry {
 
   static final NullValue NULL_VALUE = new NullValue();
 
+  /** A runtime value source of the task running on this thread. */
+  private static final class TaskSource {
+    private final String key;
+    private final String name;
+    private final RuntimeValuesInfo info;
+    private final RegistryConfTez conf;
+    private boolean started;
+
+    TaskSource(String key, String name, RuntimeValuesInfo info, RegistryConfTez conf) {
+      this.key = key;
+      this.name = name;
+      this.info = info;
+      this.conf = conf;
+    }
+
+    LogicalInput input() {
+      return conf.inputs.get(name);
+    }
+
+    TaskSource start() throws Exception {
+      if (!started) {
+        input().start();
+        started = true;
+      }
+      return this;
+    }
+  }
+
   protected Map<String, Object> values = new ConcurrentHashMap<>();
   private final Map<String, Lock> sourceLocks = new ConcurrentHashMap<>();
   private final Set<String> readSources = ConcurrentHashMap.newKeySet();
+  // The task that started its input for a source not read yet. One task per source fetches it.
+  private final Map<String, TaskSource> readers = new ConcurrentHashMap<>();
+  // The sources of the task running on this thread: a task reads its own input only.
+  private final ThreadLocal<List<TaskSource>> taskSources = new ThreadLocal<>();
+  // Notified when a source is read or its reader ends, for the tasks that wait for it.
+  private final Object sourceEvents = new Object();
 
   public DynamicValueRegistryTez() {
   }
 
+  /**
+   * The value, or {@link NoDynamicValuesException} while its source has not arrived. On a miss the task of this thread
+   * reads the sources whose input is ready, without waiting for the others.
+   */
   @Override
-  public Object getValue(String key) {
-    if (!values.containsKey(key)) {
+  public Object getValue(String key) throws Exception {
+    Object val = values.get(key);
+    if (val == null) {
+      readTaskSources(null, 0);
+      val = values.get(key);
+    }
+    return value(key, val);
+  }
+
+  /** The value, waiting for its source; for consumers that cannot pass rows while it is missing. */
+  @Override
+  public Object waitForValue(String key) throws Exception {
+    Object val = values.get(key);
+    if (val == null) {
+      readTaskSources(key, 0);
+      val = values.get(key);
+    }
+    return value(key, val);
+  }
+
+  private static Object value(String key, Object val) {
+    if (val == null) {
       throw new NoDynamicValuesException("Value does not exist in registry: " + key);
     }
-    Object val = values.get(key);
-
-    if (val == NULL_VALUE) {
-      return null;
-    }
-    return val;
+    return val == NULL_VALUE ? null : val;
   }
 
   protected void setValue(String key, Object value) {
@@ -100,30 +156,124 @@ public class DynamicValueRegistryTez implements DynamicValueRegistry {
   }
 
   /**
-   * Reads the runtime values of each input source. On LLAP the tasks of a query share this registry, so the first
-   * task of a vertex on a daemon reads a source and the other tasks of the vertex use its values without fetching
-   * the source again: a runtime value can be a large bloom filter, which every task would otherwise fetch from its
-   * one producer. A source is read once per DAG, as the registry can outlive one: a DAG is identified within its
-   * application, and a query re-executed after its AM was lost numbers its DAGs from 1 again in another one.
+   * Starts reading the runtime values of the task's input sources and waits for them up to
+   * hive.tez.dynamic.semijoin.reduction.wait.time (0, the default: not at all): rows pass the runtime filters until
+   * their values arrive (see {@link #getValue}). On LLAP the tasks of a query share this registry, so
+   * one task of a vertex on a daemon fetches a source and the other tasks use its values: a runtime value can be a
+   * large bloom filter, which every task would otherwise fetch from its one producer. If that task ends before its
+   * source arrives, the next task that needs the value fetches it. A registry holds the values of one DAG
+   * ({@link DynamicValue#registryKey}).
    */
   @Override
   public void init(RegistryConf conf) throws Exception {
     RegistryConfTez rct = (RegistryConfTez) conf;
-
+    List<TaskSource> sources = new ArrayList<>();
     for (Map.Entry<String, RuntimeValuesInfo> source : rct.baseWork.getInputSourceToRuntimeValuesInfo().entrySet()) {
-      String key = rct.processorContext.getApplicationId() + ":" + rct.processorContext.getDagIdentifier() + ":"
-          + rct.baseWork.getName() + ":" + source.getKey();
-      Lock lock = sourceLocks.computeIfAbsent(key, k -> new ReentrantLock());
-      lock.lockInterruptibly();
-      try {
-        if (readSources.contains(key)) {
-          LOG.info("Runtime value source: {} (already read)", source.getKey());
-        } else {
-          read(rct, source.getKey(), source.getValue());
-          readSources.add(key);
+      String key = rct.baseWork.getName() + ":" + source.getKey();
+      if (readSources.contains(key)) {
+        LOG.info("Runtime value source: {} (already read)", source.getKey());
+      } else {
+        sources.add(new TaskSource(key, source.getKey(), source.getValue(), rct));
+      }
+    }
+    taskSources.set(sources);
+    long waitMillis = HiveConf.getTimeVar(rct.conf, HiveConf.ConfVars.HIVE_TEZ_DYNAMIC_SEMIJOIN_REDUCTION_WAIT_TIME,
+        TimeUnit.MILLISECONDS);
+    readTaskSources(null, deadline(waitMillis));
+  }
+
+  /** Ends the task of this thread: a source it started and did not read goes to the next task that needs it. */
+  public void release() {
+    List<TaskSource> sources = taskSources.get();
+    if (sources != null) {
+      for (TaskSource source : sources) {
+        readers.remove(source.key, source);
+      }
+      taskSources.remove();
+      synchronized (sourceEvents) {
+        sourceEvents.notifyAll();
+      }
+    }
+  }
+
+  /**
+   * Reads the sources of this thread's task whose input is ready. A source no task fetches yet is started first.
+   * With a key, waits for the source that holds it, starting this task's own input if another task fetches it.
+   * Until the deadline (hive.tez.dynamic.semijoin.reduction.wait.time from the task's start, 0 for none) a source
+   * is waited for: on the task's own input, or for the task that fetches it, whose source the task takes over if
+   * that task ends first.
+   */
+  private void readTaskSources(String waitKey, long deadline) throws Exception {
+    List<TaskSource> sources = taskSources.get();
+    if (sources == null) {
+      return;
+    }
+    for (Iterator<TaskSource> it = sources.iterator(); it.hasNext(); ) {
+      TaskSource source = it.next();
+      boolean wait = waitKey != null && source.info.getDynamicValueIDs().contains(waitKey);
+      if (!wait && deadline != 0) {
+        awaitOtherReader(source, deadline);
+      }
+      if (!readSources.contains(source.key)) {
+        if (readers.putIfAbsent(source.key, source) == null || wait) {
+          source.start();
         }
-      } finally {
-        lock.unlock();
+        if (!source.started) {
+          continue;
+        }
+        List<Input> input = List.of(source.input());
+        if (wait) {
+          source.conf.processorContext.waitForAllInputsReady(input);
+        } else if (!source.conf.processorContext.waitForAllInputsReady(input, remaining(deadline))) {
+          continue;
+        }
+        readOnce(source);
+      }
+      it.remove();
+    }
+  }
+
+  /** Waits, until the deadline, while another task fetches the source: until it is read or that task ends. */
+  private void awaitOtherReader(TaskSource source, long deadline) throws InterruptedException {
+    synchronized (sourceEvents) {
+      long remaining;
+      while (!readSources.contains(source.key) && isOtherReader(source) && (remaining = remaining(deadline)) > 0) {
+        sourceEvents.wait(remaining);
+      }
+    }
+  }
+
+  private boolean isOtherReader(TaskSource source) {
+    TaskSource reader = readers.get(source.key);
+    return reader != null && reader != source;
+  }
+
+  private static long deadline(long waitMillis) {
+    return waitMillis <= 0 ? 0 : saturatedAdd(System.currentTimeMillis(), waitMillis);
+  }
+
+  private static long saturatedAdd(long a, long b) {
+    long sum = a + b;
+    return sum < a ? Long.MAX_VALUE : sum;
+  }
+
+  private static long remaining(long deadline) {
+    return deadline == 0 ? 0 : Math.max(0, deadline - System.currentTimeMillis());
+  }
+
+  private void readOnce(TaskSource source) throws Exception {
+    Lock lock = sourceLocks.computeIfAbsent(source.key, k -> new ReentrantLock());
+    lock.lockInterruptibly();
+    try {
+      if (!readSources.contains(source.key)) {
+        read(source.conf, source.name, source.info);
+        readSources.add(source.key);
+      }
+    } finally {
+      lock.unlock();
+      readers.remove(source.key, source);
+      synchronized (sourceEvents) {
+        sourceEvents.notifyAll();
       }
     }
   }
@@ -146,11 +296,6 @@ public class DynamicValueRegistryTez implements DynamicValueRegistry {
       exprEval.initialize(inspector);
       colExprEvaluators.add(exprEval);
     }
-
-    runtimeValueInput.start();
-    List<Input> inputList = new ArrayList<Input>();
-    inputList.add(runtimeValueInput);
-    rct.processorContext.waitForAllInputsReady(inputList);
 
     KeyValueReader kvReader = (KeyValueReader) runtimeValueInput.getReader();
     long rowCount = 0;
