@@ -29,6 +29,7 @@ import org.apache.hadoop.hive.ql.io.sarg.LiteralDelegate;
 import org.apache.hadoop.hive.serde2.objectinspector.PrimitiveObjectInspector;
 import org.apache.hadoop.hive.serde2.typeinfo.TypeInfo;
 import org.apache.hadoop.hive.serde2.typeinfo.TypeInfoUtils;
+import org.apache.tez.mapreduce.input.MRInput;
 
 import java.io.Serializable;
 
@@ -39,6 +40,14 @@ public class DynamicValue implements LiteralDelegate, Serializable {
 
   public static final String DYNAMIC_VALUE_REGISTRY_CACHE_KEY = "DynamicValueRegistry";
 
+  /**
+   * The cache key of the runtime values of the DAG the conf's task runs in. On LLAP a query's cache outlives a DAG,
+   * and a query re-executed after its AM was lost keeps its query id and, recompiled, its value ids.
+   */
+  public static String registryKey(Configuration conf) {
+    return DYNAMIC_VALUE_REGISTRY_CACHE_KEY + ":" + conf.get(MRInput.TEZ_MAPREDUCE_DAG_ID);
+  }
+
   protected transient Configuration conf;
 
   protected String id;
@@ -47,6 +56,9 @@ public class DynamicValue implements LiteralDelegate, Serializable {
 
   transient protected Object val;
   transient boolean initialized = false;
+
+  /** Whether its filters wait for the value instead of passing rows until it arrives. */
+  private boolean waitForArrival;
 
   public DynamicValue(String id, TypeInfo typeInfo) {
     this.id = id;
@@ -87,6 +99,14 @@ public class DynamicValue implements LiteralDelegate, Serializable {
     this.id = id;
   }
 
+  public boolean isWaitForArrival() {
+    return waitForArrival;
+  }
+
+  public void setWaitForArrival(boolean waitForArrival) {
+    this.waitForArrival = waitForArrival;
+  }
+
   @Override
   public Object getLiteral() {
     return getJavaValue();
@@ -100,7 +120,17 @@ public class DynamicValue implements LiteralDelegate, Serializable {
     return objectInspector.getPrimitiveWritableObject(getValue());
   }
 
+  /** The value, or {@link NoDynamicValuesException} while it has not arrived unless its filters wait for it. */
   public Object getValue() {
+    return getValue(waitForArrival);
+  }
+
+  /** The value, waiting for it to arrive; for consumers that cannot pass rows without it. */
+  public Object waitForValue() {
+    return getValue(true);
+  }
+
+  private Object getValue(boolean wait) {
     if (initialized) {
       return val;
     }
@@ -119,11 +149,11 @@ public class DynamicValue implements LiteralDelegate, Serializable {
       }
 
       // Get the registry
-      DynamicValueRegistry valueRegistry = cache.retrieve(DYNAMIC_VALUE_REGISTRY_CACHE_KEY);
+      DynamicValueRegistry valueRegistry = cache.retrieve(registryKey(conf));
       if (valueRegistry == null) {
         throw new NoDynamicValuesException("DynamicValueRegistry not available");
       }
-      val = valueRegistry.getValue(id);
+      val = wait ? valueRegistry.waitForValue(id) : valueRegistry.getValue(id);
       initialized = true;
     } catch (NoDynamicValuesException err) {
       throw err;
@@ -137,6 +167,6 @@ public class DynamicValue implements LiteralDelegate, Serializable {
   @Override
   public String toString() {
     // If the id is a generated unique ID then this could affect .q file golden files for tests that run EXPLAIN queries.
-    return "DynamicValue(" + id + ")";
+    return "DynamicValue(" + id + (waitForArrival ? ", wait" : "") + ")";
   }
 }

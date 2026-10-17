@@ -27,5 +27,10 @@ public interface DynamicValueRegistry {
 
   Object getValue(String key) throws Exception;
 
+  /** The value, waiting for it where {@link #getValue} would report it missing. */
+  default Object waitForValue(String key) throws Exception {
+    return getValue(key);
+  }
+
   void init(RegistryConf conf) throws Exception;
 }

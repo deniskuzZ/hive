@@ -169,10 +169,10 @@ STAGE PLANS:
             Map Operator Tree:
                 TableScan
                   alias: date_dim
-                  filterExpr: (d_date is not null and ((d_date BETWEEN DynamicValue(RS_98_date_dim_d_date_min) AND DynamicValue(RS_98_date_dim_d_date_max) and in_bloom_filter(d_date, DynamicValue(RS_98_date_dim_d_date_bloom_filter))) or (d_date BETWEEN DynamicValue(RS_26_date_dim_d_date_min) AND DynamicValue(RS_26_date_dim_d_date_max) and in_bloom_filter(d_date, DynamicValue(RS_26_date_dim_d_date_bloom_filter))))) (type: boolean)
+                  filterExpr: (d_date is not null and ((d_date BETWEEN DynamicValue(RS_98_date_dim_d_date_min, wait) AND DynamicValue(RS_98_date_dim_d_date_max, wait) and in_bloom_filter(d_date, DynamicValue(RS_98_date_dim_d_date_bloom_filter, wait))) or (d_date BETWEEN DynamicValue(RS_26_date_dim_d_date_min, wait) AND DynamicValue(RS_26_date_dim_d_date_max, wait) and in_bloom_filter(d_date, DynamicValue(RS_26_date_dim_d_date_bloom_filter, wait))))) (type: boolean)
                   Statistics: Num rows: 73049 Data size: 4675136 Basic stats: COMPLETE Column stats: COMPLETE
                   Filter Operator
-                    predicate: (d_date is not null and d_date BETWEEN DynamicValue(RS_98_date_dim_d_date_min) AND DynamicValue(RS_98_date_dim_d_date_max) and in_bloom_filter(d_date, DynamicValue(RS_98_date_dim_d_date_bloom_filter))) (type: boolean)
+                    predicate: (d_date is not null and d_date BETWEEN DynamicValue(RS_98_date_dim_d_date_min, wait) AND DynamicValue(RS_98_date_dim_d_date_max, wait) and in_bloom_filter(d_date, DynamicValue(RS_98_date_dim_d_date_bloom_filter, wait))) (type: boolean)
                     Statistics: Num rows: 73049 Data size: 4675136 Basic stats: COMPLETE Column stats: COMPLETE
                     Select Operator
                       expressions: d_date_sk (type: bigint), d_date (type: date)
@@ -225,7 +225,7 @@ STAGE PLANS:
                             Statistics: Num rows: 67850 Data size: 542800 Basic stats: COMPLETE Column stats: COMPLETE
                             Target Vertex: Map 6
                   Filter Operator
-                    predicate: (d_date is not null and d_date BETWEEN DynamicValue(RS_26_date_dim_d_date_min) AND DynamicValue(RS_26_date_dim_d_date_max) and in_bloom_filter(d_date, DynamicValue(RS_26_date_dim_d_date_bloom_filter))) (type: boolean)
+                    predicate: (d_date is not null and d_date BETWEEN DynamicValue(RS_26_date_dim_d_date_min, wait) AND DynamicValue(RS_26_date_dim_d_date_max, wait) and in_bloom_filter(d_date, DynamicValue(RS_26_date_dim_d_date_bloom_filter, wait))) (type: boolean)
                     Statistics: Num rows: 73049 Data size: 4675136 Basic stats: COMPLETE Column stats: COMPLETE
                     Select Operator
                       expressions: d_date_sk (type: bigint), d_date (type: date)

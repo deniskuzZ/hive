@@ -49,7 +49,7 @@ public class ExprNodeDynamicValueEvaluator extends ExprNodeEvaluator<ExprNodeDyn
   protected Object _evaluate(Object row, int version) throws HiveException {
     DynamicValue dynamicValue = expr.getDynamicValue();
     dynamicValue.setConf(conf);
-    return dynamicValue.getWritableValue();
+    return dynamicValue.getObjectInspector().getPrimitiveWritableObject(dynamicValue.waitForValue());
   }
 
 }
