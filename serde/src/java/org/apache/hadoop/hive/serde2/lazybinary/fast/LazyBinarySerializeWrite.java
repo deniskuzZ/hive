@@ -69,7 +69,6 @@ public class LazyBinarySerializeWrite implements SerializeWrite {
   private HiveIntervalYearMonthWritable hiveIntervalYearMonthWritable;
   private HiveIntervalDayTimeWritable hiveIntervalDayTimeWritable;
   private HiveIntervalDayTime hiveIntervalDayTime;
-  private HiveDecimalWritable hiveDecimalWritable;
   private byte[] vLongBytes;
   private long[] scratchLongs;
   private byte[] scratchBuffer;
@@ -394,11 +393,30 @@ public class LazyBinarySerializeWrite implements SerializeWrite {
    */
   @Override
   public void writeDecimal64(long decimal64Long, int scale) throws IOException {
-    if (hiveDecimalWritable == null) {
-      hiveDecimalWritable = new HiveDecimalWritable();
+    // The bytes writeHiveDecimal writes, without the general decimal conversion: the scale with the trailing fractional
+    // zeroes trimmed (as HiveDecimal normalizes), then the unscaled value's minimal big-endian two's-complement bytes
+    // (as BigInteger#toByteArray).
+    beginElement();
+    if (scratchLongs == null) {
+      scratchLongs = new long[HiveDecimal.SCRATCH_LONGS_LEN];
+      scratchBuffer = new byte[HiveDecimal.SCRATCH_BUFFER_LEN_BIG_INTEGER_BYTES];
+      scratchLongBytes = new byte[LazyBinaryUtils.VLONG_BYTES_LEN];
     }
-    hiveDecimalWritable.deserialize64(decimal64Long, scale);
-    writeHiveDecimal(hiveDecimalWritable, scale);
+    long unscaled = decimal64Long;
+    int trimmedScale = unscaled == 0 ? 0 : scale;
+    while (trimmedScale > 0 && unscaled % 10 == 0) {
+      unscaled /= 10;
+      trimmedScale--;
+    }
+    int length = (Long.SIZE - Long.numberOfLeadingZeros(unscaled ^ (unscaled >> 63))) / Byte.SIZE + 1;
+    for (int i = length - 1; i >= 0; i--) {
+      scratchBuffer[i] = (byte) unscaled;
+      unscaled >>= Byte.SIZE;
+    }
+    LazyBinaryUtils.writeVInt(output, trimmedScale, scratchLongBytes);
+    LazyBinaryUtils.writeVInt(output, length, scratchLongBytes);
+    output.write(scratchBuffer, 0, length);
+    finishElement();
   }
 
   @Override
