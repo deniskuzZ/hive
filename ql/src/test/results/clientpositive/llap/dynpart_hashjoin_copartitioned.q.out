@@ -1,0 +1,1294 @@
+PREHOOK: query: create table customer_cp (c_customer_sk bigint, c_name string)
+PREHOOK: type: CREATETABLE
+PREHOOK: Output: database:default
+PREHOOK: Output: default@customer_cp
+POSTHOOK: query: create table customer_cp (c_customer_sk bigint, c_name string)
+POSTHOOK: type: CREATETABLE
+POSTHOOK: Output: database:default
+POSTHOOK: Output: default@customer_cp
+PREHOOK: query: create table sales_cp (s_customer_sk bigint, s_amount int, s_item_sk bigint)
+PREHOOK: type: CREATETABLE
+PREHOOK: Output: database:default
+PREHOOK: Output: default@sales_cp
+POSTHOOK: query: create table sales_cp (s_customer_sk bigint, s_amount int, s_item_sk bigint)
+POSTHOOK: type: CREATETABLE
+POSTHOOK: Output: database:default
+POSTHOOK: Output: default@sales_cp
+PREHOOK: query: create table web_cp (w_customer_sk bigint)
+PREHOOK: type: CREATETABLE
+PREHOOK: Output: database:default
+PREHOOK: Output: default@web_cp
+POSTHOOK: query: create table web_cp (w_customer_sk bigint)
+POSTHOOK: type: CREATETABLE
+POSTHOOK: Output: database:default
+POSTHOOK: Output: default@web_cp
+PREHOOK: query: create table catalog_cp (x_customer_sk bigint)
+PREHOOK: type: CREATETABLE
+PREHOOK: Output: database:default
+PREHOOK: Output: default@catalog_cp
+POSTHOOK: query: create table catalog_cp (x_customer_sk bigint)
+POSTHOOK: type: CREATETABLE
+POSTHOOK: Output: database:default
+POSTHOOK: Output: default@catalog_cp
+PREHOOK: query: create table names_cp (n_name string, n_rank int)
+PREHOOK: type: CREATETABLE
+PREHOOK: Output: database:default
+PREHOOK: Output: default@names_cp
+POSTHOOK: query: create table names_cp (n_name string, n_rank int)
+POSTHOOK: type: CREATETABLE
+POSTHOOK: Output: database:default
+POSTHOOK: Output: default@names_cp
+PREHOOK: query: create table item_cp (i_item_sk bigint)
+PREHOOK: type: CREATETABLE
+PREHOOK: Output: database:default
+PREHOOK: Output: default@item_cp
+POSTHOOK: query: create table item_cp (i_item_sk bigint)
+POSTHOOK: type: CREATETABLE
+POSTHOOK: Output: database:default
+POSTHOOK: Output: default@item_cp
+PREHOOK: query: insert into customer_cp values (1, 'a'), (2, 'b'), (3, 'c'), (4, 'd'), (5, 'e'), (6, 'f'), (7, 'g'), (8, 'h'),
+  (9, 'i'), (10, 'j'), (11, 'k'), (12, 'l'), (13, 'm'), (14, 'n'), (15, 'o'), (16, 'p'), (null, 'q')
+PREHOOK: type: QUERY
+PREHOOK: Input: _dummy_database@_dummy_table
+PREHOOK: Output: default@customer_cp
+POSTHOOK: query: insert into customer_cp values (1, 'a'), (2, 'b'), (3, 'c'), (4, 'd'), (5, 'e'), (6, 'f'), (7, 'g'), (8, 'h'),
+  (9, 'i'), (10, 'j'), (11, 'k'), (12, 'l'), (13, 'm'), (14, 'n'), (15, 'o'), (16, 'p'), (null, 'q')
+POSTHOOK: type: QUERY
+POSTHOOK: Input: _dummy_database@_dummy_table
+POSTHOOK: Output: default@customer_cp
+POSTHOOK: Lineage: customer_cp.c_customer_sk SCRIPT []
+POSTHOOK: Lineage: customer_cp.c_name SCRIPT []
+PREHOOK: query: insert into sales_cp values (1, 10, 116), (1, 11, 115), (2, 20, 114), (3, 30, 113), (4, 40, 112), (5, 50, 111),
+  (6, 60, 110), (7, 70, 109), (8, 80, 108), (9, 90, 107), (10, 100, 106), (11, 110, 105), (12, 120, 104),
+  (13, 130, 103), (14, 140, 102), (15, 150, 101), (16, 160, 116), (16, 161, 199), (17, 170, 101), (null, 0, null)
+PREHOOK: type: QUERY
+PREHOOK: Input: _dummy_database@_dummy_table
+PREHOOK: Output: default@sales_cp
+POSTHOOK: query: insert into sales_cp values (1, 10, 116), (1, 11, 115), (2, 20, 114), (3, 30, 113), (4, 40, 112), (5, 50, 111),
+  (6, 60, 110), (7, 70, 109), (8, 80, 108), (9, 90, 107), (10, 100, 106), (11, 110, 105), (12, 120, 104),
+  (13, 130, 103), (14, 140, 102), (15, 150, 101), (16, 160, 116), (16, 161, 199), (17, 170, 101), (null, 0, null)
+POSTHOOK: type: QUERY
+POSTHOOK: Input: _dummy_database@_dummy_table
+POSTHOOK: Output: default@sales_cp
+POSTHOOK: Lineage: sales_cp.s_amount SCRIPT []
+POSTHOOK: Lineage: sales_cp.s_customer_sk SCRIPT []
+POSTHOOK: Lineage: sales_cp.s_item_sk SCRIPT []
+PREHOOK: query: insert into web_cp values (1), (1), (3), (5), (7), (9), (11), (13), (15), (17), (19), (null)
+PREHOOK: type: QUERY
+PREHOOK: Input: _dummy_database@_dummy_table
+PREHOOK: Output: default@web_cp
+POSTHOOK: query: insert into web_cp values (1), (1), (3), (5), (7), (9), (11), (13), (15), (17), (19), (null)
+POSTHOOK: type: QUERY
+POSTHOOK: Input: _dummy_database@_dummy_table
+POSTHOOK: Output: default@web_cp
+POSTHOOK: Lineage: web_cp.w_customer_sk SCRIPT []
+PREHOOK: query: insert into catalog_cp values (2), (4), (4), (6), (8), (10), (12), (14), (16), (18), (null)
+PREHOOK: type: QUERY
+PREHOOK: Input: _dummy_database@_dummy_table
+PREHOOK: Output: default@catalog_cp
+POSTHOOK: query: insert into catalog_cp values (2), (4), (4), (6), (8), (10), (12), (14), (16), (18), (null)
+POSTHOOK: type: QUERY
+POSTHOOK: Input: _dummy_database@_dummy_table
+POSTHOOK: Output: default@catalog_cp
+POSTHOOK: Lineage: catalog_cp.x_customer_sk SCRIPT []
+PREHOOK: query: insert into names_cp values ('a', 1), ('c', 3), ('e', 5), ('z', 26)
+PREHOOK: type: QUERY
+PREHOOK: Input: _dummy_database@_dummy_table
+PREHOOK: Output: default@names_cp
+POSTHOOK: query: insert into names_cp values ('a', 1), ('c', 3), ('e', 5), ('z', 26)
+POSTHOOK: type: QUERY
+POSTHOOK: Input: _dummy_database@_dummy_table
+POSTHOOK: Output: default@names_cp
+POSTHOOK: Lineage: names_cp.n_name SCRIPT []
+POSTHOOK: Lineage: names_cp.n_rank SCRIPT []
+PREHOOK: query: insert into item_cp values (101), (102), (103), (104), (105), (106), (107), (108), (109), (110), (111), (112), (113),
+  (114), (115), (116), (117), (null)
+PREHOOK: type: QUERY
+PREHOOK: Input: _dummy_database@_dummy_table
+PREHOOK: Output: default@item_cp
+POSTHOOK: query: insert into item_cp values (101), (102), (103), (104), (105), (106), (107), (108), (109), (110), (111), (112), (113),
+  (114), (115), (116), (117), (null)
+POSTHOOK: type: QUERY
+POSTHOOK: Input: _dummy_database@_dummy_table
+POSTHOOK: Output: default@item_cp
+POSTHOOK: Lineage: item_cp.i_item_sk SCRIPT []
+PREHOOK: query: alter table customer_cp update statistics set('numRows'='30000', 'rawDataSize'='600000')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@customer_cp
+PREHOOK: Output: default@customer_cp
+POSTHOOK: query: alter table customer_cp update statistics set('numRows'='30000', 'rawDataSize'='600000')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@customer_cp
+POSTHOOK: Output: default@customer_cp
+PREHOOK: query: alter table customer_cp update statistics for column c_customer_sk set('numDVs'='30000', 'numNulls'='1', 'lowValue'='1', 'highValue'='30000')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@customer_cp
+PREHOOK: Output: default@customer_cp
+POSTHOOK: query: alter table customer_cp update statistics for column c_customer_sk set('numDVs'='30000', 'numNulls'='1', 'lowValue'='1', 'highValue'='30000')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@customer_cp
+POSTHOOK: Output: default@customer_cp
+PREHOOK: query: alter table customer_cp update statistics for column c_name set('numDVs'='30000', 'numNulls'='0', 'avgColLen'='10', 'maxColLen'='10')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@customer_cp
+PREHOOK: Output: default@customer_cp
+POSTHOOK: query: alter table customer_cp update statistics for column c_name set('numDVs'='30000', 'numNulls'='0', 'avgColLen'='10', 'maxColLen'='10')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@customer_cp
+POSTHOOK: Output: default@customer_cp
+PREHOOK: query: alter table sales_cp update statistics set('numRows'='10000000', 'rawDataSize'='120000000')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@sales_cp
+PREHOOK: Output: default@sales_cp
+POSTHOOK: query: alter table sales_cp update statistics set('numRows'='10000000', 'rawDataSize'='120000000')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@sales_cp
+POSTHOOK: Output: default@sales_cp
+PREHOOK: query: alter table sales_cp update statistics for column s_customer_sk set('numDVs'='30000', 'numNulls'='1', 'lowValue'='1', 'highValue'='30000')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@sales_cp
+PREHOOK: Output: default@sales_cp
+POSTHOOK: query: alter table sales_cp update statistics for column s_customer_sk set('numDVs'='30000', 'numNulls'='1', 'lowValue'='1', 'highValue'='30000')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@sales_cp
+POSTHOOK: Output: default@sales_cp
+PREHOOK: query: alter table sales_cp update statistics for column s_amount set('numDVs'='1000', 'numNulls'='0', 'lowValue'='0', 'highValue'='1000')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@sales_cp
+PREHOOK: Output: default@sales_cp
+POSTHOOK: query: alter table sales_cp update statistics for column s_amount set('numDVs'='1000', 'numNulls'='0', 'lowValue'='0', 'highValue'='1000')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@sales_cp
+POSTHOOK: Output: default@sales_cp
+PREHOOK: query: alter table sales_cp update statistics for column s_item_sk set('numDVs'='1000', 'numNulls'='1', 'lowValue'='1', 'highValue'='1000')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@sales_cp
+PREHOOK: Output: default@sales_cp
+POSTHOOK: query: alter table sales_cp update statistics for column s_item_sk set('numDVs'='1000', 'numNulls'='1', 'lowValue'='1', 'highValue'='1000')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@sales_cp
+POSTHOOK: Output: default@sales_cp
+PREHOOK: query: alter table web_cp update statistics set('numRows'='10000', 'rawDataSize'='80000')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@web_cp
+PREHOOK: Output: default@web_cp
+POSTHOOK: query: alter table web_cp update statistics set('numRows'='10000', 'rawDataSize'='80000')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@web_cp
+POSTHOOK: Output: default@web_cp
+PREHOOK: query: alter table web_cp update statistics for column w_customer_sk set('numDVs'='5000', 'numNulls'='1', 'lowValue'='1', 'highValue'='1000000')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@web_cp
+PREHOOK: Output: default@web_cp
+POSTHOOK: query: alter table web_cp update statistics for column w_customer_sk set('numDVs'='5000', 'numNulls'='1', 'lowValue'='1', 'highValue'='1000000')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@web_cp
+POSTHOOK: Output: default@web_cp
+PREHOOK: query: alter table catalog_cp update statistics set('numRows'='10000', 'rawDataSize'='80000')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@catalog_cp
+PREHOOK: Output: default@catalog_cp
+POSTHOOK: query: alter table catalog_cp update statistics set('numRows'='10000', 'rawDataSize'='80000')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@catalog_cp
+POSTHOOK: Output: default@catalog_cp
+PREHOOK: query: alter table catalog_cp update statistics for column x_customer_sk set('numDVs'='5000', 'numNulls'='1', 'lowValue'='1', 'highValue'='1000000')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@catalog_cp
+PREHOOK: Output: default@catalog_cp
+POSTHOOK: query: alter table catalog_cp update statistics for column x_customer_sk set('numDVs'='5000', 'numNulls'='1', 'lowValue'='1', 'highValue'='1000000')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@catalog_cp
+POSTHOOK: Output: default@catalog_cp
+PREHOOK: query: alter table names_cp update statistics set('numRows'='100', 'rawDataSize'='1500')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@names_cp
+PREHOOK: Output: default@names_cp
+POSTHOOK: query: alter table names_cp update statistics set('numRows'='100', 'rawDataSize'='1500')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@names_cp
+POSTHOOK: Output: default@names_cp
+PREHOOK: query: alter table names_cp update statistics for column n_name set('numDVs'='100', 'numNulls'='0', 'avgColLen'='10', 'maxColLen'='10')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@names_cp
+PREHOOK: Output: default@names_cp
+POSTHOOK: query: alter table names_cp update statistics for column n_name set('numDVs'='100', 'numNulls'='0', 'avgColLen'='10', 'maxColLen'='10')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@names_cp
+POSTHOOK: Output: default@names_cp
+PREHOOK: query: alter table names_cp update statistics for column n_rank set('numDVs'='100', 'numNulls'='0', 'lowValue'='1', 'highValue'='100')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@names_cp
+PREHOOK: Output: default@names_cp
+POSTHOOK: query: alter table names_cp update statistics for column n_rank set('numDVs'='100', 'numNulls'='0', 'lowValue'='1', 'highValue'='100')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@names_cp
+POSTHOOK: Output: default@names_cp
+PREHOOK: query: alter table item_cp update statistics set('numRows'='1000', 'rawDataSize'='8000')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@item_cp
+PREHOOK: Output: default@item_cp
+POSTHOOK: query: alter table item_cp update statistics set('numRows'='1000', 'rawDataSize'='8000')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@item_cp
+POSTHOOK: Output: default@item_cp
+PREHOOK: query: alter table item_cp update statistics for column i_item_sk set('numDVs'='1000', 'numNulls'='1', 'lowValue'='1', 'highValue'='1000')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@item_cp
+PREHOOK: Output: default@item_cp
+POSTHOOK: query: alter table item_cp update statistics for column i_item_sk set('numDVs'='1000', 'numNulls'='1', 'lowValue'='1', 'highValue'='1000')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@item_cp
+POSTHOOK: Output: default@item_cp
+PREHOOK: query: explain
+select c.c_customer_sk, c.c_name, s.s_amount, w.w_customer_sk, x.x_customer_sk, i.i_item_sk, n.n_rank
+from customer_cp c
+join sales_cp s on c.c_customer_sk = s.s_customer_sk
+left join (select distinct w_customer_sk from web_cp) w on c.c_customer_sk = w.w_customer_sk
+left join (select distinct x_customer_sk from catalog_cp) x on c.c_customer_sk = x.x_customer_sk
+left join (select distinct i_item_sk from item_cp) i on s.s_item_sk = i.i_item_sk
+left join names_cp n on c.c_name = n.n_name
+PREHOOK: type: QUERY
+PREHOOK: Input: default@catalog_cp
+PREHOOK: Input: default@customer_cp
+PREHOOK: Input: default@item_cp
+PREHOOK: Input: default@names_cp
+PREHOOK: Input: default@sales_cp
+PREHOOK: Input: default@web_cp
+#### A masked pattern was here ####
+POSTHOOK: query: explain
+select c.c_customer_sk, c.c_name, s.s_amount, w.w_customer_sk, x.x_customer_sk, i.i_item_sk, n.n_rank
+from customer_cp c
+join sales_cp s on c.c_customer_sk = s.s_customer_sk
+left join (select distinct w_customer_sk from web_cp) w on c.c_customer_sk = w.w_customer_sk
+left join (select distinct x_customer_sk from catalog_cp) x on c.c_customer_sk = x.x_customer_sk
+left join (select distinct i_item_sk from item_cp) i on s.s_item_sk = i.i_item_sk
+left join names_cp n on c.c_name = n.n_name
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@catalog_cp
+POSTHOOK: Input: default@customer_cp
+POSTHOOK: Input: default@item_cp
+POSTHOOK: Input: default@names_cp
+POSTHOOK: Input: default@sales_cp
+POSTHOOK: Input: default@web_cp
+#### A masked pattern was here ####
+STAGE DEPENDENCIES:
+  Stage-1 is a root stage
+  Stage-0 depends on stages: Stage-1
+
+STAGE PLANS:
+  Stage: Stage-1
+    Tez
+#### A masked pattern was here ####
+      Edges:
+        Reducer 2 <- Map 1 (SIMPLE_EDGE)
+        Reducer 4 <- Map 3 (SIMPLE_EDGE)
+        Reducer 6 <- Map 5 (SIMPLE_EDGE)
+        Reducer 9 <- Map 10 (BROADCAST_EDGE), Map 7 (CUSTOM_SIMPLE_EDGE), Map 8 (CUSTOM_SIMPLE_EDGE), Reducer 2 (CUSTOM_SIMPLE_EDGE), Reducer 4 (CUSTOM_SIMPLE_EDGE), Reducer 6 (BROADCAST_EDGE)
+#### A masked pattern was here ####
+      Vertices:
+        Map 1 
+            Map Operator Tree:
+                TableScan
+                  alias: web_cp
+                  Statistics: Num rows: 10000 Data size: 80000 Basic stats: COMPLETE Column stats: COMPLETE
+                  Group By Operator
+                    keys: w_customer_sk (type: bigint)
+                    minReductionHashAggr: 0.49989998
+                    mode: hash
+                    outputColumnNames: _col0
+                    Statistics: Num rows: 5000 Data size: 40000 Basic stats: COMPLETE Column stats: COMPLETE
+                    Reduce Output Operator
+                      key expressions: _col0 (type: bigint)
+                      null sort order: z
+                      sort order: +
+                      Map-reduce partition columns: _col0 (type: bigint)
+                      Statistics: Num rows: 5000 Data size: 40000 Basic stats: COMPLETE Column stats: COMPLETE
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Map 10 
+            Map Operator Tree:
+                TableScan
+                  alias: n
+                  Statistics: Num rows: 100 Data size: 9800 Basic stats: COMPLETE Column stats: COMPLETE
+                  Reduce Output Operator
+                    key expressions: n_name (type: string)
+                    null sort order: z
+                    sort order: +
+                    Map-reduce partition columns: n_name (type: string)
+                    Statistics: Num rows: 100 Data size: 9800 Basic stats: COMPLETE Column stats: COMPLETE
+                    value expressions: n_rank (type: int)
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Map 3 
+            Map Operator Tree:
+                TableScan
+                  alias: catalog_cp
+                  Statistics: Num rows: 10000 Data size: 80000 Basic stats: COMPLETE Column stats: COMPLETE
+                  Group By Operator
+                    keys: x_customer_sk (type: bigint)
+                    minReductionHashAggr: 0.49989998
+                    mode: hash
+                    outputColumnNames: _col0
+                    Statistics: Num rows: 5000 Data size: 40000 Basic stats: COMPLETE Column stats: COMPLETE
+                    Reduce Output Operator
+                      key expressions: _col0 (type: bigint)
+                      null sort order: z
+                      sort order: +
+                      Map-reduce partition columns: _col0 (type: bigint)
+                      Statistics: Num rows: 5000 Data size: 40000 Basic stats: COMPLETE Column stats: COMPLETE
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Map 5 
+            Map Operator Tree:
+                TableScan
+                  alias: item_cp
+                  Statistics: Num rows: 1000 Data size: 8000 Basic stats: COMPLETE Column stats: COMPLETE
+                  Group By Operator
+                    keys: i_item_sk (type: bigint)
+                    minReductionHashAggr: 0.4
+                    mode: hash
+                    outputColumnNames: _col0
+                    Statistics: Num rows: 1000 Data size: 8000 Basic stats: COMPLETE Column stats: COMPLETE
+                    Reduce Output Operator
+                      key expressions: _col0 (type: bigint)
+                      null sort order: z
+                      sort order: +
+                      Map-reduce partition columns: _col0 (type: bigint)
+                      Statistics: Num rows: 1000 Data size: 8000 Basic stats: COMPLETE Column stats: COMPLETE
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Map 7 
+            Map Operator Tree:
+                TableScan
+                  alias: c
+                  filterExpr: c_customer_sk is not null (type: boolean)
+                  Statistics: Num rows: 30000 Data size: 3060000 Basic stats: COMPLETE Column stats: COMPLETE
+                  Filter Operator
+                    predicate: c_customer_sk is not null (type: boolean)
+                    Statistics: Num rows: 29999 Data size: 3059898 Basic stats: COMPLETE Column stats: COMPLETE
+                    Reduce Output Operator
+                      key expressions: c_customer_sk (type: bigint)
+                      null sort order: z
+                      sort order: +
+                      Map-reduce partition columns: c_customer_sk (type: bigint)
+                      Statistics: Num rows: 29999 Data size: 3059898 Basic stats: COMPLETE Column stats: COMPLETE
+                      value expressions: c_name (type: string)
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Map 8 
+            Map Operator Tree:
+                TableScan
+                  alias: s
+                  filterExpr: s_customer_sk is not null (type: boolean)
+                  Statistics: Num rows: 10000000 Data size: 200000000 Basic stats: COMPLETE Column stats: COMPLETE
+                  Filter Operator
+                    predicate: s_customer_sk is not null (type: boolean)
+                    Statistics: Num rows: 9999999 Data size: 199999980 Basic stats: COMPLETE Column stats: COMPLETE
+                    Reduce Output Operator
+                      key expressions: s_customer_sk (type: bigint)
+                      null sort order: z
+                      sort order: +
+                      Map-reduce partition columns: s_customer_sk (type: bigint)
+                      Statistics: Num rows: 9999999 Data size: 199999980 Basic stats: COMPLETE Column stats: COMPLETE
+                      value expressions: s_amount (type: int), s_item_sk (type: bigint)
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Reducer 2 
+            Execution mode: vectorized, llap
+            Reduce Operator Tree:
+              Group By Operator
+                keys: KEY._col0 (type: bigint)
+                mode: mergepartial
+                outputColumnNames: _col0
+                Statistics: Num rows: 5000 Data size: 40000 Basic stats: COMPLETE Column stats: COMPLETE
+                Reduce Output Operator
+                  key expressions: _col0 (type: bigint)
+                  null sort order: z
+                  sort order: +
+                  Map-reduce partition columns: _col0 (type: bigint)
+                  Statistics: Num rows: 5000 Data size: 40000 Basic stats: COMPLETE Column stats: COMPLETE
+        Reducer 4 
+            Execution mode: vectorized, llap
+            Reduce Operator Tree:
+              Group By Operator
+                keys: KEY._col0 (type: bigint)
+                mode: mergepartial
+                outputColumnNames: _col0
+                Statistics: Num rows: 5000 Data size: 40000 Basic stats: COMPLETE Column stats: COMPLETE
+                Reduce Output Operator
+                  key expressions: _col0 (type: bigint)
+                  null sort order: z
+                  sort order: +
+                  Map-reduce partition columns: _col0 (type: bigint)
+                  Statistics: Num rows: 5000 Data size: 40000 Basic stats: COMPLETE Column stats: COMPLETE
+        Reducer 6 
+            Execution mode: vectorized, llap
+            Reduce Operator Tree:
+              Group By Operator
+                keys: KEY._col0 (type: bigint)
+                mode: mergepartial
+                outputColumnNames: _col0
+                Statistics: Num rows: 1000 Data size: 8000 Basic stats: COMPLETE Column stats: COMPLETE
+                Reduce Output Operator
+                  key expressions: _col0 (type: bigint)
+                  null sort order: z
+                  sort order: +
+                  Map-reduce partition columns: _col0 (type: bigint)
+                  Statistics: Num rows: 1000 Data size: 8000 Basic stats: COMPLETE Column stats: COMPLETE
+        Reducer 9 
+            Execution mode: vectorized, llap
+            Reduce Operator Tree:
+              Map Join Operator
+                condition map:
+                     Inner Join 0 to 1
+                keys:
+                  0 KEY.reducesinkkey0 (type: bigint)
+                  1 KEY.reducesinkkey0 (type: bigint)
+                outputColumnNames: _col0, _col1, _col7, _col8
+                input vertices:
+                  0 Map 7
+                Statistics: Num rows: 9999666 Data size: 1139959268 Basic stats: COMPLETE Column stats: COMPLETE
+                DynamicPartitionHashJoin: true
+                Map Join Operator
+                  condition map:
+                       Left Outer Join 0 to 1
+                  keys:
+                    0 _col0 (type: bigint)
+                    1 _col0 (type: bigint)
+                  outputColumnNames: _col0, _col1, _col7, _col8, _col13
+                  input vertices:
+                    1 Reducer 2
+                  Statistics: Num rows: 11666332 Data size: 1343273416 Basic stats: COMPLETE Column stats: COMPLETE
+                  Map Join Operator
+                    condition map:
+                         Left Outer Join 0 to 1
+                    keys:
+                      0 _col0 (type: bigint)
+                      1 _col0 (type: bigint)
+                    outputColumnNames: _col0, _col1, _col7, _col8, _col13, _col14
+                    input vertices:
+                      1 Reducer 4
+                    Statistics: Num rows: 11666332 Data size: 1436585416 Basic stats: COMPLETE Column stats: COMPLETE
+                    Map Join Operator
+                      condition map:
+                           Left Outer Join 0 to 1
+                      keys:
+                        0 _col8 (type: bigint)
+                        1 _col0 (type: bigint)
+                      outputColumnNames: _col0, _col1, _col7, _col13, _col14, _col15
+                      input vertices:
+                        1 Reducer 6
+                      Statistics: Num rows: 11666332 Data size: 1436492096 Basic stats: COMPLETE Column stats: COMPLETE
+                      Map Join Operator
+                        condition map:
+                             Left Outer Join 0 to 1
+                        keys:
+                          0 _col1 (type: string)
+                          1 n_name (type: string)
+                        outputColumnNames: _col0, _col1, _col7, _col13, _col14, _col15, _col17
+                        input vertices:
+                          1 Map 10
+                        Statistics: Num rows: 11705221 Data size: 1441436114 Basic stats: COMPLETE Column stats: COMPLETE
+                        Select Operator
+                          expressions: _col0 (type: bigint), _col1 (type: string), _col7 (type: int), _col13 (type: bigint), _col14 (type: bigint), _col15 (type: bigint), _col17 (type: int)
+                          outputColumnNames: _col0, _col1, _col2, _col3, _col4, _col5, _col6
+                          Statistics: Num rows: 11705221 Data size: 1441436114 Basic stats: COMPLETE Column stats: COMPLETE
+                          File Output Operator
+                            compressed: false
+                            Statistics: Num rows: 11705221 Data size: 1441436114 Basic stats: COMPLETE Column stats: COMPLETE
+                            table:
+                                input format: org.apache.hadoop.mapred.SequenceFileInputFormat
+                                output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
+                                serde: org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe
+
+  Stage: Stage-0
+    Fetch Operator
+      limit: -1
+      Processor Tree:
+        ListSink
+
+PREHOOK: query: select c.c_customer_sk, c.c_name, s.s_amount, w.w_customer_sk, x.x_customer_sk, i.i_item_sk, n.n_rank
+from customer_cp c
+join sales_cp s on c.c_customer_sk = s.s_customer_sk
+left join (select distinct w_customer_sk from web_cp) w on c.c_customer_sk = w.w_customer_sk
+left join (select distinct x_customer_sk from catalog_cp) x on c.c_customer_sk = x.x_customer_sk
+left join (select distinct i_item_sk from item_cp) i on s.s_item_sk = i.i_item_sk
+left join names_cp n on c.c_name = n.n_name
+order by c.c_customer_sk, s.s_amount
+PREHOOK: type: QUERY
+PREHOOK: Input: default@catalog_cp
+PREHOOK: Input: default@customer_cp
+PREHOOK: Input: default@item_cp
+PREHOOK: Input: default@names_cp
+PREHOOK: Input: default@sales_cp
+PREHOOK: Input: default@web_cp
+#### A masked pattern was here ####
+POSTHOOK: query: select c.c_customer_sk, c.c_name, s.s_amount, w.w_customer_sk, x.x_customer_sk, i.i_item_sk, n.n_rank
+from customer_cp c
+join sales_cp s on c.c_customer_sk = s.s_customer_sk
+left join (select distinct w_customer_sk from web_cp) w on c.c_customer_sk = w.w_customer_sk
+left join (select distinct x_customer_sk from catalog_cp) x on c.c_customer_sk = x.x_customer_sk
+left join (select distinct i_item_sk from item_cp) i on s.s_item_sk = i.i_item_sk
+left join names_cp n on c.c_name = n.n_name
+order by c.c_customer_sk, s.s_amount
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@catalog_cp
+POSTHOOK: Input: default@customer_cp
+POSTHOOK: Input: default@item_cp
+POSTHOOK: Input: default@names_cp
+POSTHOOK: Input: default@sales_cp
+POSTHOOK: Input: default@web_cp
+#### A masked pattern was here ####
+1	a	10	1	NULL	116	1
+1	a	11	1	NULL	115	1
+2	b	20	NULL	2	114	NULL
+3	c	30	3	NULL	113	3
+4	d	40	NULL	4	112	NULL
+5	e	50	5	NULL	111	5
+6	f	60	NULL	6	110	NULL
+7	g	70	7	NULL	109	NULL
+8	h	80	NULL	8	108	NULL
+9	i	90	9	NULL	107	NULL
+10	j	100	NULL	10	106	NULL
+11	k	110	11	NULL	105	NULL
+12	l	120	NULL	12	104	NULL
+13	m	130	13	NULL	103	NULL
+14	n	140	NULL	14	102	NULL
+15	o	150	15	NULL	101	NULL
+16	p	160	NULL	16	116	NULL
+16	p	161	NULL	16	NULL	NULL
+PREHOOK: query: explain
+select s.s_customer_sk, s.s_amount, c.c_customer_sk, c.c_name, w.w_hit
+from sales_cp s
+left join customer_cp c on s.s_customer_sk = c.c_customer_sk
+left join (select distinct w_customer_sk, 1 as w_hit from web_cp) w on c.c_customer_sk <=> w.w_customer_sk
+PREHOOK: type: QUERY
+PREHOOK: Input: default@customer_cp
+PREHOOK: Input: default@sales_cp
+PREHOOK: Input: default@web_cp
+#### A masked pattern was here ####
+POSTHOOK: query: explain
+select s.s_customer_sk, s.s_amount, c.c_customer_sk, c.c_name, w.w_hit
+from sales_cp s
+left join customer_cp c on s.s_customer_sk = c.c_customer_sk
+left join (select distinct w_customer_sk, 1 as w_hit from web_cp) w on c.c_customer_sk <=> w.w_customer_sk
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@customer_cp
+POSTHOOK: Input: default@sales_cp
+POSTHOOK: Input: default@web_cp
+#### A masked pattern was here ####
+STAGE DEPENDENCIES:
+  Stage-1 is a root stage
+  Stage-0 depends on stages: Stage-1
+
+STAGE PLANS:
+  Stage: Stage-1
+    Tez
+#### A masked pattern was here ####
+      Edges:
+        Reducer 2 <- Map 1 (SIMPLE_EDGE)
+        Reducer 4 <- Map 3 (CUSTOM_SIMPLE_EDGE), Map 5 (CUSTOM_SIMPLE_EDGE), Reducer 2 (BROADCAST_EDGE)
+#### A masked pattern was here ####
+      Vertices:
+        Map 1 
+            Map Operator Tree:
+                TableScan
+                  alias: web_cp
+                  Statistics: Num rows: 10000 Data size: 80000 Basic stats: COMPLETE Column stats: COMPLETE
+                  Select Operator
+                    expressions: w_customer_sk (type: bigint)
+                    outputColumnNames: w_customer_sk
+                    Statistics: Num rows: 10000 Data size: 80000 Basic stats: COMPLETE Column stats: COMPLETE
+                    Group By Operator
+                      keys: w_customer_sk (type: bigint), 1 (type: int)
+                      minReductionHashAggr: 0.49989998
+                      mode: hash
+                      outputColumnNames: _col0, _col1
+                      Statistics: Num rows: 5000 Data size: 60000 Basic stats: COMPLETE Column stats: COMPLETE
+                      Reduce Output Operator
+                        key expressions: _col0 (type: bigint), 1 (type: int)
+                        null sort order: zz
+                        sort order: ++
+                        Map-reduce partition columns: _col0 (type: bigint), 1 (type: int)
+                        Statistics: Num rows: 5000 Data size: 60000 Basic stats: COMPLETE Column stats: COMPLETE
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Map 3 
+            Map Operator Tree:
+                TableScan
+                  alias: s
+                  Statistics: Num rows: 10000000 Data size: 120000000 Basic stats: COMPLETE Column stats: COMPLETE
+                  Reduce Output Operator
+                    key expressions: s_customer_sk (type: bigint)
+                    null sort order: z
+                    sort order: +
+                    Map-reduce partition columns: s_customer_sk (type: bigint)
+                    Statistics: Num rows: 10000000 Data size: 120000000 Basic stats: COMPLETE Column stats: COMPLETE
+                    value expressions: s_amount (type: int)
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Map 5 
+            Map Operator Tree:
+                TableScan
+                  alias: c
+                  Statistics: Num rows: 30000 Data size: 3060000 Basic stats: COMPLETE Column stats: COMPLETE
+                  Reduce Output Operator
+                    key expressions: c_customer_sk (type: bigint)
+                    null sort order: z
+                    sort order: +
+                    Map-reduce partition columns: c_customer_sk (type: bigint)
+                    Statistics: Num rows: 30000 Data size: 3060000 Basic stats: COMPLETE Column stats: COMPLETE
+                    value expressions: c_name (type: string)
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Reducer 2 
+            Execution mode: vectorized, llap
+            Reduce Operator Tree:
+              Group By Operator
+                keys: KEY._col0 (type: bigint), 1 (type: int)
+                mode: mergepartial
+                outputColumnNames: _col0, _col1
+                Statistics: Num rows: 5000 Data size: 60000 Basic stats: COMPLETE Column stats: COMPLETE
+                Select Operator
+                  expressions: _col0 (type: bigint), 1 (type: int)
+                  outputColumnNames: _col0, _col1
+                  Statistics: Num rows: 5000 Data size: 60000 Basic stats: COMPLETE Column stats: COMPLETE
+                  Reduce Output Operator
+                    key expressions: _col0 (type: bigint)
+                    null sort order: z
+                    sort order: +
+                    Map-reduce partition columns: _col0 (type: bigint)
+                    Statistics: Num rows: 5000 Data size: 60000 Basic stats: COMPLETE Column stats: COMPLETE
+                    value expressions: _col1 (type: int)
+        Reducer 4 
+            Execution mode: vectorized, llap
+            Reduce Operator Tree:
+              Map Join Operator
+                condition map:
+                     Left Outer Join 0 to 1
+                keys:
+                  0 KEY.reducesinkkey0 (type: bigint)
+                  1 KEY.reducesinkkey0 (type: bigint)
+                outputColumnNames: _col0, _col1, _col7, _col8
+                input vertices:
+                  1 Map 5
+                Statistics: Num rows: 10000000 Data size: 1139997344 Basic stats: COMPLETE Column stats: COMPLETE
+                DynamicPartitionHashJoin: true
+                Map Join Operator
+                  condition map:
+                       Left Outer Join 0 to 1
+                  keys:
+                    0 _col7 (type: bigint)
+                    1 _col0 (type: bigint)
+                  nullSafes: [true]
+                  outputColumnNames: _col0, _col1, _col7, _col8, _col14
+                  input vertices:
+                    1 Reducer 2
+                  Statistics: Num rows: 11666666 Data size: 1336663496 Basic stats: COMPLETE Column stats: COMPLETE
+                  Select Operator
+                    expressions: _col0 (type: bigint), _col1 (type: int), _col7 (type: bigint), _col8 (type: string), _col14 (type: int)
+                    outputColumnNames: _col0, _col1, _col2, _col3, _col4
+                    Statistics: Num rows: 11666666 Data size: 1336663496 Basic stats: COMPLETE Column stats: COMPLETE
+                    File Output Operator
+                      compressed: false
+                      Statistics: Num rows: 11666666 Data size: 1336663496 Basic stats: COMPLETE Column stats: COMPLETE
+                      table:
+                          input format: org.apache.hadoop.mapred.SequenceFileInputFormat
+                          output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
+                          serde: org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe
+
+  Stage: Stage-0
+    Fetch Operator
+      limit: -1
+      Processor Tree:
+        ListSink
+
+PREHOOK: query: select s.s_customer_sk, s.s_amount, c.c_customer_sk, c.c_name, w.w_hit
+from sales_cp s
+left join customer_cp c on s.s_customer_sk = c.c_customer_sk
+left join (select distinct w_customer_sk, 1 as w_hit from web_cp) w on c.c_customer_sk <=> w.w_customer_sk
+order by s.s_customer_sk, s.s_amount
+PREHOOK: type: QUERY
+PREHOOK: Input: default@customer_cp
+PREHOOK: Input: default@sales_cp
+PREHOOK: Input: default@web_cp
+#### A masked pattern was here ####
+POSTHOOK: query: select s.s_customer_sk, s.s_amount, c.c_customer_sk, c.c_name, w.w_hit
+from sales_cp s
+left join customer_cp c on s.s_customer_sk = c.c_customer_sk
+left join (select distinct w_customer_sk, 1 as w_hit from web_cp) w on c.c_customer_sk <=> w.w_customer_sk
+order by s.s_customer_sk, s.s_amount
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@customer_cp
+POSTHOOK: Input: default@sales_cp
+POSTHOOK: Input: default@web_cp
+#### A masked pattern was here ####
+1	10	1	a	1
+1	11	1	a	1
+2	20	2	b	NULL
+3	30	3	c	1
+4	40	4	d	NULL
+5	50	5	e	1
+6	60	6	f	NULL
+7	70	7	g	1
+8	80	8	h	NULL
+9	90	9	i	1
+10	100	10	j	NULL
+11	110	11	k	1
+12	120	12	l	NULL
+13	130	13	m	1
+14	140	14	n	NULL
+15	150	15	o	1
+16	160	16	p	NULL
+16	161	16	p	NULL
+17	170	NULL	NULL	1
+NULL	0	NULL	NULL	1
+PREHOOK: query: select c.c_customer_sk, c.c_name, s.s_amount, w.w_customer_sk, x.x_customer_sk, i.i_item_sk, n.n_rank
+from customer_cp c
+join sales_cp s on c.c_customer_sk = s.s_customer_sk
+left join (select distinct w_customer_sk from web_cp) w on c.c_customer_sk = w.w_customer_sk
+left join (select distinct x_customer_sk from catalog_cp) x on c.c_customer_sk = x.x_customer_sk
+left join (select distinct i_item_sk from item_cp) i on s.s_item_sk = i.i_item_sk
+left join names_cp n on c.c_name = n.n_name
+order by c.c_customer_sk, s.s_amount
+PREHOOK: type: QUERY
+PREHOOK: Input: default@catalog_cp
+PREHOOK: Input: default@customer_cp
+PREHOOK: Input: default@item_cp
+PREHOOK: Input: default@names_cp
+PREHOOK: Input: default@sales_cp
+PREHOOK: Input: default@web_cp
+#### A masked pattern was here ####
+POSTHOOK: query: select c.c_customer_sk, c.c_name, s.s_amount, w.w_customer_sk, x.x_customer_sk, i.i_item_sk, n.n_rank
+from customer_cp c
+join sales_cp s on c.c_customer_sk = s.s_customer_sk
+left join (select distinct w_customer_sk from web_cp) w on c.c_customer_sk = w.w_customer_sk
+left join (select distinct x_customer_sk from catalog_cp) x on c.c_customer_sk = x.x_customer_sk
+left join (select distinct i_item_sk from item_cp) i on s.s_item_sk = i.i_item_sk
+left join names_cp n on c.c_name = n.n_name
+order by c.c_customer_sk, s.s_amount
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@catalog_cp
+POSTHOOK: Input: default@customer_cp
+POSTHOOK: Input: default@item_cp
+POSTHOOK: Input: default@names_cp
+POSTHOOK: Input: default@sales_cp
+POSTHOOK: Input: default@web_cp
+#### A masked pattern was here ####
+1	a	10	1	NULL	116	1
+1	a	11	1	NULL	115	1
+2	b	20	NULL	2	114	NULL
+3	c	30	3	NULL	113	3
+4	d	40	NULL	4	112	NULL
+5	e	50	5	NULL	111	5
+6	f	60	NULL	6	110	NULL
+7	g	70	7	NULL	109	NULL
+8	h	80	NULL	8	108	NULL
+9	i	90	9	NULL	107	NULL
+10	j	100	NULL	10	106	NULL
+11	k	110	11	NULL	105	NULL
+12	l	120	NULL	12	104	NULL
+13	m	130	13	NULL	103	NULL
+14	n	140	NULL	14	102	NULL
+15	o	150	15	NULL	101	NULL
+16	p	160	NULL	16	116	NULL
+16	p	161	NULL	16	NULL	NULL
+PREHOOK: query: select s.s_customer_sk, s.s_amount, c.c_customer_sk, c.c_name, w.w_hit
+from sales_cp s
+left join customer_cp c on s.s_customer_sk = c.c_customer_sk
+left join (select distinct w_customer_sk, 1 as w_hit from web_cp) w on c.c_customer_sk <=> w.w_customer_sk
+order by s.s_customer_sk, s.s_amount
+PREHOOK: type: QUERY
+PREHOOK: Input: default@customer_cp
+PREHOOK: Input: default@sales_cp
+PREHOOK: Input: default@web_cp
+#### A masked pattern was here ####
+POSTHOOK: query: select s.s_customer_sk, s.s_amount, c.c_customer_sk, c.c_name, w.w_hit
+from sales_cp s
+left join customer_cp c on s.s_customer_sk = c.c_customer_sk
+left join (select distinct w_customer_sk, 1 as w_hit from web_cp) w on c.c_customer_sk <=> w.w_customer_sk
+order by s.s_customer_sk, s.s_amount
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@customer_cp
+POSTHOOK: Input: default@sales_cp
+POSTHOOK: Input: default@web_cp
+#### A masked pattern was here ####
+1	10	1	a	1
+1	11	1	a	1
+2	20	2	b	NULL
+3	30	3	c	1
+4	40	4	d	NULL
+5	50	5	e	1
+6	60	6	f	NULL
+7	70	7	g	1
+8	80	8	h	NULL
+9	90	9	i	1
+10	100	10	j	NULL
+11	110	11	k	1
+12	120	12	l	NULL
+13	130	13	m	1
+14	140	14	n	NULL
+15	150	15	o	1
+16	160	16	p	NULL
+16	161	16	p	NULL
+17	170	NULL	NULL	1
+NULL	0	NULL	NULL	1
+PREHOOK: query: create table g2_cp (x bigint, y bigint, v int)
+PREHOOK: type: CREATETABLE
+PREHOOK: Output: database:default
+PREHOOK: Output: default@g2_cp
+POSTHOOK: query: create table g2_cp (x bigint, y bigint, v int)
+POSTHOOK: type: CREATETABLE
+POSTHOOK: Output: database:default
+POSTHOOK: Output: default@g2_cp
+PREHOOK: query: create table b2_cp (x bigint, y bigint, w int)
+PREHOOK: type: CREATETABLE
+PREHOOK: Output: database:default
+PREHOOK: Output: default@b2_cp
+POSTHOOK: query: create table b2_cp (x bigint, y bigint, w int)
+POSTHOOK: type: CREATETABLE
+POSTHOOK: Output: database:default
+POSTHOOK: Output: default@b2_cp
+PREHOOK: query: create table c2_cp (x bigint, y bigint, n string)
+PREHOOK: type: CREATETABLE
+PREHOOK: Output: database:default
+PREHOOK: Output: default@c2_cp
+POSTHOOK: query: create table c2_cp (x bigint, y bigint, n string)
+POSTHOOK: type: CREATETABLE
+POSTHOOK: Output: database:default
+POSTHOOK: Output: default@c2_cp
+PREHOOK: query: insert into g2_cp select pos % 53, pos % 47 + 100, pos % 7 from (select posexplode(split(space(2999), ' ')) as (pos, z)) t
+PREHOOK: type: QUERY
+PREHOOK: Input: _dummy_database@_dummy_table
+PREHOOK: Output: default@g2_cp
+POSTHOOK: query: insert into g2_cp select pos % 53, pos % 47 + 100, pos % 7 from (select posexplode(split(space(2999), ' ')) as (pos, z)) t
+POSTHOOK: type: QUERY
+POSTHOOK: Input: _dummy_database@_dummy_table
+POSTHOOK: Output: default@g2_cp
+POSTHOOK: Lineage: g2_cp.v SCRIPT []
+POSTHOOK: Lineage: g2_cp.x SCRIPT []
+POSTHOOK: Lineage: g2_cp.y SCRIPT []
+PREHOOK: query: insert into b2_cp select pos % 53, pos % 47 + 100, pos % 5 from (select posexplode(split(space(2490), ' ')) as (pos, z)) t
+PREHOOK: type: QUERY
+PREHOOK: Input: _dummy_database@_dummy_table
+PREHOOK: Output: default@b2_cp
+POSTHOOK: query: insert into b2_cp select pos % 53, pos % 47 + 100, pos % 5 from (select posexplode(split(space(2490), ' ')) as (pos, z)) t
+POSTHOOK: type: QUERY
+POSTHOOK: Input: _dummy_database@_dummy_table
+POSTHOOK: Output: default@b2_cp
+POSTHOOK: Lineage: b2_cp.w SCRIPT []
+POSTHOOK: Lineage: b2_cp.x SCRIPT []
+POSTHOOK: Lineage: b2_cp.y SCRIPT []
+PREHOOK: query: insert into c2_cp select pos % 53, pos % 47 + 100, concat('n', pos) from (select posexplode(split(space(2490), ' ')) as (pos, z)) t
+PREHOOK: type: QUERY
+PREHOOK: Input: _dummy_database@_dummy_table
+PREHOOK: Output: default@c2_cp
+POSTHOOK: query: insert into c2_cp select pos % 53, pos % 47 + 100, concat('n', pos) from (select posexplode(split(space(2490), ' ')) as (pos, z)) t
+POSTHOOK: type: QUERY
+POSTHOOK: Input: _dummy_database@_dummy_table
+POSTHOOK: Output: default@c2_cp
+POSTHOOK: Lineage: c2_cp.n SCRIPT []
+POSTHOOK: Lineage: c2_cp.x SCRIPT []
+POSTHOOK: Lineage: c2_cp.y SCRIPT []
+PREHOOK: query: alter table g2_cp update statistics set('numRows'='3000000', 'rawDataSize'='60000000')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@g2_cp
+PREHOOK: Output: default@g2_cp
+POSTHOOK: query: alter table g2_cp update statistics set('numRows'='3000000', 'rawDataSize'='60000000')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@g2_cp
+POSTHOOK: Output: default@g2_cp
+PREHOOK: query: alter table g2_cp update statistics for column x set('numDVs'='2000', 'numNulls'='0', 'lowValue'='0', 'highValue'='2000')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@g2_cp
+PREHOOK: Output: default@g2_cp
+POSTHOOK: query: alter table g2_cp update statistics for column x set('numDVs'='2000', 'numNulls'='0', 'lowValue'='0', 'highValue'='2000')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@g2_cp
+POSTHOOK: Output: default@g2_cp
+PREHOOK: query: alter table g2_cp update statistics for column y set('numDVs'='1500', 'numNulls'='0', 'lowValue'='100', 'highValue'='1600')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@g2_cp
+PREHOOK: Output: default@g2_cp
+POSTHOOK: query: alter table g2_cp update statistics for column y set('numDVs'='1500', 'numNulls'='0', 'lowValue'='100', 'highValue'='1600')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@g2_cp
+POSTHOOK: Output: default@g2_cp
+PREHOOK: query: alter table b2_cp update statistics set('numRows'='30000', 'rawDataSize'='600000')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@b2_cp
+PREHOOK: Output: default@b2_cp
+POSTHOOK: query: alter table b2_cp update statistics set('numRows'='30000', 'rawDataSize'='600000')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@b2_cp
+POSTHOOK: Output: default@b2_cp
+PREHOOK: query: alter table b2_cp update statistics for column x set('numDVs'='200', 'numNulls'='0', 'lowValue'='0', 'highValue'='200')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@b2_cp
+PREHOOK: Output: default@b2_cp
+POSTHOOK: query: alter table b2_cp update statistics for column x set('numDVs'='200', 'numNulls'='0', 'lowValue'='0', 'highValue'='200')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@b2_cp
+POSTHOOK: Output: default@b2_cp
+PREHOOK: query: alter table b2_cp update statistics for column y set('numDVs'='150', 'numNulls'='0', 'lowValue'='100', 'highValue'='250')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@b2_cp
+PREHOOK: Output: default@b2_cp
+POSTHOOK: query: alter table b2_cp update statistics for column y set('numDVs'='150', 'numNulls'='0', 'lowValue'='100', 'highValue'='250')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@b2_cp
+POSTHOOK: Output: default@b2_cp
+PREHOOK: query: explain
+select g.x, g.y, g.s, b.w, c.n
+from (select y, x, sum(v) s from g2_cp group by y, x) g
+join b2_cp b on g.x = b.x and g.y = b.y
+left join c2_cp c on g.x = c.x and g.y = c.y
+PREHOOK: type: QUERY
+PREHOOK: Input: default@b2_cp
+PREHOOK: Input: default@c2_cp
+PREHOOK: Input: default@g2_cp
+#### A masked pattern was here ####
+POSTHOOK: query: explain
+select g.x, g.y, g.s, b.w, c.n
+from (select y, x, sum(v) s from g2_cp group by y, x) g
+join b2_cp b on g.x = b.x and g.y = b.y
+left join c2_cp c on g.x = c.x and g.y = c.y
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@b2_cp
+POSTHOOK: Input: default@c2_cp
+POSTHOOK: Input: default@g2_cp
+#### A masked pattern was here ####
+STAGE DEPENDENCIES:
+  Stage-1 is a root stage
+  Stage-0 depends on stages: Stage-1
+
+STAGE PLANS:
+  Stage: Stage-1
+    Tez
+#### A masked pattern was here ####
+      Edges:
+        Reducer 2 <- Map 1 (SIMPLE_EDGE)
+        Reducer 3 <- Map 4 (CUSTOM_SIMPLE_EDGE), Map 5 (CUSTOM_SIMPLE_EDGE), Reducer 2 (CUSTOM_SIMPLE_EDGE)
+#### A masked pattern was here ####
+      Vertices:
+        Map 1 
+            Map Operator Tree:
+                TableScan
+                  alias: g2_cp
+                  filterExpr: (x is not null and y is not null) (type: boolean)
+                  Statistics: Num rows: 3000000 Data size: 60000000 Basic stats: COMPLETE Column stats: COMPLETE
+                  Filter Operator
+                    predicate: (x is not null and y is not null) (type: boolean)
+                    Statistics: Num rows: 3000000 Data size: 60000000 Basic stats: COMPLETE Column stats: COMPLETE
+                    Group By Operator
+                      aggregations: sum(v)
+                      keys: y (type: bigint), x (type: bigint)
+                      minReductionHashAggr: 0.97418034
+                      mode: hash
+                      outputColumnNames: _col0, _col1, _col2
+                      Statistics: Num rows: 3000000 Data size: 72000000 Basic stats: COMPLETE Column stats: COMPLETE
+                      Reduce Output Operator
+                        key expressions: _col0 (type: bigint), _col1 (type: bigint)
+                        null sort order: zz
+                        sort order: ++
+                        Map-reduce partition columns: _col0 (type: bigint), _col1 (type: bigint)
+                        Statistics: Num rows: 3000000 Data size: 72000000 Basic stats: COMPLETE Column stats: COMPLETE
+                        value expressions: _col2 (type: bigint)
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Map 4 
+            Map Operator Tree:
+                TableScan
+                  alias: b
+                  filterExpr: (x is not null and y is not null) (type: boolean)
+                  Statistics: Num rows: 30000 Data size: 600000 Basic stats: COMPLETE Column stats: COMPLETE
+                  Filter Operator
+                    predicate: (x is not null and y is not null) (type: boolean)
+                    Statistics: Num rows: 30000 Data size: 600000 Basic stats: COMPLETE Column stats: COMPLETE
+                    Reduce Output Operator
+                      key expressions: x (type: bigint), y (type: bigint)
+                      null sort order: zz
+                      sort order: ++
+                      Map-reduce partition columns: x (type: bigint), y (type: bigint)
+                      Statistics: Num rows: 30000 Data size: 600000 Basic stats: COMPLETE Column stats: COMPLETE
+                      value expressions: w (type: int)
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Map 5 
+            Map Operator Tree:
+                TableScan
+                  alias: c
+                  Statistics: Num rows: 2491 Data size: 261555 Basic stats: COMPLETE Column stats: COMPLETE
+                  Reduce Output Operator
+                    key expressions: x (type: bigint), y (type: bigint)
+                    null sort order: zz
+                    sort order: ++
+                    Map-reduce partition columns: x (type: bigint), y (type: bigint)
+                    Statistics: Num rows: 2491 Data size: 261555 Basic stats: COMPLETE Column stats: COMPLETE
+                    value expressions: n (type: string)
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Reducer 2 
+            Execution mode: vectorized, llap
+            Reduce Operator Tree:
+              Group By Operator
+                aggregations: sum(VALUE._col0)
+                keys: KEY._col0 (type: bigint), KEY._col1 (type: bigint)
+                mode: mergepartial
+                outputColumnNames: _col0, _col1, _col2
+                Statistics: Num rows: 3000000 Data size: 72000000 Basic stats: COMPLETE Column stats: COMPLETE
+                Reduce Output Operator
+                  key expressions: _col1 (type: bigint), _col0 (type: bigint)
+                  null sort order: zz
+                  sort order: ++
+                  Map-reduce partition columns: _col1 (type: bigint), _col0 (type: bigint)
+                  Statistics: Num rows: 3000000 Data size: 72000000 Basic stats: COMPLETE Column stats: COMPLETE
+                  value expressions: _col2 (type: bigint)
+        Reducer 3 
+            Execution mode: vectorized, llap
+            Reduce Operator Tree:
+              Map Join Operator
+                condition map:
+                     Inner Join 0 to 1
+                keys:
+                  0 KEY.reducesinkkey0 (type: bigint), KEY.reducesinkkey1 (type: bigint)
+                  1 KEY.reducesinkkey0 (type: bigint), KEY.reducesinkkey1 (type: bigint)
+                outputColumnNames: _col0, _col1, _col2, _col5
+                input vertices:
+                  1 Map 4
+                Statistics: Num rows: 7231238 Data size: 202474664 Basic stats: COMPLETE Column stats: COMPLETE
+                DynamicPartitionHashJoin: true
+                Map Join Operator
+                  condition map:
+                       Left Outer Join 0 to 1
+                  keys:
+                    0 _col1 (type: bigint), _col0 (type: bigint)
+                    1 x (type: bigint), y (type: bigint)
+                  outputColumnNames: _col0, _col1, _col2, _col5, _col12
+                  input vertices:
+                    1 Map 5
+                  Statistics: Num rows: 33000928 Data size: 3217528483 Basic stats: COMPLETE Column stats: COMPLETE
+                  Select Operator
+                    expressions: _col1 (type: bigint), _col0 (type: bigint), _col2 (type: bigint), _col5 (type: int), _col12 (type: string)
+                    outputColumnNames: _col0, _col1, _col2, _col3, _col4
+                    Statistics: Num rows: 33000928 Data size: 3217528483 Basic stats: COMPLETE Column stats: COMPLETE
+                    File Output Operator
+                      compressed: false
+                      Statistics: Num rows: 33000928 Data size: 3217528483 Basic stats: COMPLETE Column stats: COMPLETE
+                      table:
+                          input format: org.apache.hadoop.mapred.SequenceFileInputFormat
+                          output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
+                          serde: org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe
+
+  Stage: Stage-0
+    Fetch Operator
+      limit: -1
+      Processor Tree:
+        ListSink
+
+PREHOOK: query: select count(*), count(c.n), sum(pmod(hash(g.x, g.y, g.s, b.w, c.n), 1000003))
+from (select y, x, sum(v) s from g2_cp group by y, x) g
+join b2_cp b on g.x = b.x and g.y = b.y
+left join c2_cp c on g.x = c.x and g.y = c.y
+PREHOOK: type: QUERY
+PREHOOK: Input: default@b2_cp
+PREHOOK: Input: default@c2_cp
+PREHOOK: Input: default@g2_cp
+#### A masked pattern was here ####
+POSTHOOK: query: select count(*), count(c.n), sum(pmod(hash(g.x, g.y, g.s, b.w, c.n), 1000003))
+from (select y, x, sum(v) s from g2_cp group by y, x) g
+join b2_cp b on g.x = b.x and g.y = b.y
+left join c2_cp c on g.x = c.x and g.y = c.y
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@b2_cp
+POSTHOOK: Input: default@c2_cp
+POSTHOOK: Input: default@g2_cp
+#### A masked pattern was here ####
+2491	2491	1250339698
+PREHOOK: query: explain
+select g.x, g.y, g.s, b.w, c.n
+from (select y, x, sum(v) s from g2_cp group by y, x) g
+join b2_cp b on g.x = b.x and g.y = b.y
+left join c2_cp c on g.y = c.y and g.x = c.x
+PREHOOK: type: QUERY
+PREHOOK: Input: default@b2_cp
+PREHOOK: Input: default@c2_cp
+PREHOOK: Input: default@g2_cp
+#### A masked pattern was here ####
+POSTHOOK: query: explain
+select g.x, g.y, g.s, b.w, c.n
+from (select y, x, sum(v) s from g2_cp group by y, x) g
+join b2_cp b on g.x = b.x and g.y = b.y
+left join c2_cp c on g.y = c.y and g.x = c.x
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@b2_cp
+POSTHOOK: Input: default@c2_cp
+POSTHOOK: Input: default@g2_cp
+#### A masked pattern was here ####
+STAGE DEPENDENCIES:
+  Stage-1 is a root stage
+  Stage-0 depends on stages: Stage-1
+
+STAGE PLANS:
+  Stage: Stage-1
+    Tez
+#### A masked pattern was here ####
+      Edges:
+        Reducer 2 <- Map 1 (SIMPLE_EDGE)
+        Reducer 3 <- Map 4 (CUSTOM_SIMPLE_EDGE), Map 5 (BROADCAST_EDGE), Reducer 2 (CUSTOM_SIMPLE_EDGE)
+#### A masked pattern was here ####
+      Vertices:
+        Map 1 
+            Map Operator Tree:
+                TableScan
+                  alias: g2_cp
+                  filterExpr: (x is not null and y is not null) (type: boolean)
+                  Statistics: Num rows: 3000000 Data size: 60000000 Basic stats: COMPLETE Column stats: COMPLETE
+                  Filter Operator
+                    predicate: (x is not null and y is not null) (type: boolean)
+                    Statistics: Num rows: 3000000 Data size: 60000000 Basic stats: COMPLETE Column stats: COMPLETE
+                    Group By Operator
+                      aggregations: sum(v)
+                      keys: y (type: bigint), x (type: bigint)
+                      minReductionHashAggr: 0.97418034
+                      mode: hash
+                      outputColumnNames: _col0, _col1, _col2
+                      Statistics: Num rows: 3000000 Data size: 72000000 Basic stats: COMPLETE Column stats: COMPLETE
+                      Reduce Output Operator
+                        key expressions: _col0 (type: bigint), _col1 (type: bigint)
+                        null sort order: zz
+                        sort order: ++
+                        Map-reduce partition columns: _col0 (type: bigint), _col1 (type: bigint)
+                        Statistics: Num rows: 3000000 Data size: 72000000 Basic stats: COMPLETE Column stats: COMPLETE
+                        value expressions: _col2 (type: bigint)
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Map 4 
+            Map Operator Tree:
+                TableScan
+                  alias: b
+                  filterExpr: (x is not null and y is not null) (type: boolean)
+                  Statistics: Num rows: 30000 Data size: 600000 Basic stats: COMPLETE Column stats: COMPLETE
+                  Filter Operator
+                    predicate: (x is not null and y is not null) (type: boolean)
+                    Statistics: Num rows: 30000 Data size: 600000 Basic stats: COMPLETE Column stats: COMPLETE
+                    Reduce Output Operator
+                      key expressions: x (type: bigint), y (type: bigint)
+                      null sort order: zz
+                      sort order: ++
+                      Map-reduce partition columns: x (type: bigint), y (type: bigint)
+                      Statistics: Num rows: 30000 Data size: 600000 Basic stats: COMPLETE Column stats: COMPLETE
+                      value expressions: w (type: int)
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Map 5 
+            Map Operator Tree:
+                TableScan
+                  alias: c
+                  Statistics: Num rows: 2491 Data size: 261555 Basic stats: COMPLETE Column stats: COMPLETE
+                  Reduce Output Operator
+                    key expressions: y (type: bigint), x (type: bigint)
+                    null sort order: zz
+                    sort order: ++
+                    Map-reduce partition columns: y (type: bigint), x (type: bigint)
+                    Statistics: Num rows: 2491 Data size: 261555 Basic stats: COMPLETE Column stats: COMPLETE
+                    value expressions: n (type: string)
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Reducer 2 
+            Execution mode: vectorized, llap
+            Reduce Operator Tree:
+              Group By Operator
+                aggregations: sum(VALUE._col0)
+                keys: KEY._col0 (type: bigint), KEY._col1 (type: bigint)
+                mode: mergepartial
+                outputColumnNames: _col0, _col1, _col2
+                Statistics: Num rows: 3000000 Data size: 72000000 Basic stats: COMPLETE Column stats: COMPLETE
+                Reduce Output Operator
+                  key expressions: _col1 (type: bigint), _col0 (type: bigint)
+                  null sort order: zz
+                  sort order: ++
+                  Map-reduce partition columns: _col1 (type: bigint), _col0 (type: bigint)
+                  Statistics: Num rows: 3000000 Data size: 72000000 Basic stats: COMPLETE Column stats: COMPLETE
+                  value expressions: _col2 (type: bigint)
+        Reducer 3 
+            Execution mode: vectorized, llap
+            Reduce Operator Tree:
+              Map Join Operator
+                condition map:
+                     Inner Join 0 to 1
+                keys:
+                  0 KEY.reducesinkkey0 (type: bigint), KEY.reducesinkkey1 (type: bigint)
+                  1 KEY.reducesinkkey0 (type: bigint), KEY.reducesinkkey1 (type: bigint)
+                outputColumnNames: _col0, _col1, _col2, _col5
+                input vertices:
+                  1 Map 4
+                Statistics: Num rows: 7231238 Data size: 202474664 Basic stats: COMPLETE Column stats: COMPLETE
+                DynamicPartitionHashJoin: true
+                Map Join Operator
+                  condition map:
+                       Left Outer Join 0 to 1
+                  keys:
+                    0 _col0 (type: bigint), _col1 (type: bigint)
+                    1 y (type: bigint), x (type: bigint)
+                  outputColumnNames: _col0, _col1, _col2, _col5, _col12
+                  input vertices:
+                    1 Map 5
+                  Statistics: Num rows: 33000928 Data size: 3217528483 Basic stats: COMPLETE Column stats: COMPLETE
+                  Select Operator
+                    expressions: _col1 (type: bigint), _col0 (type: bigint), _col2 (type: bigint), _col5 (type: int), _col12 (type: string)
+                    outputColumnNames: _col0, _col1, _col2, _col3, _col4
+                    Statistics: Num rows: 33000928 Data size: 3217528483 Basic stats: COMPLETE Column stats: COMPLETE
+                    File Output Operator
+                      compressed: false
+                      Statistics: Num rows: 33000928 Data size: 3217528483 Basic stats: COMPLETE Column stats: COMPLETE
+                      table:
+                          input format: org.apache.hadoop.mapred.SequenceFileInputFormat
+                          output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
+                          serde: org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe
+
+  Stage: Stage-0
+    Fetch Operator
+      limit: -1
+      Processor Tree:
+        ListSink
+
+PREHOOK: query: select count(*), count(c.n), sum(pmod(hash(g.x, g.y, g.s, b.w, c.n), 1000003))
+from (select y, x, sum(v) s from g2_cp group by y, x) g
+join b2_cp b on g.x = b.x and g.y = b.y
+left join c2_cp c on g.y = c.y and g.x = c.x
+PREHOOK: type: QUERY
+PREHOOK: Input: default@b2_cp
+PREHOOK: Input: default@c2_cp
+PREHOOK: Input: default@g2_cp
+#### A masked pattern was here ####
+POSTHOOK: query: select count(*), count(c.n), sum(pmod(hash(g.x, g.y, g.s, b.w, c.n), 1000003))
+from (select y, x, sum(v) s from g2_cp group by y, x) g
+join b2_cp b on g.x = b.x and g.y = b.y
+left join c2_cp c on g.y = c.y and g.x = c.x
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@b2_cp
+POSTHOOK: Input: default@c2_cp
+POSTHOOK: Input: default@g2_cp
+#### A masked pattern was here ####
+2491	2491	1250339698
+PREHOOK: query: select count(*), count(c.n), sum(pmod(hash(g.x, g.y, g.s, b.w, c.n), 1000003))
+from (select y, x, sum(v) s from g2_cp group by y, x) g
+join b2_cp b on g.x = b.x and g.y = b.y
+left join c2_cp c on g.y = c.y and g.x = c.x
+PREHOOK: type: QUERY
+PREHOOK: Input: default@b2_cp
+PREHOOK: Input: default@c2_cp
+PREHOOK: Input: default@g2_cp
+#### A masked pattern was here ####
+POSTHOOK: query: select count(*), count(c.n), sum(pmod(hash(g.x, g.y, g.s, b.w, c.n), 1000003))
+from (select y, x, sum(v) s from g2_cp group by y, x) g
+join b2_cp b on g.x = b.x and g.y = b.y
+left join c2_cp c on g.y = c.y and g.x = c.x
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@b2_cp
+POSTHOOK: Input: default@c2_cp
+POSTHOOK: Input: default@g2_cp
+#### A masked pattern was here ####
+2491	2491	1250339698

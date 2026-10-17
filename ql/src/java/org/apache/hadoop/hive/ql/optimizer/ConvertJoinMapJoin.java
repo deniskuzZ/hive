@@ -21,6 +21,7 @@ package org.apache.hadoop.hive.ql.optimizer;
 
 import java.math.RoundingMode;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -45,10 +46,12 @@ import org.apache.hadoop.hive.ql.exec.MuxOperator;
 import org.apache.hadoop.hive.ql.exec.Operator;
 import org.apache.hadoop.hive.ql.exec.OperatorFactory;
 import org.apache.hadoop.hive.ql.exec.OperatorUtils;
+import org.apache.hadoop.hive.ql.exec.FilterOperator;
 import org.apache.hadoop.hive.ql.exec.ReduceSinkOperator;
 import org.apache.hadoop.hive.ql.exec.SelectOperator;
 import org.apache.hadoop.hive.ql.exec.TableScanOperator;
 import org.apache.hadoop.hive.ql.exec.TezDummyStoreOperator;
+import org.apache.hadoop.hive.ql.exec.Utilities;
 import org.apache.hadoop.hive.ql.lib.Node;
 import org.apache.hadoop.hive.ql.lib.SemanticNodeProcessor;
 import org.apache.hadoop.hive.ql.lib.NodeProcessorCtx;
@@ -65,6 +68,7 @@ import org.apache.hadoop.hive.ql.plan.CommonMergeJoinDesc;
 import org.apache.hadoop.hive.ql.plan.DummyStoreDesc;
 import org.apache.hadoop.hive.ql.plan.DynamicPruningEventDesc;
 import org.apache.hadoop.hive.ql.plan.ExprNodeColumnDesc;
+import org.apache.hadoop.hive.ql.plan.ExprNodeDescUtils;
 import org.apache.hadoop.hive.ql.plan.ExprNodeDesc;
 import org.apache.hadoop.hive.ql.plan.GroupByDesc;
 import org.apache.hadoop.hive.ql.plan.JoinCondDesc;
@@ -73,6 +77,7 @@ import org.apache.hadoop.hive.ql.plan.MapJoinDesc;
 import org.apache.hadoop.hive.ql.plan.OpTraits;
 import org.apache.hadoop.hive.ql.plan.OperatorDesc;
 import org.apache.hadoop.hive.ql.plan.ReduceSinkDesc;
+import org.apache.hadoop.hive.ql.plan.ReduceSinkDesc.ReducerTraits;
 import org.apache.hadoop.hive.ql.plan.Statistics;
 import org.apache.hadoop.hive.ql.stats.StatsUtils;
 import org.apache.hadoop.hive.ql.util.JavaDataModel;
@@ -87,6 +92,7 @@ import org.slf4j.LoggerFactory;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.math.DoubleMath;
+import com.google.common.primitives.Booleans;
 
 import static org.apache.hadoop.hive.ql.exec.OperatorUtils.hasMoreOperatorsThan;
 
@@ -150,6 +156,11 @@ public class ConvertJoinMapJoin implements SemanticNodeProcessor {
         fallbackToReduceSideJoin(joinOp, context);
         return null;
       }
+    }
+
+    if (context.conf.getBoolVar(HiveConf.ConfVars.HIVE_CONVERT_JOIN_BUCKET_MAPJOIN_TEZ)
+        && convertJoinCoPartitioned(joinOp, context)) {
+      return null;
     }
 
     // if we have traits, and table info is present in the traits, we know the
@@ -678,6 +689,160 @@ public class ConvertJoinMapJoin implements SemanticNodeProcessor {
       }
       setAllChildrenTraits(childOp, opTraits);
     }
+  }
+
+  /**
+   * Converts a join whose big input is already hash partitioned on the join keys, by a dynamically partitioned hash
+   * join on the same keys in the same vertex, into a bucket map join on those partitions: the small inputs are shuffled
+   * into the same partitions with the same hash instead of being broadcast to every node, and the big input is not
+   * shuffled again (Trino AddExchanges#visitJoin).
+   */
+  private boolean convertJoinCoPartitioned(JoinOperator joinOp, OptimizeTezProcContext context)
+      throws SemanticException {
+    boolean[] nullSafes = joinOp.getConf().getNullSafes();
+    if (nullSafes != null && Booleans.contains(nullSafes, true)) {
+      // a null-safe key matches nulls, but the partitioned join leaves the key it null-extends in the partition of
+      // its other input's key, not in the partition of null
+      return false;
+    }
+    for (int pos = 0; pos < joinOp.getParentOperators().size(); pos++) {
+      ReduceSinkOperator partitioner = coPartitioningReduceSink(joinOp, pos);
+      if (partitioner == null) {
+        continue;
+      }
+      int numBuckets = partitioner.getConf().getNumReducers();
+      MapJoinConversion mapJoinConversion =
+          getMapJoinConversion(joinOp, context, numBuckets, false, maxJoinMemory, true);
+      if (mapJoinConversion == null || mapJoinConversion.getBigTablePos() != pos
+          || mapJoinConversion.getIsFullOuterJoin()) {
+        return false;
+      }
+      MapJoinOperator mapJoinOp = convertJoinMapJoin(joinOp, context, mapJoinConversion, true);
+      if (mapJoinOp == null) {
+        return false;
+      }
+      MapJoinDesc joinDesc = mapJoinOp.getConf();
+      joinDesc.setBucketMapJoin(true);
+      Map<String, Integer> bigTableBucketNumMapping = new HashMap<>();
+      bigTableBucketNumMapping.put(joinDesc.getBigTableAlias(), numBuckets);
+      joinDesc.setBigTableBucketNumMapping(bigTableBucketNumMapping);
+      mapJoinOp.setOpTraits(new OpTraits(joinOp.getOpTraits().getBucketColNames(),
+          joinOp.getOpTraits().getCustomBucketFunctions(), numBuckets, null, joinOp.getOpTraits().getNumReduceSinks()));
+      preserveOperatorInfos(mapJoinOp, joinOp, context);
+      setNumberOfBucketsOnChildren(mapJoinOp);
+      for (Operator<? extends OperatorDesc> parentOp : mapJoinOp.getParentOperators()) {
+        if (parentOp instanceof ReduceSinkOperator smallTableRS) {
+          // the partitioned join's hash (coPartitioningReduceSink) into its fixed number of partitions
+          smallTableRS.getConf().setReducerTraits(EnumSet.of(ReducerTraits.UNIFORM, ReducerTraits.FIXED));
+        }
+      }
+      MemoryMonitorInfo memoryMonitorInfo = joinDesc.getMemoryMonitorInfo();
+      if (memoryMonitorInfo.isLlap()) {
+        memoryMonitorInfo.setHashTableInflationFactor(1);
+        memoryMonitorInfo.setMemoryOverSubscriptionFactor(0);
+      }
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * The big table ReduceSink of the dynamically partitioned hash join that partitions the join's input at the position,
+   * or null. The input must reach that join through operators of its vertex that keep a row in its task, its partition
+   * columns must trace back to all the join keys of one side, in order, and every other input must hash its keys as the
+   * join's inputs do: Murmur3 over the same serialized key (UNIFORM), so equal keys meet in one task.
+   */
+  /**
+   * The partition columns of the join's ReduceSink are columns of the big table input of a map join on the way: the
+   * walk goes on along that input, and the map join's column map names the columns of its other inputs after those
+   * inputs' columns, which the names of the big table input may match.
+   */
+  private static boolean keysFromBigTable(ReduceSinkOperator bigTableRS, Operator<? extends OperatorDesc> below,
+      MapJoinOperator mapJoin) throws SemanticException {
+    List<ExprNodeDesc> keys = below == bigTableRS ? bigTableRS.getConf().getPartitionCols()
+        : ExprNodeDescUtils.backtrack(bigTableRS.getConf().getPartitionCols(), bigTableRS, below, false, true);
+    Map<String, Byte> inputs = mapJoin.getConf().getReversedExprs();
+    for (ExprNodeDesc key : keys) {
+      if (!(key instanceof ExprNodeColumnDesc column) || inputs == null
+          || !Byte.valueOf((byte) mapJoin.getConf().getPosBigTable()).equals(inputs.get(column.getColumn()))) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private static ReduceSinkOperator coPartitioningReduceSink(JoinOperator joinOp, int pos) throws SemanticException {
+    if (!(joinOp.getParentOperators().get(pos) instanceof ReduceSinkOperator bigTableRS)) {
+      return null;
+    }
+    Operator<? extends OperatorDesc> below = bigTableRS;
+    Operator<? extends OperatorDesc> op = bigTableRS.getParentOperators().get(0);
+    while (!(op instanceof MapJoinOperator mapJoin && mapJoin.getConf().isDynamicPartitionHashJoin())) {
+      Operator<? extends OperatorDesc> parent;
+      if (op instanceof MapJoinOperator mapJoin) {
+        if (!keysFromBigTable(bigTableRS, below, mapJoin)) {
+          return null;
+        }
+        parent = mapJoin.getParentOperators().get(mapJoin.getConf().getPosBigTable());
+      } else if (op instanceof SelectOperator || op instanceof FilterOperator) {
+        parent = op.getParentOperators().get(0);
+      } else {
+        return null;
+      }
+      below = op;
+      op = parent;
+    }
+    MapJoinOperator partitionedJoin = (MapJoinOperator) op;
+    List<ExprNodeDesc> keys = below == bigTableRS ? bigTableRS.getConf().getPartitionCols()
+        : ExprNodeDescUtils.backtrack(bigTableRS.getConf().getPartitionCols(), bigTableRS, below, false, true);
+    List<String> keyColumns = new ArrayList<>();
+    for (ExprNodeDesc key : keys) {
+      if (!(key instanceof ExprNodeColumnDesc column)) {
+        return null;
+      }
+      keyColumns.add(column.getColumn());
+    }
+    if (keyColumns.isEmpty()) {
+      return null;
+    }
+    ReduceSinkOperator partitioner =
+        (ReduceSinkOperator) partitionedJoin.getParentOperators().get(partitionedJoin.getConf().getPosBigTable());
+    // the partitioner hashes its keys in their order, and either side's i-th key is the i-th key of its ReduceSink
+    List<String> partitionKeys = partitioner.getConf().getOutputKeyColumnNames();
+    if (keyColumns.size() != partitionKeys.size()) {
+      return null;
+    }
+    for (int i = 0; i < keyColumns.size(); i++) {
+      if (!(partitionedJoin.getColumnExprMap().get(keyColumns.get(i)) instanceof ExprNodeColumnDesc key)
+          || !key.getColumn().equals(Utilities.ReduceField.KEY + "." + partitionKeys.get(i))) {
+        return null;
+      }
+    }
+    ReduceSinkDesc partitioning = partitioner.getConf();
+    if (!partitioning.getReducerTraits().contains(ReducerTraits.UNIFORM)) {
+      return null;
+    }
+    for (int i = 0; i < joinOp.getParentOperators().size(); i++) {
+      if (i == pos) {
+        continue;
+      }
+      if (!(joinOp.getParentOperators().get(i) instanceof ReduceSinkOperator smallTableRS)) {
+        return null;
+      }
+      ReduceSinkDesc small = smallTableRS.getConf();
+      if (small.getKeyCols().size() != partitioning.getKeyCols().size()
+          || !ExprNodeDescUtils.isSame(small.getKeyCols(), small.getPartitionCols())
+          || !small.getOrder().equals(partitioning.getOrder())
+          || !small.getNullOrder().equals(partitioning.getNullOrder())) {
+        return null;
+      }
+      for (int k = 0; k < small.getKeyCols().size(); k++) {
+        if (!small.getKeyCols().get(k).getTypeInfo().equals(partitioning.getKeyCols().get(k).getTypeInfo())) {
+          return null;
+        }
+      }
+    }
+    return partitioner;
   }
 
   private boolean convertJoinBucketMapJoin(JoinOperator joinOp, OptimizeTezProcContext context,
