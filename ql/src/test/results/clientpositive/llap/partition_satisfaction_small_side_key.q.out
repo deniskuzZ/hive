@@ -1,0 +1,353 @@
+PREHOOK: query: create table f_sk (k bigint, v int, pad string)
+PREHOOK: type: CREATETABLE
+PREHOOK: Output: database:default
+PREHOOK: Output: default@f_sk
+POSTHOOK: query: create table f_sk (k bigint, v int, pad string)
+POSTHOOK: type: CREATETABLE
+POSTHOOK: Output: database:default
+POSTHOOK: Output: default@f_sk
+PREHOOK: query: create table d_sk (x bigint, k bigint)
+PREHOOK: type: CREATETABLE
+PREHOOK: Output: database:default
+PREHOOK: Output: default@d_sk
+POSTHOOK: query: create table d_sk (x bigint, k bigint)
+POSTHOOK: type: CREATETABLE
+POSTHOOK: Output: database:default
+POSTHOOK: Output: default@d_sk
+PREHOOK: query: create table b_sk (x bigint, name string)
+PREHOOK: type: CREATETABLE
+PREHOOK: Output: database:default
+PREHOOK: Output: default@b_sk
+POSTHOOK: query: create table b_sk (x bigint, name string)
+POSTHOOK: type: CREATETABLE
+POSTHOOK: Output: database:default
+POSTHOOK: Output: default@b_sk
+PREHOOK: query: insert into f_sk select pos % 16 + 1, pos, 'ppppp' from (select posexplode(split(space(199), ' '))) t
+PREHOOK: type: QUERY
+PREHOOK: Input: _dummy_database@_dummy_table
+PREHOOK: Output: default@f_sk
+POSTHOOK: query: insert into f_sk select pos % 16 + 1, pos, 'ppppp' from (select posexplode(split(space(199), ' '))) t
+POSTHOOK: type: QUERY
+POSTHOOK: Input: _dummy_database@_dummy_table
+POSTHOOK: Output: default@f_sk
+POSTHOOK: Lineage: f_sk.k SCRIPT []
+POSTHOOK: Lineage: f_sk.pad SIMPLE []
+POSTHOOK: Lineage: f_sk.v SCRIPT []
+PREHOOK: query: insert into d_sk select pos + 101, pos + 1 from (select posexplode(split(space(15), ' '))) t
+PREHOOK: type: QUERY
+PREHOOK: Input: _dummy_database@_dummy_table
+PREHOOK: Output: default@d_sk
+POSTHOOK: query: insert into d_sk select pos + 101, pos + 1 from (select posexplode(split(space(15), ' '))) t
+POSTHOOK: type: QUERY
+POSTHOOK: Input: _dummy_database@_dummy_table
+POSTHOOK: Output: default@d_sk
+POSTHOOK: Lineage: d_sk.k SCRIPT []
+POSTHOOK: Lineage: d_sk.x SCRIPT []
+PREHOOK: query: insert into b_sk select pos + 101, concat('n', pos) from (select posexplode(split(space(15), ' '))) t
+PREHOOK: type: QUERY
+PREHOOK: Input: _dummy_database@_dummy_table
+PREHOOK: Output: default@b_sk
+POSTHOOK: query: insert into b_sk select pos + 101, concat('n', pos) from (select posexplode(split(space(15), ' '))) t
+POSTHOOK: type: QUERY
+POSTHOOK: Input: _dummy_database@_dummy_table
+POSTHOOK: Output: default@b_sk
+POSTHOOK: Lineage: b_sk.name SCRIPT []
+POSTHOOK: Lineage: b_sk.x SCRIPT []
+PREHOOK: query: alter table f_sk update statistics set('numRows'='10000000', 'rawDataSize'='5000000000')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@f_sk
+PREHOOK: Output: default@f_sk
+POSTHOOK: query: alter table f_sk update statistics set('numRows'='10000000', 'rawDataSize'='5000000000')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@f_sk
+POSTHOOK: Output: default@f_sk
+PREHOOK: query: alter table f_sk update statistics for column k set('numDVs'='3000000', 'numNulls'='0', 'lowValue'='1', 'highValue'='3000000')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@f_sk
+PREHOOK: Output: default@f_sk
+POSTHOOK: query: alter table f_sk update statistics for column k set('numDVs'='3000000', 'numNulls'='0', 'lowValue'='1', 'highValue'='3000000')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@f_sk
+POSTHOOK: Output: default@f_sk
+PREHOOK: query: alter table f_sk update statistics for column v set('numDVs'='1000', 'numNulls'='0', 'lowValue'='0', 'highValue'='1000')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@f_sk
+PREHOOK: Output: default@f_sk
+POSTHOOK: query: alter table f_sk update statistics for column v set('numDVs'='1000', 'numNulls'='0', 'lowValue'='0', 'highValue'='1000')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@f_sk
+POSTHOOK: Output: default@f_sk
+PREHOOK: query: alter table f_sk update statistics for column pad set('numDVs'='1000000', 'numNulls'='0', 'avgColLen'='500', 'maxColLen'='500')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@f_sk
+PREHOOK: Output: default@f_sk
+POSTHOOK: query: alter table f_sk update statistics for column pad set('numDVs'='1000000', 'numNulls'='0', 'avgColLen'='500', 'maxColLen'='500')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@f_sk
+POSTHOOK: Output: default@f_sk
+PREHOOK: query: alter table d_sk update statistics set('numRows'='20000', 'rawDataSize'='320000')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@d_sk
+PREHOOK: Output: default@d_sk
+POSTHOOK: query: alter table d_sk update statistics set('numRows'='20000', 'rawDataSize'='320000')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@d_sk
+POSTHOOK: Output: default@d_sk
+PREHOOK: query: alter table d_sk update statistics for column x set('numDVs'='20000', 'numNulls'='0', 'lowValue'='1', 'highValue'='20000')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@d_sk
+PREHOOK: Output: default@d_sk
+POSTHOOK: query: alter table d_sk update statistics for column x set('numDVs'='20000', 'numNulls'='0', 'lowValue'='1', 'highValue'='20000')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@d_sk
+POSTHOOK: Output: default@d_sk
+PREHOOK: query: alter table d_sk update statistics for column k set('numDVs'='20000', 'numNulls'='0', 'lowValue'='1', 'highValue'='3000000')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@d_sk
+PREHOOK: Output: default@d_sk
+POSTHOOK: query: alter table d_sk update statistics for column k set('numDVs'='20000', 'numNulls'='0', 'lowValue'='1', 'highValue'='3000000')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@d_sk
+POSTHOOK: Output: default@d_sk
+PREHOOK: query: alter table b_sk update statistics set('numRows'='60000', 'rawDataSize'='1560000')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@b_sk
+PREHOOK: Output: default@b_sk
+POSTHOOK: query: alter table b_sk update statistics set('numRows'='60000', 'rawDataSize'='1560000')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@b_sk
+POSTHOOK: Output: default@b_sk
+PREHOOK: query: alter table b_sk update statistics for column x set('numDVs'='60000', 'numNulls'='0', 'lowValue'='1', 'highValue'='60000')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@b_sk
+PREHOOK: Output: default@b_sk
+POSTHOOK: query: alter table b_sk update statistics for column x set('numDVs'='60000', 'numNulls'='0', 'lowValue'='1', 'highValue'='60000')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@b_sk
+POSTHOOK: Output: default@b_sk
+PREHOOK: query: alter table b_sk update statistics for column name set('numDVs'='60000', 'numNulls'='0', 'avgColLen'='10', 'maxColLen'='10')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@b_sk
+PREHOOK: Output: default@b_sk
+POSTHOOK: query: alter table b_sk update statistics for column name set('numDVs'='60000', 'numNulls'='0', 'avgColLen'='10', 'maxColLen'='10')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@b_sk
+POSTHOOK: Output: default@b_sk
+PREHOOK: query: explain
+select g.k, g.s, length(g.p), d.x, b.name
+from (select k, sum(v) s, max(pad) p from f_sk group by k) g join (select x, k from d_sk) d on g.k = d.k
+join b_sk b on d.x = b.x
+PREHOOK: type: QUERY
+PREHOOK: Input: default@b_sk
+PREHOOK: Input: default@d_sk
+PREHOOK: Input: default@f_sk
+#### A masked pattern was here ####
+POSTHOOK: query: explain
+select g.k, g.s, length(g.p), d.x, b.name
+from (select k, sum(v) s, max(pad) p from f_sk group by k) g join (select x, k from d_sk) d on g.k = d.k
+join b_sk b on d.x = b.x
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@b_sk
+POSTHOOK: Input: default@d_sk
+POSTHOOK: Input: default@f_sk
+#### A masked pattern was here ####
+STAGE DEPENDENCIES:
+  Stage-1 is a root stage
+  Stage-0 depends on stages: Stage-1
+
+STAGE PLANS:
+  Stage: Stage-1
+    Tez
+#### A masked pattern was here ####
+      Edges:
+        Reducer 2 <- Map 1 (SIMPLE_EDGE), Map 4 (BROADCAST_EDGE)
+        Reducer 3 <- Map 5 (CUSTOM_SIMPLE_EDGE), Reducer 2 (CUSTOM_SIMPLE_EDGE)
+#### A masked pattern was here ####
+      Vertices:
+        Map 1 
+            Map Operator Tree:
+                TableScan
+                  alias: f_sk
+                  filterExpr: k is not null (type: boolean)
+                  Statistics: Num rows: 10000000 Data size: 5960000000 Basic stats: COMPLETE Column stats: COMPLETE
+                  Filter Operator
+                    predicate: k is not null (type: boolean)
+                    Statistics: Num rows: 10000000 Data size: 5960000000 Basic stats: COMPLETE Column stats: COMPLETE
+                    Group By Operator
+                      aggregations: sum(v), max(pad)
+                      keys: k (type: bigint)
+                      minReductionHashAggr: 0.7
+                      mode: hash
+                      outputColumnNames: _col0, _col1, _col2
+                      Statistics: Num rows: 10000000 Data size: 2000000000 Basic stats: COMPLETE Column stats: COMPLETE
+                      Reduce Output Operator
+                        key expressions: _col0 (type: bigint)
+                        null sort order: z
+                        sort order: +
+                        Map-reduce partition columns: _col0 (type: bigint)
+                        Statistics: Num rows: 10000000 Data size: 2000000000 Basic stats: COMPLETE Column stats: COMPLETE
+                        value expressions: _col1 (type: bigint), _col2 (type: string)
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Map 4 
+            Map Operator Tree:
+                TableScan
+                  alias: d_sk
+                  filterExpr: (k is not null and x is not null) (type: boolean)
+                  Statistics: Num rows: 20000 Data size: 320000 Basic stats: COMPLETE Column stats: COMPLETE
+                  Filter Operator
+                    predicate: (k is not null and x is not null) (type: boolean)
+                    Statistics: Num rows: 20000 Data size: 320000 Basic stats: COMPLETE Column stats: COMPLETE
+                    Select Operator
+                      expressions: x (type: bigint), k (type: bigint)
+                      outputColumnNames: _col0, _col1
+                      Statistics: Num rows: 20000 Data size: 320000 Basic stats: COMPLETE Column stats: COMPLETE
+                      Reduce Output Operator
+                        key expressions: _col1 (type: bigint)
+                        null sort order: z
+                        sort order: +
+                        Map-reduce partition columns: _col1 (type: bigint)
+                        Statistics: Num rows: 20000 Data size: 320000 Basic stats: COMPLETE Column stats: COMPLETE
+                        value expressions: _col0 (type: bigint)
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Map 5 
+            Map Operator Tree:
+                TableScan
+                  alias: b
+                  filterExpr: x is not null (type: boolean)
+                  Statistics: Num rows: 60000 Data size: 6120000 Basic stats: COMPLETE Column stats: COMPLETE
+                  Filter Operator
+                    predicate: x is not null (type: boolean)
+                    Statistics: Num rows: 60000 Data size: 6120000 Basic stats: COMPLETE Column stats: COMPLETE
+                    Reduce Output Operator
+                      key expressions: x (type: bigint)
+                      null sort order: z
+                      sort order: +
+                      Map-reduce partition columns: x (type: bigint)
+                      Statistics: Num rows: 60000 Data size: 6120000 Basic stats: COMPLETE Column stats: COMPLETE
+                      value expressions: name (type: string)
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Reducer 2 
+            Execution mode: vectorized, llap
+            Reduce Operator Tree:
+              Group By Operator
+                aggregations: sum(VALUE._col0), max(VALUE._col1)
+                keys: KEY._col0 (type: bigint)
+                mode: mergepartial
+                outputColumnNames: _col0, _col1, _col2
+                Statistics: Num rows: 3000000 Data size: 600000000 Basic stats: COMPLETE Column stats: COMPLETE
+                Map Join Operator
+                  condition map:
+                       Inner Join 0 to 1
+                  keys:
+                    0 _col0 (type: bigint)
+                    1 _col1 (type: bigint)
+                  outputColumnNames: _col0, _col1, _col2, _col3
+                  input vertices:
+                    1 Map 4
+                  Statistics: Num rows: 3000000 Data size: 624000000 Basic stats: COMPLETE Column stats: COMPLETE
+                  Reduce Output Operator
+                    key expressions: _col3 (type: bigint)
+                    null sort order: z
+                    sort order: +
+                    Map-reduce partition columns: _col3 (type: bigint)
+                    Statistics: Num rows: 3000000 Data size: 624000000 Basic stats: COMPLETE Column stats: COMPLETE
+                    value expressions: _col0 (type: bigint), _col1 (type: bigint), _col2 (type: string)
+        Reducer 3 
+            Execution mode: vectorized, llap
+            Reduce Operator Tree:
+              Map Join Operator
+                condition map:
+                     Inner Join 0 to 1
+                keys:
+                  0 KEY.reducesinkkey0 (type: bigint)
+                  1 KEY.reducesinkkey0 (type: bigint)
+                outputColumnNames: _col0, _col1, _col2, _col3, _col6
+                input vertices:
+                  1 Map 5
+                Statistics: Num rows: 3000000 Data size: 906000000 Basic stats: COMPLETE Column stats: COMPLETE
+                DynamicPartitionHashJoin: true
+                Select Operator
+                  expressions: _col0 (type: bigint), _col1 (type: bigint), length(_col2) (type: int), _col3 (type: bigint), _col6 (type: string)
+                  outputColumnNames: _col0, _col1, _col2, _col3, _col4
+                  Statistics: Num rows: 3000000 Data size: 366000000 Basic stats: COMPLETE Column stats: COMPLETE
+                  File Output Operator
+                    compressed: false
+                    Statistics: Num rows: 3000000 Data size: 366000000 Basic stats: COMPLETE Column stats: COMPLETE
+                    table:
+                        input format: org.apache.hadoop.mapred.SequenceFileInputFormat
+                        output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
+                        serde: org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe
+
+  Stage: Stage-0
+    Fetch Operator
+      limit: -1
+      Processor Tree:
+        ListSink
+
+PREHOOK: query: select g.k, g.s, length(g.p), d.x, b.name
+from (select k, sum(v) s, max(pad) p from f_sk group by k) g join (select x, k from d_sk) d on g.k = d.k
+join b_sk b on d.x = b.x
+PREHOOK: type: QUERY
+PREHOOK: Input: default@b_sk
+PREHOOK: Input: default@d_sk
+PREHOOK: Input: default@f_sk
+#### A masked pattern was here ####
+POSTHOOK: query: select g.k, g.s, length(g.p), d.x, b.name
+from (select k, sum(v) s, max(pad) p from f_sk group by k) g join (select x, k from d_sk) d on g.k = d.k
+join b_sk b on d.x = b.x
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@b_sk
+POSTHOOK: Input: default@d_sk
+POSTHOOK: Input: default@f_sk
+#### A masked pattern was here ####
+1	1248	5	101	n0
+10	1164	5	110	n9
+11	1176	5	111	n10
+12	1188	5	112	n11
+13	1200	5	113	n12
+14	1212	5	114	n13
+15	1224	5	115	n14
+16	1236	5	116	n15
+2	1261	5	102	n1
+3	1274	5	103	n2
+4	1287	5	104	n3
+5	1300	5	105	n4
+6	1313	5	106	n5
+7	1326	5	107	n6
+8	1339	5	108	n7
+9	1152	5	109	n8
+PREHOOK: query: select g.k, g.s, length(g.p), d.x, b.name
+from (select k, sum(v) s, max(pad) p from f_sk group by k) g join (select x, k from d_sk) d on g.k = d.k
+join b_sk b on d.x = b.x
+PREHOOK: type: QUERY
+PREHOOK: Input: default@b_sk
+PREHOOK: Input: default@d_sk
+PREHOOK: Input: default@f_sk
+#### A masked pattern was here ####
+POSTHOOK: query: select g.k, g.s, length(g.p), d.x, b.name
+from (select k, sum(v) s, max(pad) p from f_sk group by k) g join (select x, k from d_sk) d on g.k = d.k
+join b_sk b on d.x = b.x
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@b_sk
+POSTHOOK: Input: default@d_sk
+POSTHOOK: Input: default@f_sk
+#### A masked pattern was here ####
+1	1248	5	101	n0
+10	1164	5	110	n9
+11	1176	5	111	n10
+12	1188	5	112	n11
+13	1200	5	113	n12
+14	1212	5	114	n13
+15	1224	5	115	n14
+16	1236	5	116	n15
+2	1261	5	102	n1
+3	1274	5	103	n2
+4	1287	5	104	n3
+5	1300	5	105	n4
+6	1313	5	106	n5
+7	1326	5	107	n6
+8	1339	5	108	n7
+9	1152	5	109	n8
