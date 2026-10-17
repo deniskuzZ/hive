@@ -47,7 +47,7 @@ STAGE PLANS:
                         Map-reduce partition columns: _col1 (type: int), _col2 (type: int)
                         Statistics: Num rows: 6005 Data size: 72060 Basic stats: COMPLETE Column stats: COMPLETE
                         value expressions: _col0 (type: int)
-            Execution mode: vectorized, llap
+            Execution mode: llap
             LLAP IO: all inputs
         Map 4 
             Map Operator Tree:
@@ -69,7 +69,7 @@ STAGE PLANS:
                         Map-reduce partition columns: _col0 (type: int), _col1 (type: int)
                         Statistics: Num rows: 1 Data size: 12 Basic stats: COMPLETE Column stats: COMPLETE
                         value expressions: _col2 (type: int)
-            Execution mode: vectorized, llap
+            Execution mode: llap
             LLAP IO: all inputs
         Reducer 2 
             Execution mode: llap
@@ -92,7 +92,7 @@ STAGE PLANS:
                     sort order: ++++
                     Statistics: Num rows: 16 Data size: 256 Basic stats: COMPLETE Column stats: COMPLETE
         Reducer 3 
-            Execution mode: vectorized, llap
+            Execution mode: llap
             Reduce Operator Tree:
               Select Operator
                 expressions: KEY.reducesinkkey0 (type: int), KEY.reducesinkkey1 (type: int), KEY.reducesinkkey2 (type: int), KEY.reducesinkkey3 (type: int)
@@ -132,26 +132,21 @@ Stage-1 HIVE COUNTERS:
    RECORDS_OUT_INTERMEDIATE_Map_4: 2
    RECORDS_OUT_INTERMEDIATE_Reducer_2: 14
    RECORDS_OUT_INTERMEDIATE_Reducer_3: 0
-   RECORDS_OUT_OPERATOR_FIL_18: 6005
-   RECORDS_OUT_OPERATOR_FIL_21: 2
-   RECORDS_OUT_OPERATOR_FS_25: 14
+   RECORDS_OUT_OPERATOR_FIL_15: 6005
+   RECORDS_OUT_OPERATOR_FIL_16: 2
+   RECORDS_OUT_OPERATOR_FS_12: 14
    RECORDS_OUT_OPERATOR_MAP_0: 0
    RECORDS_OUT_OPERATOR_MERGEJOIN_17: 14
    RECORDS_OUT_OPERATOR_RS_10: 14
-   RECORDS_OUT_OPERATOR_RS_20: 6005
-   RECORDS_OUT_OPERATOR_RS_23: 2
-   RECORDS_OUT_OPERATOR_SEL_19: 6005
-   RECORDS_OUT_OPERATOR_SEL_22: 2
-   RECORDS_OUT_OPERATOR_SEL_24: 14
+   RECORDS_OUT_OPERATOR_RS_6: 6005
+   RECORDS_OUT_OPERATOR_RS_7: 2
+   RECORDS_OUT_OPERATOR_SEL_11: 14
+   RECORDS_OUT_OPERATOR_SEL_2: 6005
+   RECORDS_OUT_OPERATOR_SEL_5: 2
    RECORDS_OUT_OPERATOR_SEL_9: 14
    RECORDS_OUT_OPERATOR_TS_0: 6005
    RECORDS_OUT_OPERATOR_TS_3: 800
    TOTAL_TABLE_ROWS_WRITTEN: 0
-Stage-1 LLAP IO COUNTERS:
-   CACHE_MISS_BYTES: 138342
-   NUM_DECODED_BATCHES: 2
-   NUM_VECTOR_BATCHES: 7
-   ROWS_EMITTED: 6805
 Stage-1 INPUT COUNTERS:
    GROUPED_INPUT_SPLITS_Map_1: 1
    GROUPED_INPUT_SPLITS_Map_4: 1
@@ -221,7 +216,7 @@ STAGE PLANS:
                         Map-reduce partition columns: _col1 (type: int), _col2 (type: int)
                         Statistics: Num rows: 6005 Data size: 72060 Basic stats: COMPLETE Column stats: COMPLETE
                         value expressions: _col0 (type: int)
-            Execution mode: vectorized, llap
+            Execution mode: llap
             LLAP IO: all inputs
         Map 4 
             Map Operator Tree:
@@ -273,7 +268,7 @@ STAGE PLANS:
                             sort order: 
                             Statistics: Num rows: 1 Data size: 152 Basic stats: COMPLETE Column stats: COMPLETE
                             value expressions: _col0 (type: int), _col1 (type: int), _col2 (type: binary)
-            Execution mode: vectorized, llap
+            Execution mode: llap
             LLAP IO: all inputs
         Reducer 2 
             Execution mode: llap
@@ -296,7 +291,7 @@ STAGE PLANS:
                     sort order: ++++
                     Statistics: Num rows: 16 Data size: 256 Basic stats: COMPLETE Column stats: COMPLETE
         Reducer 3 
-            Execution mode: vectorized, llap
+            Execution mode: llap
             Reduce Operator Tree:
               Select Operator
                 expressions: KEY.reducesinkkey0 (type: int), KEY.reducesinkkey1 (type: int), KEY.reducesinkkey2 (type: int), KEY.reducesinkkey3 (type: int)
@@ -310,7 +305,7 @@ STAGE PLANS:
                       output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
                       serde: org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe
         Reducer 5 
-            Execution mode: vectorized, llap
+            Execution mode: llap
             Reduce Operator Tree:
               Group By Operator
                 aggregations: min(VALUE._col0), max(VALUE._col1), bloom_filter(VALUE._col2, 1, expectedEntries=1000000)
@@ -323,7 +318,7 @@ STAGE PLANS:
                   Statistics: Num rows: 1 Data size: 152 Basic stats: COMPLETE Column stats: COMPLETE
                   value expressions: _col0 (type: int), _col1 (type: int), _col2 (type: binary)
         Reducer 6 
-            Execution mode: vectorized, llap
+            Execution mode: llap
             Reduce Operator Tree:
               Group By Operator
                 aggregations: min(VALUE._col0), max(VALUE._col1), bloom_filter(VALUE._col2, 1, expectedEntries=1000000)
@@ -364,36 +359,31 @@ Stage-1 HIVE COUNTERS:
    RECORDS_OUT_INTERMEDIATE_Reducer_3: 0
    RECORDS_OUT_INTERMEDIATE_Reducer_5: 1
    RECORDS_OUT_INTERMEDIATE_Reducer_6: 1
-   RECORDS_OUT_OPERATOR_FIL_38: 2
-   RECORDS_OUT_OPERATOR_FIL_51: 14
-   RECORDS_OUT_OPERATOR_FS_55: 14
-   RECORDS_OUT_OPERATOR_GBY_43: 1
-   RECORDS_OUT_OPERATOR_GBY_44: 1
-   RECORDS_OUT_OPERATOR_GBY_47: 1
-   RECORDS_OUT_OPERATOR_GBY_49: 1
+   RECORDS_OUT_OPERATOR_FIL_15: 14
+   RECORDS_OUT_OPERATOR_FIL_16: 2
+   RECORDS_OUT_OPERATOR_FS_12: 14
+   RECORDS_OUT_OPERATOR_GBY_18: 1
+   RECORDS_OUT_OPERATOR_GBY_20: 1
+   RECORDS_OUT_OPERATOR_GBY_23: 1
+   RECORDS_OUT_OPERATOR_GBY_25: 1
    RECORDS_OUT_OPERATOR_MAP_0: 0
    RECORDS_OUT_OPERATOR_MERGEJOIN_37: 14
    RECORDS_OUT_OPERATOR_RS_10: 14
-   RECORDS_OUT_OPERATOR_RS_40: 2
-   RECORDS_OUT_OPERATOR_RS_45: 1
-   RECORDS_OUT_OPERATOR_RS_46: 1
-   RECORDS_OUT_OPERATOR_RS_48: 1
-   RECORDS_OUT_OPERATOR_RS_50: 1
-   RECORDS_OUT_OPERATOR_RS_53: 14
-   RECORDS_OUT_OPERATOR_SEL_39: 2
-   RECORDS_OUT_OPERATOR_SEL_41: 2
-   RECORDS_OUT_OPERATOR_SEL_42: 2
-   RECORDS_OUT_OPERATOR_SEL_52: 14
-   RECORDS_OUT_OPERATOR_SEL_54: 14
+   RECORDS_OUT_OPERATOR_RS_19: 1
+   RECORDS_OUT_OPERATOR_RS_21: 1
+   RECORDS_OUT_OPERATOR_RS_24: 1
+   RECORDS_OUT_OPERATOR_RS_26: 1
+   RECORDS_OUT_OPERATOR_RS_6: 14
+   RECORDS_OUT_OPERATOR_RS_7: 2
+   RECORDS_OUT_OPERATOR_SEL_11: 14
+   RECORDS_OUT_OPERATOR_SEL_17: 2
+   RECORDS_OUT_OPERATOR_SEL_2: 14
+   RECORDS_OUT_OPERATOR_SEL_22: 2
+   RECORDS_OUT_OPERATOR_SEL_5: 2
    RECORDS_OUT_OPERATOR_SEL_9: 14
    RECORDS_OUT_OPERATOR_TS_0: 6005
    RECORDS_OUT_OPERATOR_TS_3: 800
    TOTAL_TABLE_ROWS_WRITTEN: 0
-Stage-1 LLAP IO COUNTERS:
-   CACHE_HIT_BYTES: 138344
-   NUM_DECODED_BATCHES: 2
-   NUM_VECTOR_BATCHES: 7
-   ROWS_EMITTED: 6805
 Stage-1 INPUT COUNTERS:
    GROUPED_INPUT_SPLITS_Map_1: 1
    GROUPED_INPUT_SPLITS_Map_4: 1
@@ -462,7 +452,7 @@ STAGE PLANS:
                         Map-reduce partition columns: _col1 (type: int), _col2 (type: int)
                         Statistics: Num rows: 6005 Data size: 72060 Basic stats: COMPLETE Column stats: COMPLETE
                         value expressions: _col0 (type: int)
-            Execution mode: vectorized, llap
+            Execution mode: llap
             LLAP IO: all inputs
         Map 4 
             Map Operator Tree:
@@ -499,7 +489,7 @@ STAGE PLANS:
                             sort order: 
                             Statistics: Num rows: 1 Data size: 160 Basic stats: COMPLETE Column stats: COMPLETE
                             value expressions: _col0 (type: int), _col1 (type: int), _col2 (type: int), _col3 (type: int), _col4 (type: binary)
-            Execution mode: vectorized, llap
+            Execution mode: llap
             LLAP IO: all inputs
         Reducer 2 
             Execution mode: llap
@@ -522,7 +512,7 @@ STAGE PLANS:
                     sort order: ++++
                     Statistics: Num rows: 16 Data size: 256 Basic stats: COMPLETE Column stats: COMPLETE
         Reducer 3 
-            Execution mode: vectorized, llap
+            Execution mode: llap
             Reduce Operator Tree:
               Select Operator
                 expressions: KEY.reducesinkkey0 (type: int), KEY.reducesinkkey1 (type: int), KEY.reducesinkkey2 (type: int), KEY.reducesinkkey3 (type: int)
@@ -536,7 +526,7 @@ STAGE PLANS:
                       output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
                       serde: org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe
         Reducer 5 
-            Execution mode: vectorized, llap
+            Execution mode: llap
             Reduce Operator Tree:
               Group By Operator
                 aggregations: min(VALUE._col0), max(VALUE._col1), min(VALUE._col2), max(VALUE._col3), bloom_filter(VALUE._col4, 1, expectedEntries=1000000)
@@ -576,31 +566,26 @@ Stage-1 HIVE COUNTERS:
    RECORDS_OUT_INTERMEDIATE_Reducer_2: 14
    RECORDS_OUT_INTERMEDIATE_Reducer_3: 0
    RECORDS_OUT_INTERMEDIATE_Reducer_5: 1
-   RECORDS_OUT_OPERATOR_FIL_48: 2
-   RECORDS_OUT_OPERATOR_FIL_56: 14
-   RECORDS_OUT_OPERATOR_FS_60: 14
-   RECORDS_OUT_OPERATOR_GBY_52: 1
-   RECORDS_OUT_OPERATOR_GBY_54: 1
+   RECORDS_OUT_OPERATOR_FIL_15: 14
+   RECORDS_OUT_OPERATOR_FIL_16: 2
+   RECORDS_OUT_OPERATOR_FS_12: 14
+   RECORDS_OUT_OPERATOR_GBY_38: 1
+   RECORDS_OUT_OPERATOR_GBY_40: 1
    RECORDS_OUT_OPERATOR_MAP_0: 0
    RECORDS_OUT_OPERATOR_MERGEJOIN_47: 14
    RECORDS_OUT_OPERATOR_RS_10: 14
-   RECORDS_OUT_OPERATOR_RS_50: 2
-   RECORDS_OUT_OPERATOR_RS_53: 1
-   RECORDS_OUT_OPERATOR_RS_55: 1
-   RECORDS_OUT_OPERATOR_RS_58: 14
-   RECORDS_OUT_OPERATOR_SEL_49: 2
-   RECORDS_OUT_OPERATOR_SEL_51: 2
-   RECORDS_OUT_OPERATOR_SEL_57: 14
-   RECORDS_OUT_OPERATOR_SEL_59: 14
+   RECORDS_OUT_OPERATOR_RS_39: 1
+   RECORDS_OUT_OPERATOR_RS_41: 1
+   RECORDS_OUT_OPERATOR_RS_6: 14
+   RECORDS_OUT_OPERATOR_RS_7: 2
+   RECORDS_OUT_OPERATOR_SEL_11: 14
+   RECORDS_OUT_OPERATOR_SEL_2: 14
+   RECORDS_OUT_OPERATOR_SEL_37: 2
+   RECORDS_OUT_OPERATOR_SEL_5: 2
    RECORDS_OUT_OPERATOR_SEL_9: 14
    RECORDS_OUT_OPERATOR_TS_0: 6005
    RECORDS_OUT_OPERATOR_TS_3: 800
    TOTAL_TABLE_ROWS_WRITTEN: 0
-Stage-1 LLAP IO COUNTERS:
-   CACHE_HIT_BYTES: 138344
-   NUM_DECODED_BATCHES: 2
-   NUM_VECTOR_BATCHES: 7
-   ROWS_EMITTED: 6805
 Stage-1 INPUT COUNTERS:
    GROUPED_INPUT_SPLITS_Map_1: 1
    GROUPED_INPUT_SPLITS_Map_4: 1
@@ -674,7 +659,7 @@ STAGE PLANS:
                         Map-reduce partition columns: _col1 (type: int), _col2 (type: int)
                         Statistics: Num rows: 6005 Data size: 72060 Basic stats: COMPLETE Column stats: COMPLETE
                         value expressions: _col0 (type: int)
-            Execution mode: vectorized, llap
+            Execution mode: llap
             LLAP IO: all inputs
         Map 4 
             Map Operator Tree:
@@ -711,7 +696,7 @@ STAGE PLANS:
                             sort order: 
                             Statistics: Num rows: 1 Data size: 160 Basic stats: COMPLETE Column stats: COMPLETE
                             value expressions: _col0 (type: int), _col1 (type: int), _col2 (type: int), _col3 (type: int), _col4 (type: binary)
-            Execution mode: vectorized, llap
+            Execution mode: llap
             LLAP IO: all inputs
         Reducer 2 
             Execution mode: llap
@@ -734,7 +719,7 @@ STAGE PLANS:
                     sort order: ++++
                     Statistics: Num rows: 16 Data size: 256 Basic stats: COMPLETE Column stats: COMPLETE
         Reducer 3 
-            Execution mode: vectorized, llap
+            Execution mode: llap
             Reduce Operator Tree:
               Select Operator
                 expressions: KEY.reducesinkkey0 (type: int), KEY.reducesinkkey1 (type: int), KEY.reducesinkkey2 (type: int), KEY.reducesinkkey3 (type: int)
@@ -748,7 +733,7 @@ STAGE PLANS:
                       output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
                       serde: org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe
         Reducer 5 
-            Execution mode: vectorized, llap
+            Execution mode: llap
             Reduce Operator Tree:
               Group By Operator
                 aggregations: min(VALUE._col0), max(VALUE._col1), min(VALUE._col2), max(VALUE._col3), bloom_filter(VALUE._col4, 1, expectedEntries=3)
@@ -793,31 +778,26 @@ Stage-1 HIVE COUNTERS:
    RECORDS_OUT_INTERMEDIATE_Reducer_2: 14
    RECORDS_OUT_INTERMEDIATE_Reducer_3: 0
    RECORDS_OUT_INTERMEDIATE_Reducer_5: 1
-   RECORDS_OUT_OPERATOR_FIL_33: 2
-   RECORDS_OUT_OPERATOR_FIL_41: 14
-   RECORDS_OUT_OPERATOR_FS_45: 14
-   RECORDS_OUT_OPERATOR_GBY_37: 1
-   RECORDS_OUT_OPERATOR_GBY_39: 1
+   RECORDS_OUT_OPERATOR_FIL_15: 14
+   RECORDS_OUT_OPERATOR_FIL_16: 2
+   RECORDS_OUT_OPERATOR_FS_12: 14
+   RECORDS_OUT_OPERATOR_GBY_28: 1
+   RECORDS_OUT_OPERATOR_GBY_30: 1
    RECORDS_OUT_OPERATOR_MAP_0: 0
    RECORDS_OUT_OPERATOR_MERGEJOIN_32: 14
    RECORDS_OUT_OPERATOR_RS_10: 14
-   RECORDS_OUT_OPERATOR_RS_35: 2
-   RECORDS_OUT_OPERATOR_RS_38: 1
-   RECORDS_OUT_OPERATOR_RS_40: 1
-   RECORDS_OUT_OPERATOR_RS_43: 14
-   RECORDS_OUT_OPERATOR_SEL_34: 2
-   RECORDS_OUT_OPERATOR_SEL_36: 2
-   RECORDS_OUT_OPERATOR_SEL_42: 14
-   RECORDS_OUT_OPERATOR_SEL_44: 14
+   RECORDS_OUT_OPERATOR_RS_29: 1
+   RECORDS_OUT_OPERATOR_RS_31: 1
+   RECORDS_OUT_OPERATOR_RS_6: 14
+   RECORDS_OUT_OPERATOR_RS_7: 2
+   RECORDS_OUT_OPERATOR_SEL_11: 14
+   RECORDS_OUT_OPERATOR_SEL_2: 14
+   RECORDS_OUT_OPERATOR_SEL_27: 2
+   RECORDS_OUT_OPERATOR_SEL_5: 2
    RECORDS_OUT_OPERATOR_SEL_9: 14
    RECORDS_OUT_OPERATOR_TS_0: 6005
    RECORDS_OUT_OPERATOR_TS_3: 800
    TOTAL_TABLE_ROWS_WRITTEN: 0
-Stage-1 LLAP IO COUNTERS:
-   CACHE_HIT_BYTES: 138344
-   NUM_DECODED_BATCHES: 2
-   NUM_VECTOR_BATCHES: 7
-   ROWS_EMITTED: 6805
 Stage-1 INPUT COUNTERS:
    GROUPED_INPUT_SPLITS_Map_1: 1
    GROUPED_INPUT_SPLITS_Map_4: 1

@@ -19,6 +19,7 @@
 package org.apache.hadoop.hive.ql.exec.vector.expressions.gen;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hive.common.NoDynamicValuesException;
 import org.apache.hadoop.hive.ql.exec.vector.VectorizedRowBatch;
 import org.apache.hadoop.hive.ql.exec.vector.expressions.gen.Filter<TypeName>ColumnBetween;
 import org.apache.hadoop.hive.ql.plan.DynamicValue;
@@ -44,6 +45,8 @@ public class <ClassName> extends Filter<TypeName>ColumnBetween {
   // Transient members initialized by transientInit method.
   protected transient boolean initialized;
   protected transient boolean isLeftOrRightNull;
+  // the rows passed before the runtime values arrived
+  private transient long rowsPassed;
 
   public <ClassName>(int colNum, DynamicValue leftValue, DynamicValue rightValue) {
     super(colNum, <DefaultValue>, <DefaultValue>);
@@ -85,8 +88,19 @@ public class <ClassName> extends Filter<TypeName>ColumnBetween {
   @Override
   public void evaluate(VectorizedRowBatch batch) throws HiveException {
     if (!initialized) {
-      Object lVal = leftDynamicValue.getValue();
-      Object rVal = rightDynamicValue.getValue();
+      Object lVal;
+      Object rVal;
+      try {
+        lVal = leftDynamicValue.getValue();
+        rVal = rightDynamicValue.getValue();
+      } catch (NoDynamicValuesException e) {
+        // The runtime values have not arrived: the batch passes until they do.
+        rowsPassed += batch.size;
+        return;
+      }
+      if (rowsPassed > 0) {
+        LOG.info("Runtime value {} arrived after {} rows passed", leftDynamicValue.getId(), rowsPassed);
+      }
       if (lVal == null || rVal == null) {
         isLeftOrRightNull = true;
       } else {

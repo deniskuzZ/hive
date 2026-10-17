@@ -131,6 +131,7 @@ import org.apache.hadoop.hive.ql.plan.DynamicPruningEventDesc;
 import org.apache.hadoop.hive.ql.plan.ExprNodeColumnDesc;
 import org.apache.hadoop.hive.ql.plan.ExprNodeDesc;
 import org.apache.hadoop.hive.ql.plan.ExprNodeDescUtils;
+import org.apache.hadoop.hive.ql.plan.DynamicValue;
 import org.apache.hadoop.hive.ql.plan.ExprNodeDynamicValueDesc;
 import org.apache.hadoop.hive.ql.plan.ExprNodeGenericFuncDesc;
 import org.apache.hadoop.hive.ql.plan.GroupByDesc;
@@ -277,6 +278,8 @@ public class TezCompiler extends TaskCompiler {
     if (procCtx.conf.getBoolVar(ConfVars.GROUPBY_UNSORTED_SHUFFLE)) {
       markUnsortedGroupBys(procCtx.parseContext);
     }
+
+    markWaitingSemijoins(procCtx);
 
     perfLogger.perfLogBegin(this.getClass().getName(), PerfLogger.TEZ_COMPILER);
     AuxOpTreeSignature.linkAuxSignatures(procCtx.parseContext);
@@ -1994,6 +1997,68 @@ public class TezCompiler extends TaskCompiler {
     selectivity = Math.max(0.0, selectivity);
     // Benefit (rows filtered from ts): (1 - selectivity) * # ts rows
     return filStats.getNumRows() * (1 - selectivity);
+  }
+
+  /**
+   * Marks the runtime values of a semijoin to be waited for when its filter's rows produce a pruning event or the
+   * values of another semijoin: the filter then passes no row before they arrive. A row it passed would go on
+   * unfiltered into that event or those values, which cannot be taken back (TPC-DS q58: its date scan sent every date,
+   * and the three fact scans the event prunes read every partition).
+   */
+  private static void markWaitingSemijoins(OptimizeTezProcContext procCtx) {
+    ParseContext pctx = procCtx.parseContext;
+    for (Map.Entry<ReduceSinkOperator, SemiJoinBranchInfo> entry : pctx.getRsToSemiJoinBranchInfo().entrySet()) {
+      RuntimeValuesInfo rti = pctx.getRsToRuntimeValuesInfoMap().get(entry.getKey());
+      if (rti == null) {
+        continue;
+      }
+      Set<String> ids = new HashSet<>(rti.getDynamicValueIDs());
+      for (Operator<?> child : entry.getValue().getTsOp().getChildOperators()) {
+        if (!(child instanceof FilterOperator filter)) {
+          continue;
+        }
+        List<DynamicValue> values = new ArrayList<>();
+        collectDynamicValues(filter.getConf().getPredicate(), ids, values);
+        if (values.isEmpty() || !producesRuntimeValues(filter, pctx)) {
+          continue;
+        }
+        values.forEach(value -> value.setWaitForArrival(true));
+        LOG.info("Semijoin {} -> {} waits for its runtime values: its rows produce runtime values",
+            OperatorUtils.getOpNamePretty(entry.getKey()), OperatorUtils.getOpNamePretty(filter));
+      }
+    }
+  }
+
+  /** Whether the rows of the operator reach, in its vertex, a pruning event or the source of a semijoin. */
+  private static boolean producesRuntimeValues(Operator<?> op, ParseContext pctx) {
+    Deque<Operator<?>> deque = new ArrayDeque<>();
+    deque.add(op);
+    while (!deque.isEmpty()) {
+      Operator<?> current = deque.poll();
+      if (current instanceof AppMasterEventOperator event && event.getConf() instanceof DynamicPruningEventDesc) {
+        return true;
+      }
+      if (current instanceof ReduceSinkOperator rs) {
+        if (pctx.getRsToSemiJoinBranchInfo().containsKey(rs)) {
+          return true;
+        }
+        continue;
+      }
+      deque.addAll(current.getChildOperators());
+    }
+    return false;
+  }
+
+  private static void collectDynamicValues(ExprNodeDesc expr, Set<String> ids, List<DynamicValue> values) {
+    if (expr instanceof ExprNodeDynamicValueDesc dynamicValueDesc) {
+      if (ids.contains(dynamicValueDesc.getDynamicValue().getId())) {
+        values.add(dynamicValueDesc.getDynamicValue());
+      }
+    } else if (expr.getChildren() != null) {
+      for (ExprNodeDesc child : expr.getChildren()) {
+        collectDynamicValues(child, ids, values);
+      }
+    }
   }
 
   private static double computeBloomFilterNetBenefit(
