@@ -692,10 +692,12 @@ public class ConvertJoinMapJoin implements SemanticNodeProcessor {
   }
 
   /**
-   * Converts a join whose big input is already hash partitioned on the join keys, by a dynamically partitioned hash
-   * join on the same keys in the same vertex, into a bucket map join on those partitions: the small inputs are shuffled
-   * into the same partitions with the same hash instead of being broadcast to every node, and the big input is not
-   * shuffled again (Trino AddExchanges#visitJoin).
+   * Converts a join whose big input is already hash partitioned on the join keys, by the dynamically partitioned hash
+   * join or the reduce-side GROUP BY on those keys that produced it in its vertex, into a bucket map join on those
+   * partitions: the small inputs are shuffled into the same partitions with the same hash instead of being shuffled
+   * with the big input into another vertex or broadcast to every node, and the big input is not shuffled again (Trino
+   * AddExchanges#visitJoin). Each small input is held per partition, as by a dynamically partitioned hash join, so a
+   * FULL OUTER join emits each unmatched small row once.
    */
   private boolean convertJoinCoPartitioned(JoinOperator joinOp, OptimizeTezProcContext context)
       throws SemanticException {
@@ -710,16 +712,35 @@ public class ConvertJoinMapJoin implements SemanticNodeProcessor {
       if (partitioner == null) {
         continue;
       }
+      if (partitioner.getChildOperators().get(0) instanceof GroupByOperator
+          && (!context.conf.getBoolVar(HiveConf.ConfVars.HIVE_DYNAMIC_PARTITION_HASHJOIN)
+              || getMapJoinConversion(joinOp, context, 1, false, maxJoinMemory, true) != null)) {
+        // only a join that would be a dynamically partitioned hash join removes a shuffle by running in the GROUP BY's
+        // reducer; one the reducer can broadcast to keeps its broadcast
+        continue;
+      }
       int numBuckets = partitioner.getConf().getNumReducers();
+      int minPartitions = minPartitions(partitioner, context.conf);
       MapJoinConversion mapJoinConversion =
-          getMapJoinConversion(joinOp, context, numBuckets, false, maxJoinMemory, true);
+          getMapJoinConversion(joinOp, context, minPartitions, false, maxJoinMemory, false);
+      boolean pinned = false;
+      if (mapJoinConversion == null && minPartitions < numBuckets) {
+        // the small inputs fit only in the partitions the GROUP BY is estimated to run with: it runs with that many and
+        // no longer auto-reduces, as the vertex of the dynamically partitioned hash join it replaces never does
+        mapJoinConversion = getMapJoinConversion(joinOp, context, numBuckets, false, maxJoinMemory, false);
+        pinned = true;
+      }
       if (mapJoinConversion == null || mapJoinConversion.getBigTablePos() != pos
-          || mapJoinConversion.getIsFullOuterJoin()) {
-        return false;
+          || mapJoinConversion.getIsFullOuterJoin()
+              && !mapJoinConversion.getIsFullOuterEnabledForDynamicPartitionHashJoin()) {
+        continue;
       }
       MapJoinOperator mapJoinOp = convertJoinMapJoin(joinOp, context, mapJoinConversion, true);
       if (mapJoinOp == null) {
         return false;
+      }
+      if (pinned) {
+        partitioner.getConf().getReducerTraits().remove(ReducerTraits.AUTOPARALLEL);
       }
       MapJoinDesc joinDesc = mapJoinOp.getConf();
       joinDesc.setBucketMapJoin(true);
@@ -747,10 +768,36 @@ public class ConvertJoinMapJoin implements SemanticNodeProcessor {
   }
 
   /**
-   * The big table ReduceSink of the dynamically partitioned hash join that partitions the join's input at the position,
-   * or null. The input must reach that join through operators of its vertex that keep a row in its task, its partition
-   * columns must trace back to all the join keys of one side, in order, and every other input must hash its keys as the
-   * join's inputs do: Murmur3 over the same serialized key (UNIFORM), so equal keys meet in one task.
+   * The fewest partitions the partitioner's vertex may run with: auto-reduce may merge the estimated partitions of a
+   * GROUP BY's vertex down to this many at run time, and each holds its share of the small inputs (as
+   * GenTezUtils#createReduceWork decides). The vertex of a dynamically partitioned hash join, whose inputs are all
+   * partitioned edges, never auto-reduces (DagUtils#setupVertexManager) and runs with at least its estimate.
+   */
+  private static int minPartitions(ReduceSinkOperator partitioner, HiveConf conf) {
+    ReduceSinkDesc partitioning = partitioner.getConf();
+    int numPartitions = partitioning.getNumReducers();
+    if (!(partitioner.getChildOperators().get(0) instanceof GroupByOperator)
+        || !conf.getBoolVar(HiveConf.ConfVars.TEZ_AUTO_REDUCER_PARALLELISM)
+        || !partitioning.getReducerTraits().contains(ReducerTraits.AUTOPARALLEL)) {
+      return numPartitions;
+    }
+    int maxReducers = conf.getIntVar(HiveConf.ConfVars.MAX_REDUCERS);
+    float minPartitionFactor = conf.getFloatVar(HiveConf.ConfVars.TEZ_MIN_PARTITION_FACTOR);
+    int minPartitions = Math.min(maxReducers, Math.max(1, (int) (numPartitions * minPartitionFactor)));
+    int maxPartitions = Math.min(maxReducers,
+        Math.max(1, (int) (numPartitions * conf.getFloatVar(HiveConf.ConfVars.TEZ_MAX_PARTITION_FACTOR))));
+    boolean autoReduces = minPartitions < maxPartitions && numPartitions * minPartitionFactor
+        >= conf.getFloatVar(HiveConf.ConfVars.TEZ_AUTO_REDUCER_PARALLELISM_MIN_THRESHOLD);
+    return autoReduces ? minPartitions : numPartitions;
+  }
+
+  /**
+   * The ReduceSink that partitions the join's input at the position, or null: the big table ReduceSink of the
+   * dynamically partitioned hash join, or the ReduceSink of the reduce-side GROUP BY, that produced the input in its
+   * vertex. The input must reach that operator through operators of its vertex that keep a row in its task, its
+   * partition columns must trace back to all the join keys of one side or to all the GROUP BY keys, in order, and every
+   * other input must hash its keys as the ReduceSink does: Murmur3 over the same serialized key (UNIFORM), so equal keys
+   * meet in one task.
    */
   /**
    * The partition columns of the join's ReduceSink are columns of the big table input of a map join on the way: the
@@ -777,7 +824,8 @@ public class ConvertJoinMapJoin implements SemanticNodeProcessor {
     }
     Operator<? extends OperatorDesc> below = bigTableRS;
     Operator<? extends OperatorDesc> op = bigTableRS.getParentOperators().get(0);
-    while (!(op instanceof MapJoinOperator mapJoin && mapJoin.getConf().isDynamicPartitionHashJoin())) {
+    while (!(op instanceof MapJoinOperator mapJoin && mapJoin.getConf().isDynamicPartitionHashJoin()
+        || op instanceof GroupByOperator && op.getParentOperators().get(0) instanceof ReduceSinkOperator)) {
       Operator<? extends OperatorDesc> parent;
       if (op instanceof MapJoinOperator mapJoin) {
         if (!keysFromBigTable(bigTableRS, below, mapJoin)) {
@@ -792,7 +840,6 @@ public class ConvertJoinMapJoin implements SemanticNodeProcessor {
       below = op;
       op = parent;
     }
-    MapJoinOperator partitionedJoin = (MapJoinOperator) op;
     List<ExprNodeDesc> keys = below == bigTableRS ? bigTableRS.getConf().getPartitionCols()
         : ExprNodeDescUtils.backtrack(bigTableRS.getConf().getPartitionCols(), bigTableRS, below, false, true);
     List<String> keyColumns = new ArrayList<>();
@@ -805,17 +852,27 @@ public class ConvertJoinMapJoin implements SemanticNodeProcessor {
     if (keyColumns.isEmpty()) {
       return null;
     }
-    ReduceSinkOperator partitioner =
-        (ReduceSinkOperator) partitionedJoin.getParentOperators().get(partitionedJoin.getConf().getPosBigTable());
-    // the partitioner hashes its keys in their order, and either side's i-th key is the i-th key of its ReduceSink
-    List<String> partitionKeys = partitioner.getConf().getOutputKeyColumnNames();
-    if (keyColumns.size() != partitionKeys.size()) {
-      return null;
-    }
-    for (int i = 0; i < keyColumns.size(); i++) {
-      if (!(partitionedJoin.getColumnExprMap().get(keyColumns.get(i)) instanceof ExprNodeColumnDesc key)
-          || !key.getColumn().equals(Utilities.ReduceField.KEY + "." + partitionKeys.get(i))) {
+    ReduceSinkOperator partitioner;
+    if (op instanceof GroupByOperator groupBy) {
+      GroupByDesc groupByDesc = groupBy.getConf();
+      if (!keyColumns.equals(groupByDesc.getOutputColumnNames().subList(0, groupByDesc.getKeys().size()))) {
         return null;
+      }
+      partitioner = (ReduceSinkOperator) groupBy.getParentOperators().get(0);
+    } else {
+      MapJoinOperator partitionedJoin = (MapJoinOperator) op;
+      partitioner =
+          (ReduceSinkOperator) partitionedJoin.getParentOperators().get(partitionedJoin.getConf().getPosBigTable());
+      // the partitioner hashes its keys in their order, and either side's i-th key is the i-th key of its ReduceSink
+      List<String> partitionKeys = partitioner.getConf().getOutputKeyColumnNames();
+      if (keyColumns.size() != partitionKeys.size()) {
+        return null;
+      }
+      for (int i = 0; i < keyColumns.size(); i++) {
+        if (!(partitionedJoin.getColumnExprMap().get(keyColumns.get(i)) instanceof ExprNodeColumnDesc key)
+            || !key.getColumn().equals(Utilities.ReduceField.KEY + "." + partitionKeys.get(i))) {
+          return null;
+        }
       }
     }
     ReduceSinkDesc partitioning = partitioner.getConf();
