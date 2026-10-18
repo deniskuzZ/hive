@@ -80,9 +80,11 @@ public class NonSyncByteArrayOutputStream extends ByteArrayOutputStream {
    */
   @Override
   public void write(int b) {
-    enLargeBuffer(1);
-    buf[count] = (byte) b;
-    count += 1;
+    // the capacity check stays here: serializers write a field's bytes one at a time
+    if (count == buf.length) {
+      enLargeBuffer(1);
+    }
+    buf[count++] = (byte) b;
   }
 
   private void enLargeBuffer(final int increment) {
@@ -115,7 +117,9 @@ public class NonSyncByteArrayOutputStream extends ByteArrayOutputStream {
     if (len == 0) {
       return;
     }
-    enLargeBuffer(len);
+    if (len > buf.length - count) {
+      enLargeBuffer(len);
+    }
     System.arraycopy(b, off, buf, count, len);
     count += len;
   }
