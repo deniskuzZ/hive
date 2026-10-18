@@ -491,7 +491,10 @@ public class HiveSplitGenerator extends InputInitializer {
       LOG.debug("Start creating events for {} splits", splits.size());
       long startTime = Time.monotonicNow();
 
-      try (SplitSerializer splitSerializer = getSplitSerializer()) {
+      // created for the first split that goes to the file system: it resolves the staging dir (file system calls)
+      // and starts a thread pool, which no initializer below the threshold needs
+      SplitSerializer splitSerializer = null;
+      try {
         for (MRSplitProto mrSplit : splits) {
           ByteBuffer payloadBuffer = mrSplit.toByteString().asReadOnlyByteBuffer();
           int payloadSize = payloadBuffer.limit();
@@ -502,6 +505,9 @@ public class HiveSplitGenerator extends InputInitializer {
           InputDataInformationEvent diEvent = null;
 
           if (shouldSerializeEventToFile) {
+            if (splitSerializer == null) {
+              splitSerializer = getSplitSerializer();
+            }
             LOG.debug("Serialize to path: {}, current in-memory payload: {} bytes >= threshold: {} bytes",
                 splitSerializer.getSerializedFilePath(count), inMemoryPayloadSize, payloadSerializationThresholdBytes);
             serializedPayloadSize += payloadSize;
@@ -512,6 +518,10 @@ public class HiveSplitGenerator extends InputInitializer {
           }
           events.add(diEvent);
           count += 1;
+        }
+      } finally {
+        if (splitSerializer != null) {
+          splitSerializer.close();
         }
       }
 

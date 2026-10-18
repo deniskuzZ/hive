@@ -24,6 +24,7 @@ import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -120,6 +121,37 @@ public class TestHiveSplitGenerator {
     InputSplit[] splits = getSplits(1);
     String serializedPath = ((InputDataInformationEvent) generateEvents(conf, splits).get(1)).getSerializedPath();
     Assert.assertNull(serializedPath);
+  }
+
+  @Test
+  public void testSplitSerializerCreatedOnlyForSerializedSplits() throws Exception {
+    JobConf conf = new JobConf(new HiveConf());
+    InputSplit[] splits = getSplits(2);
+    // the default threshold keeps every split in memory: no serializer, so no staging dir lookup and no thread pool
+    Assert.assertEquals(0, serializersCreated(conf, splits));
+    // split size is around 200 bytes: the first stays in memory, the second is serialized
+    HiveConf.setIntVar(conf, HiveConf.ConfVars.HIVE_TEZ_INPUT_FS_SERIALIZATION_THRESHOLD, 10);
+    Assert.assertEquals(1, serializersCreated(conf, splits));
+  }
+
+  private int serializersCreated(JobConf conf, InputSplit[] splits) throws Exception {
+    AtomicInteger created = new AtomicInteger();
+    InputInitializerContext context = getInputInitializerContext(conf);
+    HiveSplitGenerator splitGenerator = new HiveSplitGenerator(context) {
+      @Override
+      SplitSerializer getSplitSerializer() throws IOException {
+        created.incrementAndGet();
+        return new SplitSerializer() {
+          @Override
+          void writeSplit(int count, MRSplitProto mrSplit, Path filePath) {
+            // only the creation is counted; the other tests write the same paths
+          }
+        };
+      }
+    };
+    splitGenerator.prepare(context);
+    generateEvents(conf, splits, splitGenerator);
+    return created.get();
   }
 
   @Test
