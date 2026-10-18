@@ -1,0 +1,1011 @@
+PREHOOK: query: create table date_dim (d_date_sk bigint, d_year int) stored as parquet
+PREHOOK: type: CREATETABLE
+PREHOOK: Output: database:default
+PREHOOK: Output: default@date_dim
+POSTHOOK: query: create table date_dim (d_date_sk bigint, d_year int) stored as parquet
+POSTHOOK: type: CREATETABLE
+POSTHOOK: Output: database:default
+POSTHOOK: Output: default@date_dim
+PREHOOK: query: create table web_sales (ws_sold_date_sk bigint, ws_item_sk bigint, ws_bill_customer_sk bigint, ws_order_number bigint,
+  ws_quantity int, ws_wholesale_cost decimal(7,2), ws_sales_price decimal(7,2)) stored as parquet
+PREHOOK: type: CREATETABLE
+PREHOOK: Output: database:default
+PREHOOK: Output: default@web_sales
+POSTHOOK: query: create table web_sales (ws_sold_date_sk bigint, ws_item_sk bigint, ws_bill_customer_sk bigint, ws_order_number bigint,
+  ws_quantity int, ws_wholesale_cost decimal(7,2), ws_sales_price decimal(7,2)) stored as parquet
+POSTHOOK: type: CREATETABLE
+POSTHOOK: Output: database:default
+POSTHOOK: Output: default@web_sales
+PREHOOK: query: create table web_returns (wr_order_number bigint, wr_item_sk bigint) stored as parquet
+PREHOOK: type: CREATETABLE
+PREHOOK: Output: database:default
+PREHOOK: Output: default@web_returns
+POSTHOOK: query: create table web_returns (wr_order_number bigint, wr_item_sk bigint) stored as parquet
+POSTHOOK: type: CREATETABLE
+POSTHOOK: Output: database:default
+POSTHOOK: Output: default@web_returns
+PREHOOK: query: create table catalog_sales (cs_sold_date_sk bigint, cs_item_sk bigint, cs_bill_customer_sk bigint, cs_order_number bigint,
+  cs_quantity int, cs_wholesale_cost decimal(7,2), cs_sales_price decimal(7,2)) stored as parquet
+PREHOOK: type: CREATETABLE
+PREHOOK: Output: database:default
+PREHOOK: Output: default@catalog_sales
+POSTHOOK: query: create table catalog_sales (cs_sold_date_sk bigint, cs_item_sk bigint, cs_bill_customer_sk bigint, cs_order_number bigint,
+  cs_quantity int, cs_wholesale_cost decimal(7,2), cs_sales_price decimal(7,2)) stored as parquet
+POSTHOOK: type: CREATETABLE
+POSTHOOK: Output: database:default
+POSTHOOK: Output: default@catalog_sales
+PREHOOK: query: create table catalog_returns (cr_order_number bigint, cr_item_sk bigint) stored as parquet
+PREHOOK: type: CREATETABLE
+PREHOOK: Output: database:default
+PREHOOK: Output: default@catalog_returns
+POSTHOOK: query: create table catalog_returns (cr_order_number bigint, cr_item_sk bigint) stored as parquet
+POSTHOOK: type: CREATETABLE
+POSTHOOK: Output: database:default
+POSTHOOK: Output: default@catalog_returns
+PREHOOK: query: create table store_sales (ss_sold_date_sk bigint, ss_item_sk bigint, ss_customer_sk bigint, ss_ticket_number bigint,
+  ss_quantity int, ss_wholesale_cost decimal(7,2), ss_sales_price decimal(7,2)) stored as parquet
+PREHOOK: type: CREATETABLE
+PREHOOK: Output: database:default
+PREHOOK: Output: default@store_sales
+POSTHOOK: query: create table store_sales (ss_sold_date_sk bigint, ss_item_sk bigint, ss_customer_sk bigint, ss_ticket_number bigint,
+  ss_quantity int, ss_wholesale_cost decimal(7,2), ss_sales_price decimal(7,2)) stored as parquet
+POSTHOOK: type: CREATETABLE
+POSTHOOK: Output: database:default
+POSTHOOK: Output: default@store_sales
+PREHOOK: query: create table store_returns (sr_ticket_number bigint, sr_item_sk bigint) stored as parquet
+PREHOOK: type: CREATETABLE
+PREHOOK: Output: database:default
+PREHOOK: Output: default@store_returns
+POSTHOOK: query: create table store_returns (sr_ticket_number bigint, sr_item_sk bigint) stored as parquet
+POSTHOOK: type: CREATETABLE
+POSTHOOK: Output: database:default
+POSTHOOK: Output: default@store_returns
+PREHOOK: query: insert into date_dim select pos + 1, 2000 + pos % 3 from (select posexplode(split(space(29), ' '))) t
+PREHOOK: type: QUERY
+PREHOOK: Input: _dummy_database@_dummy_table
+PREHOOK: Output: default@date_dim
+POSTHOOK: query: insert into date_dim select pos + 1, 2000 + pos % 3 from (select posexplode(split(space(29), ' '))) t
+POSTHOOK: type: QUERY
+POSTHOOK: Input: _dummy_database@_dummy_table
+POSTHOOK: Output: default@date_dim
+POSTHOOK: Lineage: date_dim.d_date_sk SCRIPT []
+POSTHOOK: Lineage: date_dim.d_year SCRIPT []
+PREHOOK: query: insert into web_sales select pos % 30 + 1, pos % 7 + 1, pos % 5 + 1, pos % 40, pos % 9 + 1,
+  if(pos % 17 = 0, null, cast(pos % 50 + 1.25 as decimal(7,2))), cast(pos % 30 + 0.5 as decimal(7,2))
+  from (select posexplode(split(space(599), ' '))) t
+PREHOOK: type: QUERY
+PREHOOK: Input: _dummy_database@_dummy_table
+PREHOOK: Output: default@web_sales
+POSTHOOK: query: insert into web_sales select pos % 30 + 1, pos % 7 + 1, pos % 5 + 1, pos % 40, pos % 9 + 1,
+  if(pos % 17 = 0, null, cast(pos % 50 + 1.25 as decimal(7,2))), cast(pos % 30 + 0.5 as decimal(7,2))
+  from (select posexplode(split(space(599), ' '))) t
+POSTHOOK: type: QUERY
+POSTHOOK: Input: _dummy_database@_dummy_table
+POSTHOOK: Output: default@web_sales
+POSTHOOK: Lineage: web_sales.ws_bill_customer_sk SCRIPT []
+POSTHOOK: Lineage: web_sales.ws_item_sk SCRIPT []
+POSTHOOK: Lineage: web_sales.ws_order_number SCRIPT []
+POSTHOOK: Lineage: web_sales.ws_quantity SCRIPT []
+POSTHOOK: Lineage: web_sales.ws_sales_price SCRIPT []
+POSTHOOK: Lineage: web_sales.ws_sold_date_sk SCRIPT []
+POSTHOOK: Lineage: web_sales.ws_wholesale_cost SCRIPT []
+PREHOOK: query: insert into web_returns select pos * 3, pos % 7 + 1 from (select posexplode(split(space(13), ' '))) t
+PREHOOK: type: QUERY
+PREHOOK: Input: _dummy_database@_dummy_table
+PREHOOK: Output: default@web_returns
+POSTHOOK: query: insert into web_returns select pos * 3, pos % 7 + 1 from (select posexplode(split(space(13), ' '))) t
+POSTHOOK: type: QUERY
+POSTHOOK: Input: _dummy_database@_dummy_table
+POSTHOOK: Output: default@web_returns
+POSTHOOK: Lineage: web_returns.wr_item_sk SCRIPT []
+POSTHOOK: Lineage: web_returns.wr_order_number SCRIPT []
+PREHOOK: query: insert into catalog_sales select pos % 30 + 1, pos % 7 + 1, pos % 5 + 1, pos % 50, pos % 8 + 1,
+  if(pos % 19 = 0, null, cast(pos % 40 + 2.5 as decimal(7,2))), cast(pos % 20 + 0.25 as decimal(7,2))
+  from (select posexplode(split(space(699), ' '))) t
+PREHOOK: type: QUERY
+PREHOOK: Input: _dummy_database@_dummy_table
+PREHOOK: Output: default@catalog_sales
+POSTHOOK: query: insert into catalog_sales select pos % 30 + 1, pos % 7 + 1, pos % 5 + 1, pos % 50, pos % 8 + 1,
+  if(pos % 19 = 0, null, cast(pos % 40 + 2.5 as decimal(7,2))), cast(pos % 20 + 0.25 as decimal(7,2))
+  from (select posexplode(split(space(699), ' '))) t
+POSTHOOK: type: QUERY
+POSTHOOK: Input: _dummy_database@_dummy_table
+POSTHOOK: Output: default@catalog_sales
+POSTHOOK: Lineage: catalog_sales.cs_bill_customer_sk SCRIPT []
+POSTHOOK: Lineage: catalog_sales.cs_item_sk SCRIPT []
+POSTHOOK: Lineage: catalog_sales.cs_order_number SCRIPT []
+POSTHOOK: Lineage: catalog_sales.cs_quantity SCRIPT []
+POSTHOOK: Lineage: catalog_sales.cs_sales_price SCRIPT []
+POSTHOOK: Lineage: catalog_sales.cs_sold_date_sk SCRIPT []
+POSTHOOK: Lineage: catalog_sales.cs_wholesale_cost SCRIPT []
+PREHOOK: query: insert into catalog_returns select pos * 4, pos % 7 + 1 from (select posexplode(split(space(11), ' '))) t
+PREHOOK: type: QUERY
+PREHOOK: Input: _dummy_database@_dummy_table
+PREHOOK: Output: default@catalog_returns
+POSTHOOK: query: insert into catalog_returns select pos * 4, pos % 7 + 1 from (select posexplode(split(space(11), ' '))) t
+POSTHOOK: type: QUERY
+POSTHOOK: Input: _dummy_database@_dummy_table
+POSTHOOK: Output: default@catalog_returns
+POSTHOOK: Lineage: catalog_returns.cr_item_sk SCRIPT []
+POSTHOOK: Lineage: catalog_returns.cr_order_number SCRIPT []
+PREHOOK: query: insert into store_sales select pos % 30 + 1, pos % 7 + 1, pos % 5 + 1, pos % 60, pos % 10 + 1,
+  if(pos % 23 = 0, null, cast(pos % 60 + 1.5 as decimal(7,2))), cast(pos % 25 + 0.75 as decimal(7,2))
+  from (select posexplode(split(space(799), ' '))) t
+PREHOOK: type: QUERY
+PREHOOK: Input: _dummy_database@_dummy_table
+PREHOOK: Output: default@store_sales
+POSTHOOK: query: insert into store_sales select pos % 30 + 1, pos % 7 + 1, pos % 5 + 1, pos % 60, pos % 10 + 1,
+  if(pos % 23 = 0, null, cast(pos % 60 + 1.5 as decimal(7,2))), cast(pos % 25 + 0.75 as decimal(7,2))
+  from (select posexplode(split(space(799), ' '))) t
+POSTHOOK: type: QUERY
+POSTHOOK: Input: _dummy_database@_dummy_table
+POSTHOOK: Output: default@store_sales
+POSTHOOK: Lineage: store_sales.ss_customer_sk SCRIPT []
+POSTHOOK: Lineage: store_sales.ss_item_sk SCRIPT []
+POSTHOOK: Lineage: store_sales.ss_quantity SCRIPT []
+POSTHOOK: Lineage: store_sales.ss_sales_price SCRIPT []
+POSTHOOK: Lineage: store_sales.ss_sold_date_sk SCRIPT []
+POSTHOOK: Lineage: store_sales.ss_ticket_number SCRIPT []
+POSTHOOK: Lineage: store_sales.ss_wholesale_cost SCRIPT []
+PREHOOK: query: insert into store_returns select pos * 5, pos % 7 + 1 from (select posexplode(split(space(9), ' '))) t
+PREHOOK: type: QUERY
+PREHOOK: Input: _dummy_database@_dummy_table
+PREHOOK: Output: default@store_returns
+POSTHOOK: query: insert into store_returns select pos * 5, pos % 7 + 1 from (select posexplode(split(space(9), ' '))) t
+POSTHOOK: type: QUERY
+POSTHOOK: Input: _dummy_database@_dummy_table
+POSTHOOK: Output: default@store_returns
+POSTHOOK: Lineage: store_returns.sr_item_sk SCRIPT []
+POSTHOOK: Lineage: store_returns.sr_ticket_number SCRIPT []
+PREHOOK: query: analyze table date_dim compute statistics for columns
+PREHOOK: type: ANALYZE_TABLE
+PREHOOK: Input: default@date_dim
+PREHOOK: Output: default@date_dim
+#### A masked pattern was here ####
+POSTHOOK: query: analyze table date_dim compute statistics for columns
+POSTHOOK: type: ANALYZE_TABLE
+POSTHOOK: Input: default@date_dim
+POSTHOOK: Output: default@date_dim
+#### A masked pattern was here ####
+PREHOOK: query: analyze table web_sales compute statistics for columns
+PREHOOK: type: ANALYZE_TABLE
+PREHOOK: Input: default@web_sales
+PREHOOK: Output: default@web_sales
+#### A masked pattern was here ####
+POSTHOOK: query: analyze table web_sales compute statistics for columns
+POSTHOOK: type: ANALYZE_TABLE
+POSTHOOK: Input: default@web_sales
+POSTHOOK: Output: default@web_sales
+#### A masked pattern was here ####
+PREHOOK: query: analyze table web_returns compute statistics for columns
+PREHOOK: type: ANALYZE_TABLE
+PREHOOK: Input: default@web_returns
+PREHOOK: Output: default@web_returns
+#### A masked pattern was here ####
+POSTHOOK: query: analyze table web_returns compute statistics for columns
+POSTHOOK: type: ANALYZE_TABLE
+POSTHOOK: Input: default@web_returns
+POSTHOOK: Output: default@web_returns
+#### A masked pattern was here ####
+PREHOOK: query: analyze table catalog_sales compute statistics for columns
+PREHOOK: type: ANALYZE_TABLE
+PREHOOK: Input: default@catalog_sales
+PREHOOK: Output: default@catalog_sales
+#### A masked pattern was here ####
+POSTHOOK: query: analyze table catalog_sales compute statistics for columns
+POSTHOOK: type: ANALYZE_TABLE
+POSTHOOK: Input: default@catalog_sales
+POSTHOOK: Output: default@catalog_sales
+#### A masked pattern was here ####
+PREHOOK: query: analyze table catalog_returns compute statistics for columns
+PREHOOK: type: ANALYZE_TABLE
+PREHOOK: Input: default@catalog_returns
+PREHOOK: Output: default@catalog_returns
+#### A masked pattern was here ####
+POSTHOOK: query: analyze table catalog_returns compute statistics for columns
+POSTHOOK: type: ANALYZE_TABLE
+POSTHOOK: Input: default@catalog_returns
+POSTHOOK: Output: default@catalog_returns
+#### A masked pattern was here ####
+PREHOOK: query: analyze table store_sales compute statistics for columns
+PREHOOK: type: ANALYZE_TABLE
+PREHOOK: Input: default@store_sales
+PREHOOK: Output: default@store_sales
+#### A masked pattern was here ####
+POSTHOOK: query: analyze table store_sales compute statistics for columns
+POSTHOOK: type: ANALYZE_TABLE
+POSTHOOK: Input: default@store_sales
+POSTHOOK: Output: default@store_sales
+#### A masked pattern was here ####
+PREHOOK: query: analyze table store_returns compute statistics for columns
+PREHOOK: type: ANALYZE_TABLE
+PREHOOK: Input: default@store_returns
+PREHOOK: Output: default@store_returns
+#### A masked pattern was here ####
+POSTHOOK: query: analyze table store_returns compute statistics for columns
+POSTHOOK: type: ANALYZE_TABLE
+POSTHOOK: Input: default@store_returns
+POSTHOOK: Output: default@store_returns
+#### A masked pattern was here ####
+PREHOOK: query: alter table date_dim update statistics set('numRows'='73049','rawDataSize'='876588')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@date_dim
+PREHOOK: Output: default@date_dim
+POSTHOOK: query: alter table date_dim update statistics set('numRows'='73049','rawDataSize'='876588')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@date_dim
+POSTHOOK: Output: default@date_dim
+PREHOOK: query: alter table date_dim update statistics for column d_date_sk set('numDVs'='73049','numNulls'='0','lowValue'='2415022','highValue'='2488070')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@date_dim
+PREHOOK: Output: default@date_dim
+POSTHOOK: query: alter table date_dim update statistics for column d_date_sk set('numDVs'='73049','numNulls'='0','lowValue'='2415022','highValue'='2488070')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@date_dim
+POSTHOOK: Output: default@date_dim
+PREHOOK: query: alter table date_dim update statistics for column d_year set('numDVs'='200','numNulls'='0','lowValue'='1900','highValue'='2100')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@date_dim
+PREHOOK: Output: default@date_dim
+POSTHOOK: query: alter table date_dim update statistics for column d_year set('numDVs'='200','numNulls'='0','lowValue'='1900','highValue'='2100')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@date_dim
+POSTHOOK: Output: default@date_dim
+PREHOOK: query: alter table web_sales update statistics set('numRows'='7199963324','rawDataSize'='403197946144')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@web_sales
+PREHOOK: Output: default@web_sales
+POSTHOOK: query: alter table web_sales update statistics set('numRows'='7199963324','rawDataSize'='403197946144')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@web_sales
+POSTHOOK: Output: default@web_sales
+PREHOOK: query: alter table web_sales update statistics for column ws_sold_date_sk set('numDVs'='1823','numNulls'='1799','lowValue'='2450816','highValue'='2452642')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@web_sales
+PREHOOK: Output: default@web_sales
+POSTHOOK: query: alter table web_sales update statistics for column ws_sold_date_sk set('numDVs'='1823','numNulls'='1799','lowValue'='2450816','highValue'='2452642')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@web_sales
+POSTHOOK: Output: default@web_sales
+PREHOOK: query: alter table web_sales update statistics for column ws_item_sk set('numDVs'='402000','numNulls'='0','lowValue'='1','highValue'='402000')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@web_sales
+PREHOOK: Output: default@web_sales
+POSTHOOK: query: alter table web_sales update statistics for column ws_item_sk set('numDVs'='402000','numNulls'='0','lowValue'='1','highValue'='402000')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@web_sales
+POSTHOOK: Output: default@web_sales
+PREHOOK: query: alter table web_sales update statistics for column ws_bill_customer_sk set('numDVs'='65000000','numNulls'='1800000','lowValue'='1','highValue'='65000000')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@web_sales
+PREHOOK: Output: default@web_sales
+POSTHOOK: query: alter table web_sales update statistics for column ws_bill_customer_sk set('numDVs'='65000000','numNulls'='1800000','lowValue'='1','highValue'='65000000')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@web_sales
+POSTHOOK: Output: default@web_sales
+PREHOOK: query: alter table web_sales update statistics for column ws_order_number set('numDVs'='600000000','numNulls'='0','lowValue'='1','highValue'='600000000')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@web_sales
+PREHOOK: Output: default@web_sales
+POSTHOOK: query: alter table web_sales update statistics for column ws_order_number set('numDVs'='600000000','numNulls'='0','lowValue'='1','highValue'='600000000')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@web_sales
+POSTHOOK: Output: default@web_sales
+PREHOOK: query: alter table web_sales update statistics for column ws_quantity set('numDVs'='100','numNulls'='1800000','lowValue'='1','highValue'='100')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@web_sales
+PREHOOK: Output: default@web_sales
+POSTHOOK: query: alter table web_sales update statistics for column ws_quantity set('numDVs'='100','numNulls'='1800000','lowValue'='1','highValue'='100')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@web_sales
+POSTHOOK: Output: default@web_sales
+PREHOOK: query: alter table web_sales update statistics for column ws_wholesale_cost set('numDVs'='9900','numNulls'='1800000','lowValue'='1.00','highValue'='100.00')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@web_sales
+PREHOOK: Output: default@web_sales
+POSTHOOK: query: alter table web_sales update statistics for column ws_wholesale_cost set('numDVs'='9900','numNulls'='1800000','lowValue'='1.00','highValue'='100.00')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@web_sales
+POSTHOOK: Output: default@web_sales
+PREHOOK: query: alter table web_sales update statistics for column ws_sales_price set('numDVs'='29000','numNulls'='1800000','lowValue'='0.00','highValue'='300.00')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@web_sales
+PREHOOK: Output: default@web_sales
+POSTHOOK: query: alter table web_sales update statistics for column ws_sales_price set('numDVs'='29000','numNulls'='1800000','lowValue'='0.00','highValue'='300.00')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@web_sales
+POSTHOOK: Output: default@web_sales
+PREHOOK: query: alter table web_returns update statistics set('numRows'='720000000','rawDataSize'='11520000000')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@web_returns
+PREHOOK: Output: default@web_returns
+POSTHOOK: query: alter table web_returns update statistics set('numRows'='720000000','rawDataSize'='11520000000')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@web_returns
+POSTHOOK: Output: default@web_returns
+PREHOOK: query: alter table web_returns update statistics for column wr_order_number set('numDVs'='420000000','numNulls'='0','lowValue'='1','highValue'='600000000')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@web_returns
+PREHOOK: Output: default@web_returns
+POSTHOOK: query: alter table web_returns update statistics for column wr_order_number set('numDVs'='420000000','numNulls'='0','lowValue'='1','highValue'='600000000')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@web_returns
+POSTHOOK: Output: default@web_returns
+PREHOOK: query: alter table web_returns update statistics for column wr_item_sk set('numDVs'='402000','numNulls'='0','lowValue'='1','highValue'='402000')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@web_returns
+PREHOOK: Output: default@web_returns
+POSTHOOK: query: alter table web_returns update statistics for column wr_item_sk set('numDVs'='402000','numNulls'='0','lowValue'='1','highValue'='402000')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@web_returns
+POSTHOOK: Output: default@web_returns
+PREHOOK: query: alter table catalog_sales update statistics set('numRows'='14399964710','rawDataSize'='806398023760')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@catalog_sales
+PREHOOK: Output: default@catalog_sales
+POSTHOOK: query: alter table catalog_sales update statistics set('numRows'='14399964710','rawDataSize'='806398023760')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@catalog_sales
+POSTHOOK: Output: default@catalog_sales
+PREHOOK: query: alter table catalog_sales update statistics for column cs_sold_date_sk set('numDVs'='1823','numNulls'='3600000','lowValue'='2450815','highValue'='2452654')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@catalog_sales
+PREHOOK: Output: default@catalog_sales
+POSTHOOK: query: alter table catalog_sales update statistics for column cs_sold_date_sk set('numDVs'='1823','numNulls'='3600000','lowValue'='2450815','highValue'='2452654')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@catalog_sales
+POSTHOOK: Output: default@catalog_sales
+PREHOOK: query: alter table catalog_sales update statistics for column cs_item_sk set('numDVs'='402000','numNulls'='0','lowValue'='1','highValue'='402000')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@catalog_sales
+PREHOOK: Output: default@catalog_sales
+POSTHOOK: query: alter table catalog_sales update statistics for column cs_item_sk set('numDVs'='402000','numNulls'='0','lowValue'='1','highValue'='402000')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@catalog_sales
+POSTHOOK: Output: default@catalog_sales
+PREHOOK: query: alter table catalog_sales update statistics for column cs_bill_customer_sk set('numDVs'='65000000','numNulls'='3600000','lowValue'='1','highValue'='65000000')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@catalog_sales
+PREHOOK: Output: default@catalog_sales
+POSTHOOK: query: alter table catalog_sales update statistics for column cs_bill_customer_sk set('numDVs'='65000000','numNulls'='3600000','lowValue'='1','highValue'='65000000')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@catalog_sales
+POSTHOOK: Output: default@catalog_sales
+PREHOOK: query: alter table catalog_sales update statistics for column cs_order_number set('numDVs'='1600000000','numNulls'='0','lowValue'='1','highValue'='1600000000')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@catalog_sales
+PREHOOK: Output: default@catalog_sales
+POSTHOOK: query: alter table catalog_sales update statistics for column cs_order_number set('numDVs'='1600000000','numNulls'='0','lowValue'='1','highValue'='1600000000')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@catalog_sales
+POSTHOOK: Output: default@catalog_sales
+PREHOOK: query: alter table catalog_sales update statistics for column cs_quantity set('numDVs'='100','numNulls'='3600000','lowValue'='1','highValue'='100')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@catalog_sales
+PREHOOK: Output: default@catalog_sales
+POSTHOOK: query: alter table catalog_sales update statistics for column cs_quantity set('numDVs'='100','numNulls'='3600000','lowValue'='1','highValue'='100')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@catalog_sales
+POSTHOOK: Output: default@catalog_sales
+PREHOOK: query: alter table catalog_sales update statistics for column cs_wholesale_cost set('numDVs'='9900','numNulls'='3600000','lowValue'='1.00','highValue'='100.00')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@catalog_sales
+PREHOOK: Output: default@catalog_sales
+POSTHOOK: query: alter table catalog_sales update statistics for column cs_wholesale_cost set('numDVs'='9900','numNulls'='3600000','lowValue'='1.00','highValue'='100.00')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@catalog_sales
+POSTHOOK: Output: default@catalog_sales
+PREHOOK: query: alter table catalog_sales update statistics for column cs_sales_price set('numDVs'='29000','numNulls'='3600000','lowValue'='0.00','highValue'='300.00')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@catalog_sales
+PREHOOK: Output: default@catalog_sales
+POSTHOOK: query: alter table catalog_sales update statistics for column cs_sales_price set('numDVs'='29000','numNulls'='3600000','lowValue'='0.00','highValue'='300.00')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@catalog_sales
+POSTHOOK: Output: default@catalog_sales
+PREHOOK: query: alter table catalog_returns update statistics set('numRows'='1440000000','rawDataSize'='23040000000')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@catalog_returns
+PREHOOK: Output: default@catalog_returns
+POSTHOOK: query: alter table catalog_returns update statistics set('numRows'='1440000000','rawDataSize'='23040000000')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@catalog_returns
+POSTHOOK: Output: default@catalog_returns
+PREHOOK: query: alter table catalog_returns update statistics for column cr_order_number set('numDVs'='900000000','numNulls'='0','lowValue'='1','highValue'='1600000000')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@catalog_returns
+PREHOOK: Output: default@catalog_returns
+POSTHOOK: query: alter table catalog_returns update statistics for column cr_order_number set('numDVs'='900000000','numNulls'='0','lowValue'='1','highValue'='1600000000')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@catalog_returns
+POSTHOOK: Output: default@catalog_returns
+PREHOOK: query: alter table catalog_returns update statistics for column cr_item_sk set('numDVs'='402000','numNulls'='0','lowValue'='1','highValue'='402000')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@catalog_returns
+PREHOOK: Output: default@catalog_returns
+POSTHOOK: query: alter table catalog_returns update statistics for column cr_item_sk set('numDVs'='402000','numNulls'='0','lowValue'='1','highValue'='402000')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@catalog_returns
+POSTHOOK: Output: default@catalog_returns
+PREHOOK: query: alter table store_sales update statistics set('numRows'='28799983563','rawDataSize'='1612799079528')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@store_sales
+PREHOOK: Output: default@store_sales
+POSTHOOK: query: alter table store_sales update statistics set('numRows'='28799983563','rawDataSize'='1612799079528')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@store_sales
+POSTHOOK: Output: default@store_sales
+PREHOOK: query: alter table store_sales update statistics for column ss_sold_date_sk set('numDVs'='1823','numNulls'='1300000000','lowValue'='2450816','highValue'='2452642')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@store_sales
+PREHOOK: Output: default@store_sales
+POSTHOOK: query: alter table store_sales update statistics for column ss_sold_date_sk set('numDVs'='1823','numNulls'='1300000000','lowValue'='2450816','highValue'='2452642')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@store_sales
+POSTHOOK: Output: default@store_sales
+PREHOOK: query: alter table store_sales update statistics for column ss_item_sk set('numDVs'='402000','numNulls'='0','lowValue'='1','highValue'='402000')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@store_sales
+PREHOOK: Output: default@store_sales
+POSTHOOK: query: alter table store_sales update statistics for column ss_item_sk set('numDVs'='402000','numNulls'='0','lowValue'='1','highValue'='402000')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@store_sales
+POSTHOOK: Output: default@store_sales
+PREHOOK: query: alter table store_sales update statistics for column ss_customer_sk set('numDVs'='65000000','numNulls'='1300000000','lowValue'='1','highValue'='65000000')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@store_sales
+PREHOOK: Output: default@store_sales
+POSTHOOK: query: alter table store_sales update statistics for column ss_customer_sk set('numDVs'='65000000','numNulls'='1300000000','lowValue'='1','highValue'='65000000')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@store_sales
+POSTHOOK: Output: default@store_sales
+PREHOOK: query: alter table store_sales update statistics for column ss_ticket_number set('numDVs'='2400000000','numNulls'='0','lowValue'='1','highValue'='2400000000')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@store_sales
+PREHOOK: Output: default@store_sales
+POSTHOOK: query: alter table store_sales update statistics for column ss_ticket_number set('numDVs'='2400000000','numNulls'='0','lowValue'='1','highValue'='2400000000')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@store_sales
+POSTHOOK: Output: default@store_sales
+PREHOOK: query: alter table store_sales update statistics for column ss_quantity set('numDVs'='100','numNulls'='1300000000','lowValue'='1','highValue'='100')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@store_sales
+PREHOOK: Output: default@store_sales
+POSTHOOK: query: alter table store_sales update statistics for column ss_quantity set('numDVs'='100','numNulls'='1300000000','lowValue'='1','highValue'='100')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@store_sales
+POSTHOOK: Output: default@store_sales
+PREHOOK: query: alter table store_sales update statistics for column ss_wholesale_cost set('numDVs'='9900','numNulls'='1300000000','lowValue'='1.00','highValue'='100.00')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@store_sales
+PREHOOK: Output: default@store_sales
+POSTHOOK: query: alter table store_sales update statistics for column ss_wholesale_cost set('numDVs'='9900','numNulls'='1300000000','lowValue'='1.00','highValue'='100.00')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@store_sales
+POSTHOOK: Output: default@store_sales
+PREHOOK: query: alter table store_sales update statistics for column ss_sales_price set('numDVs'='19900','numNulls'='1300000000','lowValue'='0.00','highValue'='200.00')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@store_sales
+PREHOOK: Output: default@store_sales
+POSTHOOK: query: alter table store_sales update statistics for column ss_sales_price set('numDVs'='19900','numNulls'='1300000000','lowValue'='0.00','highValue'='200.00')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@store_sales
+POSTHOOK: Output: default@store_sales
+PREHOOK: query: alter table store_returns update statistics set('numRows'='2879960000','rawDataSize'='46079360000')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@store_returns
+PREHOOK: Output: default@store_returns
+POSTHOOK: query: alter table store_returns update statistics set('numRows'='2879960000','rawDataSize'='46079360000')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@store_returns
+POSTHOOK: Output: default@store_returns
+PREHOOK: query: alter table store_returns update statistics for column sr_ticket_number set('numDVs'='1600000000','numNulls'='0','lowValue'='1','highValue'='2400000000')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@store_returns
+PREHOOK: Output: default@store_returns
+POSTHOOK: query: alter table store_returns update statistics for column sr_ticket_number set('numDVs'='1600000000','numNulls'='0','lowValue'='1','highValue'='2400000000')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@store_returns
+POSTHOOK: Output: default@store_returns
+PREHOOK: query: alter table store_returns update statistics for column sr_item_sk set('numDVs'='402000','numNulls'='0','lowValue'='1','highValue'='402000')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@store_returns
+PREHOOK: Output: default@store_returns
+POSTHOOK: query: alter table store_returns update statistics for column sr_item_sk set('numDVs'='402000','numNulls'='0','lowValue'='1','highValue'='402000')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@store_returns
+POSTHOOK: Output: default@store_returns
+PREHOOK: query: with ws as
+  (select d_year AS ws_sold_year, ws_item_sk,
+    ws_bill_customer_sk ws_customer_sk,
+    sum(ws_quantity) ws_qty,
+    sum(ws_wholesale_cost) ws_wc,
+    sum(ws_sales_price) ws_sp
+   from web_sales
+   left join web_returns on wr_order_number=ws_order_number and ws_item_sk=wr_item_sk
+   join date_dim on ws_sold_date_sk = d_date_sk
+   where wr_order_number is null
+   group by d_year, ws_item_sk, ws_bill_customer_sk
+   ),
+cs as
+  (select d_year AS cs_sold_year, cs_item_sk,
+    cs_bill_customer_sk cs_customer_sk,
+    sum(cs_quantity) cs_qty,
+    sum(cs_wholesale_cost) cs_wc,
+    sum(cs_sales_price) cs_sp
+   from catalog_sales
+   left join catalog_returns on cr_order_number=cs_order_number and cs_item_sk=cr_item_sk
+   join date_dim on cs_sold_date_sk = d_date_sk
+   where cr_order_number is null
+   group by d_year, cs_item_sk, cs_bill_customer_sk
+   ),
+ss as
+  (select d_year AS ss_sold_year, ss_item_sk,
+    ss_customer_sk,
+    sum(ss_quantity) ss_qty,
+    sum(ss_wholesale_cost) ss_wc,
+    sum(ss_sales_price) ss_sp
+   from store_sales
+   left join store_returns on sr_ticket_number=ss_ticket_number and ss_item_sk=sr_item_sk
+   join date_dim on ss_sold_date_sk = d_date_sk
+   where sr_ticket_number is null
+   group by d_year, ss_item_sk, ss_customer_sk
+   )
+ select 
+ss_customer_sk,
+round(ss_qty/(coalesce(ws_qty,0)+coalesce(cs_qty,0)),2) ratio,
+ss_qty store_qty, ss_wc store_wholesale_cost, ss_sp store_sales_price,
+coalesce(ws_qty,0)+coalesce(cs_qty,0) other_chan_qty,
+coalesce(ws_wc,0)+coalesce(cs_wc,0) other_chan_wholesale_cost,
+coalesce(ws_sp,0)+coalesce(cs_sp,0) other_chan_sales_price
+from ss
+left join ws on (ws_sold_year=ss_sold_year and ws_item_sk=ss_item_sk and ws_customer_sk=ss_customer_sk)
+left join cs on (cs_sold_year=ss_sold_year and cs_item_sk=ss_item_sk and cs_customer_sk=ss_customer_sk)
+where (coalesce(ws_qty,0)>0 or coalesce(cs_qty, 0)>0) and ss_sold_year=2001
+order by 
+  ss_customer_sk,
+  ss_qty desc, ss_wc desc, ss_sp desc,
+  other_chan_qty,
+  other_chan_wholesale_cost,
+  other_chan_sales_price,
+  ratio
+limit 100
+PREHOOK: type: QUERY
+PREHOOK: Input: default@catalog_returns
+PREHOOK: Input: default@catalog_sales
+PREHOOK: Input: default@date_dim
+PREHOOK: Input: default@store_returns
+PREHOOK: Input: default@store_sales
+PREHOOK: Input: default@web_returns
+PREHOOK: Input: default@web_sales
+#### A masked pattern was here ####
+Status: Failed
+Vertex failed, vertexName=Reducer 9, vertexId=vertex_#ID#, diagnostics=[Task failed, taskId=task_#ID#, diagnostics=[TaskAttempt 0 failed, info=[Error: Error while running task ( failure ) : java.lang.OutOfMemoryError: Java heap space
+#### A masked pattern was here ####
+, errorMessage=Cannot recover from this error:java.lang.OutOfMemoryError: Java heap space
+#### A masked pattern was here ####
+]], Vertex did not succeed due to OWN_TASK_FAILURE, failedTasks:1 killedTasks:63, Vertex vertex_#ID# [Reducer 9] killed/failed due to:OWN_TASK_FAILURE]
+[Masked Vertex killed due to OTHER_VERTEX_FAILURE]
+Vertex failed, vertexName=Reducer 2, vertexId=vertex_#ID#, diagnostics=[Task failed, taskId=task_#ID#, diagnostics=[TaskAttempt 0 failed, info=[Error: Error while running task ( failure ) : java.lang.OutOfMemoryError: Java heap space
+#### A masked pattern was here ####
+, errorMessage=Cannot recover from this error:java.lang.OutOfMemoryError: Java heap space
+#### A masked pattern was here ####
+]], Vertex did not succeed due to OWN_TASK_FAILURE, failedTasks:1 killedTasks:63, Vertex vertex_#ID# [Reducer 2] killed/failed due to:OWN_TASK_FAILURE]
+[Masked Vertex killed due to OTHER_VERTEX_FAILURE]
+DAG did not succeed due to VERTEX_FAILURE. failedVertices:2 killedVertices:#Masked#
+FAILED: Execution Error, return code 2 from org.apache.hadoop.hive.ql.exec.tez.TezTask. Vertex failed, vertexName=Reducer 9, vertexId=vertex_#ID#, diagnostics=[Task failed, taskId=task_#ID#, diagnostics=[TaskAttempt 0 failed, info=[Error: Error while running task ( failure ) : java.lang.OutOfMemoryError: Java heap space
+#### A masked pattern was here ####
+, errorMessage=Cannot recover from this error:java.lang.OutOfMemoryError: Java heap space
+#### A masked pattern was here ####
+]], Vertex did not succeed due to OWN_TASK_FAILURE, failedTasks:1 killedTasks:63, Vertex vertex_#ID# [Reducer 9] killed/failed due to:OWN_TASK_FAILURE][Masked Vertex killed due to OTHER_VERTEX_FAILURE]Vertex failed, vertexName=Reducer 2, vertexId=vertex_#ID#, diagnostics=[Task failed, taskId=task_#ID#, diagnostics=[TaskAttempt 0 failed, info=[Error: Error while running task ( failure ) : java.lang.OutOfMemoryError: Java heap space
+#### A masked pattern was here ####
+, errorMessage=Cannot recover from this error:java.lang.OutOfMemoryError: Java heap space
+#### A masked pattern was here ####
+]], Vertex did not succeed due to OWN_TASK_FAILURE, failedTasks:1 killedTasks:63, Vertex vertex_#ID# [Reducer 2] killed/failed due to:OWN_TASK_FAILURE][Masked Vertex killed due to OTHER_VERTEX_FAILURE]DAG did not succeed due to VERTEX_FAILURE. failedVertices:2 killedVertices:#Masked#
+PREHOOK: query: with ws as
+  (select d_year AS ws_sold_year, ws_item_sk,
+    ws_bill_customer_sk ws_customer_sk,
+    sum(ws_quantity) ws_qty,
+    sum(ws_wholesale_cost) ws_wc,
+    sum(ws_sales_price) ws_sp
+   from web_sales
+   left join web_returns on wr_order_number=ws_order_number and ws_item_sk=wr_item_sk
+   join date_dim on ws_sold_date_sk = d_date_sk
+   where wr_order_number is null
+   group by d_year, ws_item_sk, ws_bill_customer_sk
+   ),
+cs as
+  (select d_year AS cs_sold_year, cs_item_sk,
+    cs_bill_customer_sk cs_customer_sk,
+    sum(cs_quantity) cs_qty,
+    sum(cs_wholesale_cost) cs_wc,
+    sum(cs_sales_price) cs_sp
+   from catalog_sales
+   left join catalog_returns on cr_order_number=cs_order_number and cs_item_sk=cr_item_sk
+   join date_dim on cs_sold_date_sk = d_date_sk
+   where cr_order_number is null
+   group by d_year, cs_item_sk, cs_bill_customer_sk
+   ),
+ss as
+  (select d_year AS ss_sold_year, ss_item_sk,
+    ss_customer_sk,
+    sum(ss_quantity) ss_qty,
+    sum(ss_wholesale_cost) ss_wc,
+    sum(ss_sales_price) ss_sp
+   from store_sales
+   left join store_returns on sr_ticket_number=ss_ticket_number and ss_item_sk=sr_item_sk
+   join date_dim on ss_sold_date_sk = d_date_sk
+   where sr_ticket_number is null
+   group by d_year, ss_item_sk, ss_customer_sk
+   )
+ select 
+ss_customer_sk,
+round(ss_qty/(coalesce(ws_qty,0)+coalesce(cs_qty,0)),2) ratio,
+ss_qty store_qty, ss_wc store_wholesale_cost, ss_sp store_sales_price,
+coalesce(ws_qty,0)+coalesce(cs_qty,0) other_chan_qty,
+coalesce(ws_wc,0)+coalesce(cs_wc,0) other_chan_wholesale_cost,
+coalesce(ws_sp,0)+coalesce(cs_sp,0) other_chan_sales_price
+from ss
+left join ws on (ws_sold_year=ss_sold_year and ws_item_sk=ss_item_sk and ws_customer_sk=ss_customer_sk)
+left join cs on (cs_sold_year=ss_sold_year and cs_item_sk=ss_item_sk and cs_customer_sk=ss_customer_sk)
+where (coalesce(ws_qty,0)>0 or coalesce(cs_qty, 0)>0) and ss_sold_year=2001
+order by 
+  ss_customer_sk,
+  ss_qty desc, ss_wc desc, ss_sp desc,
+  other_chan_qty,
+  other_chan_wholesale_cost,
+  other_chan_sales_price,
+  ratio
+limit 100
+PREHOOK: type: QUERY
+PREHOOK: Input: default@catalog_returns
+PREHOOK: Input: default@catalog_sales
+PREHOOK: Input: default@date_dim
+PREHOOK: Input: default@store_returns
+PREHOOK: Input: default@store_sales
+PREHOOK: Input: default@web_returns
+PREHOOK: Input: default@web_sales
+#### A masked pattern was here ####
+POSTHOOK: query: with ws as
+  (select d_year AS ws_sold_year, ws_item_sk,
+    ws_bill_customer_sk ws_customer_sk,
+    sum(ws_quantity) ws_qty,
+    sum(ws_wholesale_cost) ws_wc,
+    sum(ws_sales_price) ws_sp
+   from web_sales
+   left join web_returns on wr_order_number=ws_order_number and ws_item_sk=wr_item_sk
+   join date_dim on ws_sold_date_sk = d_date_sk
+   where wr_order_number is null
+   group by d_year, ws_item_sk, ws_bill_customer_sk
+   ),
+cs as
+  (select d_year AS cs_sold_year, cs_item_sk,
+    cs_bill_customer_sk cs_customer_sk,
+    sum(cs_quantity) cs_qty,
+    sum(cs_wholesale_cost) cs_wc,
+    sum(cs_sales_price) cs_sp
+   from catalog_sales
+   left join catalog_returns on cr_order_number=cs_order_number and cs_item_sk=cr_item_sk
+   join date_dim on cs_sold_date_sk = d_date_sk
+   where cr_order_number is null
+   group by d_year, cs_item_sk, cs_bill_customer_sk
+   ),
+ss as
+  (select d_year AS ss_sold_year, ss_item_sk,
+    ss_customer_sk,
+    sum(ss_quantity) ss_qty,
+    sum(ss_wholesale_cost) ss_wc,
+    sum(ss_sales_price) ss_sp
+   from store_sales
+   left join store_returns on sr_ticket_number=ss_ticket_number and ss_item_sk=sr_item_sk
+   join date_dim on ss_sold_date_sk = d_date_sk
+   where sr_ticket_number is null
+   group by d_year, ss_item_sk, ss_customer_sk
+   )
+ select 
+ss_customer_sk,
+round(ss_qty/(coalesce(ws_qty,0)+coalesce(cs_qty,0)),2) ratio,
+ss_qty store_qty, ss_wc store_wholesale_cost, ss_sp store_sales_price,
+coalesce(ws_qty,0)+coalesce(cs_qty,0) other_chan_qty,
+coalesce(ws_wc,0)+coalesce(cs_wc,0) other_chan_wholesale_cost,
+coalesce(ws_sp,0)+coalesce(cs_sp,0) other_chan_sales_price
+from ss
+left join ws on (ws_sold_year=ss_sold_year and ws_item_sk=ss_item_sk and ws_customer_sk=ss_customer_sk)
+left join cs on (cs_sold_year=ss_sold_year and cs_item_sk=ss_item_sk and cs_customer_sk=ss_customer_sk)
+where (coalesce(ws_qty,0)>0 or coalesce(cs_qty, 0)>0) and ss_sold_year=2001
+order by 
+  ss_customer_sk,
+  ss_qty desc, ss_wc desc, ss_sp desc,
+  other_chan_qty,
+  other_chan_wholesale_cost,
+  other_chan_sales_price,
+  ratio
+limit 100
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@catalog_returns
+POSTHOOK: Input: default@catalog_sales
+POSTHOOK: Input: default@date_dim
+POSTHOOK: Input: default@store_returns
+POSTHOOK: Input: default@store_sales
+POSTHOOK: Input: default@web_returns
+POSTHOOK: Input: default@web_sales
+#### A masked pattern was here ####
+1	0.31	16	177.50	54.50	51	232.50	144.50
+1	0.37	20	192.50	43.75	54	166.25	119.00
+1	0.42	22	245.50	75.25	53	255.00	154.00
+1	0.43	28	272.00	71.00	65	298.75	169.75
+1	0.47	28	272.00	86.00	59	202.50	159.75
+1	0.51	28	215.50	101.00	55	241.25	154.00
+1	0.53	26	189.00	79.50	49	162.50	144.00
+2	0.55	36	182.50	79.00	65	238.00	107.75
+2	0.57	29	152.50	97.25	51	245.00	98.50
+2	0.59	36	200.00	109.00	61	278.00	107.75
+2	0.61	36	200.00	94.00	59	290.75	117.75
+2	0.63	36	152.50	89.00	57	221.00	116.50
+2	0.67	34	135.00	67.25	51	231.50	105.00
+2	0.68	36	200.00	99.00	53	266.00	96.50
+3	0.62	36	209.50	84.25	58	250.00	131.00
+3	0.67	41	224.50	104.25	61	332.75	143.25
+3	0.72	44	239.50	117.00	61	306.50	155.75
+3	0.75	41	194.50	89.25	55	223.25	126.00
+3	0.75	44	224.50	102.00	59	261.50	165.75
+3	0.75	44	248.00	97.00	59	273.25	138.50
+3	0.8	44	248.00	87.00	55	216.50	158.50
+4	0.75	43	207.00	96.25	57	324.25	200.50
+4	0.85	52	296.00	110.00	61	258.50	180.50
+4	0.91	52	296.00	95.00	57	293.75	200.50
+4	0.95	52	281.50	115.00	55	259.75	180.25
+4	0.96	43	236.50	81.25	45	178.75	152.00
+4	0.98	52	296.00	125.00	53	274.75	175.25
+4	1.09	48	251.50	101.25	44	220.00	163.50
+5	0.92	60	224.00	113.00	65	292.00	161.75
+5	0.95	60	224.00	123.00	63	285.25	151.75
+5	0.97	60	173.50	103.00	62	277.00	146.75
+5	0.97	60	224.00	118.00	62	321.50	137.25
+5	1.07	60	224.00	133.00	56	270.25	142.25
+5	1.08	55	183.00	88.25	51	305.00	138.00
+5	1.19	50	173.50	118.25	42	243.50	113.50
+PREHOOK: query: with ws as
+  (select d_year AS ws_sold_year, ws_item_sk,
+    ws_bill_customer_sk ws_customer_sk,
+    sum(ws_quantity) ws_qty,
+    sum(ws_wholesale_cost) ws_wc,
+    sum(ws_sales_price) ws_sp
+   from web_sales
+   left join web_returns on wr_order_number=ws_order_number and ws_item_sk=wr_item_sk
+   join date_dim on ws_sold_date_sk = d_date_sk
+   where wr_order_number is null
+   group by d_year, ws_item_sk, ws_bill_customer_sk
+   ),
+cs as
+  (select d_year AS cs_sold_year, cs_item_sk,
+    cs_bill_customer_sk cs_customer_sk,
+    sum(cs_quantity) cs_qty,
+    sum(cs_wholesale_cost) cs_wc,
+    sum(cs_sales_price) cs_sp
+   from catalog_sales
+   left join catalog_returns on cr_order_number=cs_order_number and cs_item_sk=cr_item_sk
+   join date_dim on cs_sold_date_sk = d_date_sk
+   where cr_order_number is null
+   group by d_year, cs_item_sk, cs_bill_customer_sk
+   ),
+ss as
+  (select d_year AS ss_sold_year, ss_item_sk,
+    ss_customer_sk,
+    sum(ss_quantity) ss_qty,
+    sum(ss_wholesale_cost) ss_wc,
+    sum(ss_sales_price) ss_sp
+   from store_sales
+   left join store_returns on sr_ticket_number=ss_ticket_number and ss_item_sk=sr_item_sk
+   join date_dim on ss_sold_date_sk = d_date_sk
+   where sr_ticket_number is null
+   group by d_year, ss_item_sk, ss_customer_sk
+   )
+ select 
+ss_customer_sk,
+round(ss_qty/(coalesce(ws_qty,0)+coalesce(cs_qty,0)),2) ratio,
+ss_qty store_qty, ss_wc store_wholesale_cost, ss_sp store_sales_price,
+coalesce(ws_qty,0)+coalesce(cs_qty,0) other_chan_qty,
+coalesce(ws_wc,0)+coalesce(cs_wc,0) other_chan_wholesale_cost,
+coalesce(ws_sp,0)+coalesce(cs_sp,0) other_chan_sales_price
+from ss
+left join ws on (ws_sold_year=ss_sold_year and ws_item_sk=ss_item_sk and ws_customer_sk=ss_customer_sk)
+left join cs on (cs_sold_year=ss_sold_year and cs_item_sk=ss_item_sk and cs_customer_sk=ss_customer_sk)
+where (coalesce(ws_qty,0)>0 or coalesce(cs_qty, 0)>0) and ss_sold_year=2001
+order by 
+  ss_customer_sk,
+  ss_qty desc, ss_wc desc, ss_sp desc,
+  other_chan_qty,
+  other_chan_wholesale_cost,
+  other_chan_sales_price,
+  ratio
+limit 100
+PREHOOK: type: QUERY
+PREHOOK: Input: default@catalog_returns
+PREHOOK: Input: default@catalog_sales
+PREHOOK: Input: default@date_dim
+PREHOOK: Input: default@store_returns
+PREHOOK: Input: default@store_sales
+PREHOOK: Input: default@web_returns
+PREHOOK: Input: default@web_sales
+#### A masked pattern was here ####
+Status: Failed
+Vertex failed, vertexName=Reducer 17, vertexId=vertex_#ID#, diagnostics=[Task failed, taskId=task_#ID#, diagnostics=[TaskAttempt 0 failed, info=[Error: Error while running task ( failure ) : java.lang.OutOfMemoryError: Java heap space
+#### A masked pattern was here ####
+, errorMessage=Cannot recover from this error:java.lang.OutOfMemoryError: Java heap space
+#### A masked pattern was here ####
+]], Task failed, taskId=task_#ID#, diagnostics=[TaskAttempt 0 failed, info=[Error: Error while running task ( failure ) : java.lang.OutOfMemoryError: Java heap space
+, errorMessage=Cannot recover from this error:java.lang.OutOfMemoryError: Java heap space
+]], Vertex did not succeed due to OWN_TASK_FAILURE, failedTasks:2 killedTasks:62, Vertex vertex_#ID# [Reducer 17] killed/failed due to:OWN_TASK_FAILURE]
+[Masked Vertex killed due to OTHER_VERTEX_FAILURE]
+DAG did not succeed due to VERTEX_FAILURE. failedVertices:1 killedVertices:#Masked#
+FAILED: Execution Error, return code 2 from org.apache.hadoop.hive.ql.exec.tez.TezTask. Vertex failed, vertexName=Reducer 17, vertexId=vertex_#ID#, diagnostics=[Task failed, taskId=task_#ID#, diagnostics=[TaskAttempt 0 failed, info=[Error: Error while running task ( failure ) : java.lang.OutOfMemoryError: Java heap space
+#### A masked pattern was here ####
+, errorMessage=Cannot recover from this error:java.lang.OutOfMemoryError: Java heap space
+#### A masked pattern was here ####
+]], Task failed, taskId=task_#ID#, diagnostics=[TaskAttempt 0 failed, info=[Error: Error while running task ( failure ) : java.lang.OutOfMemoryError: Java heap space
+, errorMessage=Cannot recover from this error:java.lang.OutOfMemoryError: Java heap space
+]], Vertex did not succeed due to OWN_TASK_FAILURE, failedTasks:2 killedTasks:62, Vertex vertex_#ID# [Reducer 17] killed/failed due to:OWN_TASK_FAILURE][Masked Vertex killed due to OTHER_VERTEX_FAILURE]DAG did not succeed due to VERTEX_FAILURE. failedVertices:1 killedVertices:#Masked#
+PREHOOK: query: with ws as
+  (select d_year AS ws_sold_year, ws_item_sk,
+    ws_bill_customer_sk ws_customer_sk,
+    sum(ws_quantity) ws_qty,
+    sum(ws_wholesale_cost) ws_wc,
+    sum(ws_sales_price) ws_sp
+   from web_sales
+   left join web_returns on wr_order_number=ws_order_number and ws_item_sk=wr_item_sk
+   join date_dim on ws_sold_date_sk = d_date_sk
+   where wr_order_number is null
+   group by d_year, ws_item_sk, ws_bill_customer_sk
+   ),
+cs as
+  (select d_year AS cs_sold_year, cs_item_sk,
+    cs_bill_customer_sk cs_customer_sk,
+    sum(cs_quantity) cs_qty,
+    sum(cs_wholesale_cost) cs_wc,
+    sum(cs_sales_price) cs_sp
+   from catalog_sales
+   left join catalog_returns on cr_order_number=cs_order_number and cs_item_sk=cr_item_sk
+   join date_dim on cs_sold_date_sk = d_date_sk
+   where cr_order_number is null
+   group by d_year, cs_item_sk, cs_bill_customer_sk
+   ),
+ss as
+  (select d_year AS ss_sold_year, ss_item_sk,
+    ss_customer_sk,
+    sum(ss_quantity) ss_qty,
+    sum(ss_wholesale_cost) ss_wc,
+    sum(ss_sales_price) ss_sp
+   from store_sales
+   left join store_returns on sr_ticket_number=ss_ticket_number and ss_item_sk=sr_item_sk
+   join date_dim on ss_sold_date_sk = d_date_sk
+   where sr_ticket_number is null
+   group by d_year, ss_item_sk, ss_customer_sk
+   )
+ select 
+ss_customer_sk,
+round(ss_qty/(coalesce(ws_qty,0)+coalesce(cs_qty,0)),2) ratio,
+ss_qty store_qty, ss_wc store_wholesale_cost, ss_sp store_sales_price,
+coalesce(ws_qty,0)+coalesce(cs_qty,0) other_chan_qty,
+coalesce(ws_wc,0)+coalesce(cs_wc,0) other_chan_wholesale_cost,
+coalesce(ws_sp,0)+coalesce(cs_sp,0) other_chan_sales_price
+from ss
+left join ws on (ws_sold_year=ss_sold_year and ws_item_sk=ss_item_sk and ws_customer_sk=ss_customer_sk)
+left join cs on (cs_sold_year=ss_sold_year and cs_item_sk=ss_item_sk and cs_customer_sk=ss_customer_sk)
+where (coalesce(ws_qty,0)>0 or coalesce(cs_qty, 0)>0) and ss_sold_year=2001
+order by 
+  ss_customer_sk,
+  ss_qty desc, ss_wc desc, ss_sp desc,
+  other_chan_qty,
+  other_chan_wholesale_cost,
+  other_chan_sales_price,
+  ratio
+limit 100
+PREHOOK: type: QUERY
+PREHOOK: Input: default@catalog_returns
+PREHOOK: Input: default@catalog_sales
+PREHOOK: Input: default@date_dim
+PREHOOK: Input: default@store_returns
+PREHOOK: Input: default@store_sales
+PREHOOK: Input: default@web_returns
+PREHOOK: Input: default@web_sales
+#### A masked pattern was here ####
+POSTHOOK: query: with ws as
+  (select d_year AS ws_sold_year, ws_item_sk,
+    ws_bill_customer_sk ws_customer_sk,
+    sum(ws_quantity) ws_qty,
+    sum(ws_wholesale_cost) ws_wc,
+    sum(ws_sales_price) ws_sp
+   from web_sales
+   left join web_returns on wr_order_number=ws_order_number and ws_item_sk=wr_item_sk
+   join date_dim on ws_sold_date_sk = d_date_sk
+   where wr_order_number is null
+   group by d_year, ws_item_sk, ws_bill_customer_sk
+   ),
+cs as
+  (select d_year AS cs_sold_year, cs_item_sk,
+    cs_bill_customer_sk cs_customer_sk,
+    sum(cs_quantity) cs_qty,
+    sum(cs_wholesale_cost) cs_wc,
+    sum(cs_sales_price) cs_sp
+   from catalog_sales
+   left join catalog_returns on cr_order_number=cs_order_number and cs_item_sk=cr_item_sk
+   join date_dim on cs_sold_date_sk = d_date_sk
+   where cr_order_number is null
+   group by d_year, cs_item_sk, cs_bill_customer_sk
+   ),
+ss as
+  (select d_year AS ss_sold_year, ss_item_sk,
+    ss_customer_sk,
+    sum(ss_quantity) ss_qty,
+    sum(ss_wholesale_cost) ss_wc,
+    sum(ss_sales_price) ss_sp
+   from store_sales
+   left join store_returns on sr_ticket_number=ss_ticket_number and ss_item_sk=sr_item_sk
+   join date_dim on ss_sold_date_sk = d_date_sk
+   where sr_ticket_number is null
+   group by d_year, ss_item_sk, ss_customer_sk
+   )
+ select 
+ss_customer_sk,
+round(ss_qty/(coalesce(ws_qty,0)+coalesce(cs_qty,0)),2) ratio,
+ss_qty store_qty, ss_wc store_wholesale_cost, ss_sp store_sales_price,
+coalesce(ws_qty,0)+coalesce(cs_qty,0) other_chan_qty,
+coalesce(ws_wc,0)+coalesce(cs_wc,0) other_chan_wholesale_cost,
+coalesce(ws_sp,0)+coalesce(cs_sp,0) other_chan_sales_price
+from ss
+left join ws on (ws_sold_year=ss_sold_year and ws_item_sk=ss_item_sk and ws_customer_sk=ss_customer_sk)
+left join cs on (cs_sold_year=ss_sold_year and cs_item_sk=ss_item_sk and cs_customer_sk=ss_customer_sk)
+where (coalesce(ws_qty,0)>0 or coalesce(cs_qty, 0)>0) and ss_sold_year=2001
+order by 
+  ss_customer_sk,
+  ss_qty desc, ss_wc desc, ss_sp desc,
+  other_chan_qty,
+  other_chan_wholesale_cost,
+  other_chan_sales_price,
+  ratio
+limit 100
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@catalog_returns
+POSTHOOK: Input: default@catalog_sales
+POSTHOOK: Input: default@date_dim
+POSTHOOK: Input: default@store_returns
+POSTHOOK: Input: default@store_sales
+POSTHOOK: Input: default@web_returns
+POSTHOOK: Input: default@web_sales
+#### A masked pattern was here ####
+1	0.31	16	177.50	54.50	51	232.50	144.50
+1	0.37	20	192.50	43.75	54	166.25	119.00
+1	0.42	22	245.50	75.25	53	255.00	154.00
+1	0.43	28	272.00	71.00	65	298.75	169.75
+1	0.47	28	272.00	86.00	59	202.50	159.75
+1	0.51	28	215.50	101.00	55	241.25	154.00
+1	0.53	26	189.00	79.50	49	162.50	144.00
+2	0.55	36	182.50	79.00	65	238.00	107.75
+2	0.57	29	152.50	97.25	51	245.00	98.50
+2	0.59	36	200.00	109.00	61	278.00	107.75
+2	0.61	36	200.00	94.00	59	290.75	117.75
+2	0.63	36	152.50	89.00	57	221.00	116.50
+2	0.67	34	135.00	67.25	51	231.50	105.00
+2	0.68	36	200.00	99.00	53	266.00	96.50
+3	0.62	36	209.50	84.25	58	250.00	131.00
+3	0.67	41	224.50	104.25	61	332.75	143.25
+3	0.72	44	239.50	117.00	61	306.50	155.75
+3	0.75	41	194.50	89.25	55	223.25	126.00
+3	0.75	44	224.50	102.00	59	261.50	165.75
+3	0.75	44	248.00	97.00	59	273.25	138.50
+3	0.8	44	248.00	87.00	55	216.50	158.50
+4	0.75	43	207.00	96.25	57	324.25	200.50
+4	0.85	52	296.00	110.00	61	258.50	180.50
+4	0.91	52	296.00	95.00	57	293.75	200.50
+4	0.95	52	281.50	115.00	55	259.75	180.25
+4	0.96	43	236.50	81.25	45	178.75	152.00
+4	0.98	52	296.00	125.00	53	274.75	175.25
+4	1.09	48	251.50	101.25	44	220.00	163.50
+5	0.92	60	224.00	113.00	65	292.00	161.75
+5	0.95	60	224.00	123.00	63	285.25	151.75
+5	0.97	60	173.50	103.00	62	277.00	146.75
+5	0.97	60	224.00	118.00	62	321.50	137.25
+5	1.07	60	224.00	133.00	56	270.25	142.25
+5	1.08	55	183.00	88.25	51	305.00	138.00
+5	1.19	50	173.50	118.25	42	243.50	113.50
