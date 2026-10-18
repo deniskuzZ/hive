@@ -330,11 +330,13 @@ public class MapRecordProcessor extends RecordProcessor {
       List<HashTableDummyOperator> dummyOps = mapWork.getDummyOps();
       jconf.set(Utilities.INPUT_NAME, mapWork.getName());
       if (dummyOps != null) {
-        for (Operator<? extends OperatorDesc> dummyOp : dummyOps){
-          dummyOp.setExecContext(execContext);
-          // TODO HIVE-14042. Handling of dummyOps, and propagating abort information to them
-          dummyOp.initialize(jconf, null);
-        }
+        Operator.initializeDeferringAsyncWaits(() -> {
+          for (Operator<? extends OperatorDesc> dummyOp : dummyOps) {
+            dummyOp.setExecContext(execContext);
+            // TODO HIVE-14042. Handling of dummyOps, and propagating abort information to them
+            dummyOp.initialize(jconf, null);
+          }
+        });
       }
 
       OperatorUtils.setChildrenCollector(mapOp.getChildOperators(), outMap);
