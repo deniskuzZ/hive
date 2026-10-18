@@ -212,11 +212,13 @@ public class ReduceRecordProcessor extends RecordProcessor {
       // Initialization isn't finished until all parents of all operators
       // are initialized. For broadcast joins that means initializing the
       // dummy parent operators as well.
-      for (HashTableDummyOperator dummyOp : dummyOps) {
-        // TODO HIVE-14042. Propagating abort to dummyOps.
-        dummyOp.initialize(jconf, null);
-        checkAbortCondition();
-      }
+      Operator.initializeDeferringAsyncWaits(() -> {
+        for (HashTableDummyOperator dummyOp : dummyOps) {
+          // TODO HIVE-14042. Propagating abort to dummyOps.
+          dummyOp.initialize(jconf, null);
+          checkAbortCondition();
+        }
+      });
 
       // set output collector for any reduce sink operators in the pipeline.
       List<Operator<?>> children = new ArrayList<>();

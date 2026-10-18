@@ -379,8 +379,46 @@ public abstract class Operator<T extends OperatorDesc> implements Serializable,C
 
     LOG.debug("Initialization Done - Reset: {}", this);
 
-    // let's wait on the async ops before continuing
-    completeInitialization(asyncInitOperations);
+    // let's wait on the async ops before continuing, unless initializeDeferringAsyncWaits waits for them
+    List<Operator<?>> deferred = DEFERRED_ASYNC_INITS.get();
+    if (deferred != null && !asyncInitOperations.isEmpty()) {
+      deferred.add(this);
+    } else {
+      completeInitialization(asyncInitOperations);
+    }
+  }
+
+  /** Initializes operators; see {@link #initializeDeferringAsyncWaits}. */
+  @FunctionalInterface
+  public interface Initialization {
+    void run() throws Exception;
+  }
+
+  // The operators whose async initialization is left to initializeDeferringAsyncWaits, while it runs.
+  private static final ThreadLocal<List<Operator<?>>> DEFERRED_ASYNC_INITS = new ThreadLocal<>();
+
+  /**
+   * Runs an initialization of operators that waits for their async initialization (the hash table
+   * of a map join) only once each of them has started it. Initializing the parents of several map
+   * joins one at a time would otherwise load their hash tables one after the other.
+   */
+  public static void initializeDeferringAsyncWaits(Initialization initialization) throws Exception {
+    List<Operator<?>> deferred = new ArrayList<>();
+    DEFERRED_ASYNC_INITS.set(deferred);
+    boolean completed = false;
+    try {
+      initialization.run();
+      DEFERRED_ASYNC_INITS.remove();
+      for (Operator<?> op : deferred) {
+        op.completeInitialization(op.asyncInitOperations);
+      }
+      completed = true;
+    } finally {
+      DEFERRED_ASYNC_INITS.remove();
+      if (!completed) {
+        deferred.forEach(Operator::cancelAsyncInitOps);
+      }
+    }
   }
 
   private void cancelAsyncInitOps() {
