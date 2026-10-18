@@ -714,6 +714,8 @@ import com.google.common.annotations.VisibleForTesting;
     private final int initialOutputCol;
     private int outputColCount = 0;
     private boolean reuseScratchColumns = true;
+    // allocate a new scratch column rather than a free one
+    private boolean allocateNew;
 
     protected OutputColumnManager(int initialOutputCol) {
       this.initialOutputCol = initialOutputCol;
@@ -751,7 +753,7 @@ import com.google.common.annotations.VisibleForTesting;
       }
 
     private int allocateOutputColumnInternal(String columnType, DataTypePhysicalVariation dataTypePhysicalVariation) {
-      for (int i = 0; i < outputColCount; i++) {
+      for (int i = 0; !allocateNew && i < outputColCount; i++) {
 
         // Re-use an existing, available column of the same required type.
         if (usedOutputColumns.contains(i) ||
@@ -2170,11 +2172,21 @@ import com.google.common.annotations.VisibleForTesting;
     }
   }
 
+  /**
+   * The conversion writes to a new scratch column: it joins an expression already built, where a free scratch column
+   * may still be written by a sibling of the input expression before their parent reads both.
+   */
   public VectorExpression wrapWithDecimal64ToDecimalConversion(VectorExpression inputExpression)
       throws HiveException {
 
-    VectorExpression wrapExpression = createDecimal64ToDecimalConversion(
-        inputExpression.getOutputColumnNum(), inputExpression.getOutputTypeInfo());
+    VectorExpression wrapExpression;
+    ocm.allocateNew = true;
+    try {
+      wrapExpression = createDecimal64ToDecimalConversion(
+          inputExpression.getOutputColumnNum(), inputExpression.getOutputTypeInfo());
+    } finally {
+      ocm.allocateNew = false;
+    }
     if (inputExpression instanceof IdentityExpression) {
       return wrapExpression;
     }
