@@ -170,6 +170,88 @@ from (select k1, k2 from gu_fact union select k1, k2 from gu_fact2) t;
 set hive.vectorized.testing.reducer.batch.size=-1;
 set hive.map.aggr.hash.percentmemory=0.5;
 
+-- union_distinct_group_by: the UNION's dedup is partitioned on the GROUP BY's keys, which runs COMPLETE in its reducer;
+-- over the unsorted dedup output it is split into a hash aggregation and a merge of its partial results (TPC-DS q75).
+-- Without vectorization it is whole again (its explain shows the COMPLETE GROUP BY over a sorted shuffle)
+set hive.optimize.groupby.unsorted.shuffle=true;
+explain
+select count(*), sum(pmod(hash(k1, k2, sv, cv, sd, md, mv), 1000003))
+from (select k1, k2, sum(v) sv, count(v) cv, sum(d) sd, max(d) md, min(v) mv
+      from (select k1, k2, x, d, v from gu_fact
+            union select k1, k2, k2 * 0.5, cast(k2 as decimal(7,2)), if(k2 % 3 = 0, null, k2) from gu_fact2) t
+      group by k1, k2) g;
+set hive.optimize.groupby.unsorted.shuffle=false;
+select count(*), sum(pmod(hash(k1, k2, sv, cv, sd, md, mv), 1000003))
+from (select k1, k2, sum(v) sv, count(v) cv, sum(d) sd, max(d) md, min(v) mv
+      from (select k1, k2, x, d, v from gu_fact
+            union select k1, k2, k2 * 0.5, cast(k2 as decimal(7,2)), if(k2 % 3 = 0, null, k2) from gu_fact2) t
+      group by k1, k2) g;
+set hive.optimize.groupby.unsorted.shuffle=true;
+select count(*), sum(pmod(hash(k1, k2, sv, cv, sd, md, mv), 1000003))
+from (select k1, k2, sum(v) sv, count(v) cv, sum(d) sd, max(d) md, min(v) mv
+      from (select k1, k2, x, d, v from gu_fact
+            union select k1, k2, k2 * 0.5, cast(k2 as decimal(7,2)), if(k2 % 3 = 0, null, k2) from gu_fact2) t
+      group by k1, k2) g;
+set hive.vectorized.execution.enabled=false;
+explain
+select count(*), sum(pmod(hash(k1, k2, sv, cv, sd, md, mv), 1000003))
+from (select k1, k2, sum(v) sv, count(v) cv, sum(d) sd, max(d) md, min(v) mv
+      from (select k1, k2, x, d, v from gu_fact
+            union select k1, k2, k2 * 0.5, cast(k2 as decimal(7,2)), if(k2 % 3 = 0, null, k2) from gu_fact2) t
+      group by k1, k2) g;
+select count(*), sum(pmod(hash(k1, k2, sv, cv, sd, md, mv), 1000003))
+from (select k1, k2, sum(v) sv, count(v) cv, sum(d) sd, max(d) md, min(v) mv
+      from (select k1, k2, x, d, v from gu_fact
+            union select k1, k2, k2 * 0.5, cast(k2 as decimal(7,2)), if(k2 % 3 = 0, null, k2) from gu_fact2) t
+      group by k1, k2) g;
+set hive.map.aggr.hash.percentmemory=0.5;
+set hive.vectorized.execution.enabled=true;
+set hive.vectorized.testing.reducer.batch.size=7;
+set hive.map.aggr.hash.percentmemory=0.00001;
+select count(*), sum(pmod(hash(k1, k2, sv, cv, sd, md, mv), 1000003))
+from (select k1, k2, sum(v) sv, count(v) cv, sum(d) sd, max(d) md, min(v) mv
+      from (select k1, k2, x, d, v from gu_fact
+            union select k1, k2, k2 * 0.5, cast(k2 as decimal(7,2)), if(k2 % 3 = 0, null, k2) from gu_fact2) t
+      group by k1, k2) g;
+set hive.vectorized.testing.reducer.batch.size=-1;
+set hive.map.aggr.hash.percentmemory=0.5;
+
+-- intersect: each branch's DISTINCT and the INTERSECT's count on the same keys (behind a select that reorders them)
+-- run in one reducer; the count gets one row a group and follows the unsorted merge as is (TPC-DS q38, q87)
+set hive.optimize.groupby.unsorted.shuffle=true;
+explain
+select count(*) from (select distinct k2, k1 from gu_fact intersect select distinct k2, k1 from gu_fact2) t;
+set hive.optimize.groupby.unsorted.shuffle=false;
+select count(*) from (select distinct k2, k1 from gu_fact intersect select distinct k2, k1 from gu_fact2) t;
+set hive.optimize.groupby.unsorted.shuffle=true;
+select count(*) from (select distinct k2, k1 from gu_fact intersect select distinct k2, k1 from gu_fact2) t;
+set hive.vectorized.execution.enabled=false;
+select count(*) from (select distinct k2, k1 from gu_fact intersect select distinct k2, k1 from gu_fact2) t;
+set hive.vectorized.execution.enabled=true;
+set hive.vectorized.testing.reducer.batch.size=7;
+set hive.map.aggr.hash.percentmemory=0.00001;
+select count(*) from (select distinct k2, k1 from gu_fact intersect select distinct k2, k1 from gu_fact2) t;
+set hive.vectorized.testing.reducer.batch.size=-1;
+set hive.map.aggr.hash.percentmemory=0.5;
+
+-- union_distinct_corr: a keyless aggregation after the dedup keeps its plan (corr's partial result is not its final
+-- one, and it does not vectorize)
+set hive.optimize.groupby.unsorted.shuffle=true;
+explain
+select round(corr(k1, k2), 10) from (select k1, k2 from gu_fact union select k1, k2 from gu_fact2) t;
+set hive.optimize.groupby.unsorted.shuffle=false;
+select round(corr(k1, k2), 10) from (select k1, k2 from gu_fact union select k1, k2 from gu_fact2) t;
+set hive.optimize.groupby.unsorted.shuffle=true;
+select round(corr(k1, k2), 10) from (select k1, k2 from gu_fact union select k1, k2 from gu_fact2) t;
+set hive.vectorized.execution.enabled=false;
+select round(corr(k1, k2), 10) from (select k1, k2 from gu_fact union select k1, k2 from gu_fact2) t;
+set hive.vectorized.execution.enabled=true;
+set hive.vectorized.testing.reducer.batch.size=7;
+set hive.map.aggr.hash.percentmemory=0.00001;
+select round(corr(k1, k2), 10) from (select k1, k2 from gu_fact union select k1, k2 from gu_fact2) t;
+set hive.vectorized.testing.reducer.batch.size=-1;
+set hive.map.aggr.hash.percentmemory=0.5;
+
 -- topn_after
 set hive.optimize.groupby.unsorted.shuffle=true;
 explain
