@@ -1989,6 +1989,9 @@ public class StatsRulesProcFactory {
 
         // infer PK-FK relationship in single attribute join case
         long inferredRowCount = inferPKFKRelationship(numAttr, parents, jop);
+        if (inferredRowCount == -1) {
+          inferredRowCount = inferMultiKeyPKFKRelationship(numAttr, parents, jop, conf);
+        }
         // get the join keys from parent ReduceSink operators
         for (int pos = 0; pos < parents.size(); pos++) {
           ReduceSinkOperator parent = (ReduceSinkOperator) jop.getParentOperators().get(pos);
@@ -2314,6 +2317,72 @@ public class StatsRulesProcFactory {
     }
 
     /**
+     * A two-way inner join on several keys whose combined key is unique on one side joins a foreign key to that
+     * primary key: each row of the other side matches at most one row, and the primary key side keeps its fraction of
+     * the rows of the table that owns the key. A side's key is unique when its distinct values, combined as for the
+     * join, reach its rows (no constraints needed); of two such sides, the one over the larger table holds the
+     * primary key. The distinct value formula cannot say this: the combined count of the keys may exceed the rows of
+     * both sides, and then it lets only a few rows of either side match (TPC-DS q17: store_sales x store_returns on
+     * customer, item, ticket, every return matching its sale).
+     */
+    private long inferMultiKeyPKFKRelationship(int numAttr, List<Operator<? extends OperatorDesc>> parents,
+        CommonJoinOperator<? extends JoinDesc> jop, HiveConf conf) {
+      if (numAttr < 2 || parents.size() != 2 || jop.getConf().getConds().length != 1
+          || jop.getConf().getConds()[0].getType() != JoinDesc.INNER_JOIN) {
+        return -1;
+      }
+      double independenceFactor = StatsUtils.getMultiKeyJoinIndependenceFactor(conf,
+          HiveConf.ConfVars.HIVE_STATS_CORRELATED_MULTI_KEY_JOINS);
+      int pkPos = -1;
+      long pkTableRows = 0;
+      for (int pos = 0; pos < parents.size(); pos++) {
+        ReduceSinkOperator rs = (ReduceSinkOperator) parents.get(pos);
+        List<Long> distinctVals = new ArrayList<>();
+        for (String key : StatsUtils.getQualifedReducerKeyNames(rs.getConf().getOutputKeyColumnNames())) {
+          ColStatistics cs = rs.getStatistics().getColumnStatisticsFromColName(key);
+          if (cs == null) {
+            return -1;
+          }
+          distinctVals.add(cs.getCountDistint());
+        }
+        long tableRows = OperatorUtils.findOperatorsUpstream(rs, TableScanOperator.class).stream()
+            .filter(ts -> ts.getStatistics() != null).mapToLong(ts -> ts.getStatistics().getNumRows()).max().orElse(0);
+        if (StatsUtils.combineDistinctValues(distinctVals, independenceFactor) >= rs.getStatistics().getNumRows()
+            && tableRows > pkTableRows) {
+          pkPos = pos;
+          pkTableRows = tableRows;
+        }
+      }
+      if (pkPos < 0 || !OperatorUtils.treesWithIndependentInputs(parents.get(0), parents.get(1))) {
+        return -1;
+      }
+      double pkDomain = keyDomain((ReduceSinkOperator) parents.get(pkPos), pkTableRows);
+      double pkSelectivity = Math.min(1.0, parents.get(pkPos).getStatistics().getNumRows() / pkDomain);
+      return (long) Math.ceil(parents.get(1 - pkPos).getStatistics().getNumRows() * pkSelectivity);
+    }
+
+    /**
+     * The number of combinations of a key's values: the product of the rows of the tables its columns come from (a
+     * key of customer and store columns ranges over customer x store), or the rows of the largest table under the
+     * ReduceSink when a column cannot be traced to a table.
+     */
+    private static double keyDomain(ReduceSinkOperator rs, long largestTableRows) {
+      Set<TableScanOperator> tables = new HashSet<>();
+      for (ExprNodeDesc key : rs.getConf().getKeyCols()) {
+        ExprNodeDescUtils.ColumnOrigin origin = ExprNodeDescUtils.findColumnOrigin(key, rs);
+        if (origin == null || !(origin.op instanceof TableScanOperator ts) || ts.getStatistics() == null) {
+          return largestTableRows;
+        }
+        tables.add(ts);
+      }
+      double domain = 1;
+      for (TableScanOperator ts : tables) {
+        domain *= Math.max(ts.getStatistics().getNumRows(), 1);
+      }
+      return Math.max(domain, largestTableRows);
+    }
+
+    /**
      * Get cardinality of reduce sink operators.
      * @param csPK - ColStatistics for a single primary key
      * @param csFKs - ColStatistics for multiple foreign keys
@@ -2515,6 +2584,47 @@ public class StatsRulesProcFactory {
     }
 
     /**
+     * Returns the positions of the parents whose rows the join can repeat: those joined to another parent whose join
+     * key is not unique. A semi or anti join returns each row of its left side at most once.
+     */
+    private Set<Integer> getRepeatedParents(CommonJoinOperator<? extends JoinDesc> jop) {
+      if (Arrays.stream(jop.getConf().getConds())
+          .allMatch(cond -> cond.getType() == JoinDesc.LEFT_SEMI_JOIN || cond.getType() == JoinDesc.ANTI_JOIN)) {
+        return Collections.emptySet();
+      }
+      List<Operator<? extends OperatorDesc>> parents = jop.getParentOperators();
+      Set<Integer> nonUniqueKeys = new HashSet<>();
+      for (int i = 0; i < parents.size(); i++) {
+        if (!hasUniqueJoinKey(parents.get(i))) {
+          nonUniqueKeys.add(i);
+        }
+      }
+      Set<Integer> repeated = new HashSet<>();
+      for (int i = 0; i < parents.size(); i++) {
+        if (nonUniqueKeys.size() > (nonUniqueKeys.contains(i) ? 1 : 0)) {
+          repeated.add(i);
+        }
+      }
+      return repeated;
+    }
+
+    /**
+     * Whether the parent joins on a single key with no repeated value: a primary key, or as many distinct values as
+     * rows (the key of a GROUP BY).
+     */
+    private boolean hasUniqueJoinKey(Operator<? extends OperatorDesc> op) {
+      if (!(op instanceof ReduceSinkOperator rsOp) || rsOp.getStatistics() == null) {
+        return false;
+      }
+      List<String> keys = StatsUtils.getQualifedReducerKeyNames(rsOp.getConf().getOutputKeyColumnNames());
+      if (keys.size() != 1) {
+        return false;
+      }
+      ColStatistics cs = rsOp.getStatistics().getColumnStatisticsFromColName(keys.get(0));
+      return cs != null && (cs.isPrimaryKey() || cs.getCountDistint() >= rsOp.getStatistics().getNumRows());
+    }
+
+    /**
      * Returns the index of parents whose join key columns are infer as primary keys
      * @param ops - operators
      * @return - list of primary key containing parent ids
@@ -2633,6 +2743,7 @@ public class StatsRulesProcFactory {
       // and stats for columns from 2nd parent should be scaled down by 200x
       List<ColStatistics> colStats = stats.getColumnStats();
       Set<String> colNameStatsAvailable = new HashSet<>();
+      Set<Integer> repeatedParents = getRepeatedParents(jop);
       for (ColStatistics cs : colStats) {
         colNameStatsAvailable.add(cs.getColumnName());
         int pos = jop.getConf().getReversedExprs().get(cs.getColumnName());
@@ -2657,6 +2768,10 @@ public class StatsRulesProcFactory {
           }
         }
         cs.setCountDistint(newDV);
+        // the join can repeat this parent's rows, so none of its columns stays unique
+        if (repeatedParents.contains(pos)) {
+          cs.setPrimaryKey(false);
+        }
         // a column keeps its fraction of nulls through the join
         if (cs.getNumNulls() > 0) {
           cs.setNumNulls(Math.round(ratio * cs.getNumNulls()));

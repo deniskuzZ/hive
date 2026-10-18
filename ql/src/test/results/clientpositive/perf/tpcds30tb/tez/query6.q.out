@@ -299,7 +299,7 @@ STAGE PLANS:
                 outputColumnNames: _col4, _col7
                 input vertices:
                   0 Reducer 2
-                Statistics: Num rows: 639413 Data size: 60104822 Basic stats: COMPLETE Column stats: COMPLETE
+                Statistics: Num rows: 651415 Data size: 61233010 Basic stats: COMPLETE Column stats: COMPLETE
                 DynamicPartitionHashJoin: true
                 Map Join Operator
                   condition map:
@@ -310,7 +310,7 @@ STAGE PLANS:
                   outputColumnNames: _col4
                   input vertices:
                     1 Map 16
-                  Statistics: Num rows: 639413 Data size: 54989518 Basic stats: COMPLETE Column stats: COMPLETE
+                  Statistics: Num rows: 651415 Data size: 56021690 Basic stats: COMPLETE Column stats: COMPLETE
                   Group By Operator
                     aggregations: count()
                     keys: _col4 (type: char(2))
