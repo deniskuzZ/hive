@@ -147,8 +147,11 @@ public class LazyBinarySerializeWrite implements SerializeWrite {
   private void resetWithoutOutput() {
     root.clean();
     root.fieldCount = rootFieldCount;
-    stack.clear();
-    stack.push(root);
+    // a flat row leaves only the root on the stack: reset is per row
+    if (stack.size() != 1 || stack.peek() != root) {
+      stack.clear();
+      stack.push(root);
+    }
     warnedOnceNullMapKey = null;
   }
 
