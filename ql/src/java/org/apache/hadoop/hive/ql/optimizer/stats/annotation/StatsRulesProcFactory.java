@@ -1989,6 +1989,9 @@ public class StatsRulesProcFactory {
 
         // infer PK-FK relationship in single attribute join case
         long inferredRowCount = inferPKFKRelationship(numAttr, parents, jop);
+        if (inferredRowCount == -1) {
+          inferredRowCount = inferMultiKeyPKFKRelationship(numAttr, parents, jop, conf);
+        }
         // get the join keys from parent ReduceSink operators
         for (int pos = 0; pos < parents.size(); pos++) {
           ReduceSinkOperator parent = (ReduceSinkOperator) jop.getParentOperators().get(pos);
@@ -2311,6 +2314,50 @@ public class StatsRulesProcFactory {
         }
       }
       return newNumRows;
+    }
+
+    /**
+     * A two-way inner join on several keys whose combined key is unique on one side joins a foreign key to that
+     * primary key: each row of the other side matches at most one row, and the primary key side keeps its fraction of
+     * the rows of the table that owns the key. A side's key is unique when its distinct values, combined as for the
+     * join, reach its rows (no constraints needed); of two such sides, the one over the larger table holds the
+     * primary key. The distinct value formula cannot say this: the combined count of the keys may exceed the rows of
+     * both sides, and then it lets only a few rows of either side match (TPC-DS q17: store_sales x store_returns on
+     * customer, item, ticket, every return matching its sale).
+     */
+    private long inferMultiKeyPKFKRelationship(int numAttr, List<Operator<? extends OperatorDesc>> parents,
+        CommonJoinOperator<? extends JoinDesc> jop, HiveConf conf) {
+      if (numAttr < 2 || parents.size() != 2 || jop.getConf().getConds().length != 1
+          || jop.getConf().getConds()[0].getType() != JoinDesc.INNER_JOIN) {
+        return -1;
+      }
+      double independenceFactor = StatsUtils.getMultiKeyJoinIndependenceFactor(conf,
+          HiveConf.ConfVars.HIVE_STATS_CORRELATED_MULTI_KEY_JOINS);
+      int pkPos = -1;
+      long pkTableRows = 0;
+      for (int pos = 0; pos < parents.size(); pos++) {
+        ReduceSinkOperator rs = (ReduceSinkOperator) parents.get(pos);
+        List<Long> distinctVals = new ArrayList<>();
+        for (String key : StatsUtils.getQualifedReducerKeyNames(rs.getConf().getOutputKeyColumnNames())) {
+          ColStatistics cs = rs.getStatistics().getColumnStatisticsFromColName(key);
+          if (cs == null) {
+            return -1;
+          }
+          distinctVals.add(cs.getCountDistint());
+        }
+        long tableRows = OperatorUtils.findOperatorsUpstream(rs, TableScanOperator.class).stream()
+            .filter(ts -> ts.getStatistics() != null).mapToLong(ts -> ts.getStatistics().getNumRows()).max().orElse(0);
+        if (StatsUtils.combineDistinctValues(distinctVals, independenceFactor) >= rs.getStatistics().getNumRows()
+            && tableRows > pkTableRows) {
+          pkPos = pos;
+          pkTableRows = tableRows;
+        }
+      }
+      if (pkPos < 0 || !OperatorUtils.treesWithIndependentInputs(parents.get(0), parents.get(1))) {
+        return -1;
+      }
+      double pkSelectivity = Math.min(1.0, (double) parents.get(pkPos).getStatistics().getNumRows() / pkTableRows);
+      return (long) Math.ceil(parents.get(1 - pkPos).getStatistics().getNumRows() * pkSelectivity);
     }
 
     /**
