@@ -128,7 +128,7 @@ public abstract class VectorReduceSinkCommonOperator extends TerminalOperator<Re
   protected transient TopNHash reducerHash;
 
   // Where to write our key and value pairs.
-  private transient OutputCollector out;
+  protected transient OutputCollector out;
 
   private transient long cntr = 1;
   private transient long logEveryNRows = 0;

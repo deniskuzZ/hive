@@ -35,6 +35,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hive.ql.exec.LimitOperator;
+import org.apache.hadoop.hive.ql.exec.PartitionedOutputCollector;
 import org.apache.hadoop.hive.ql.log.PerfLogger;
 import org.apache.hadoop.hive.ql.session.SessionState;
 import org.apache.hadoop.mapred.JobConf;
@@ -43,6 +44,7 @@ import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.tez.common.TezUtils;
 import org.apache.tez.mapreduce.processor.MRTaskReporter;
 import org.apache.tez.runtime.api.AbstractLogicalIOProcessor;
+import org.apache.tez.runtime.api.AbstractLogicalOutput;
 import org.apache.tez.runtime.api.Event;
 import org.apache.tez.runtime.api.ExecutionContext;
 import org.apache.tez.runtime.api.LogicalInput;
@@ -378,9 +380,14 @@ public class TezProcessor extends AbstractLogicalIOProcessor {
    *
    */
   @SuppressWarnings("rawtypes")
-  static class TezKVOutputCollector implements OutputCollector {
+  static class TezKVOutputCollector implements OutputCollector, PartitionedOutputCollector {
     private KeyValueWriter writer;
     private final LogicalOutput output;
+
+    @Override
+    public int getNumPartitions() {
+      return ((AbstractLogicalOutput) output).getNumPhysicalOutputs();
+    }
 
     TezKVOutputCollector(LogicalOutput logicalOutput) {
       this.output = logicalOutput;
