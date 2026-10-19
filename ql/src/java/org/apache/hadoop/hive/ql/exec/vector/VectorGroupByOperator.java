@@ -412,6 +412,10 @@ public class VectorGroupByOperator extends Operator<GroupByDesc>
      */
     private long numRowsCompareHashAggr;
 
+    /** The input rows and the groups at the first mode checks: the task's reduction curve, logged at the end. */
+    private final StringBuilder modeChecks = new StringBuilder();
+    private int modeCheckCount;
+
     @Override
     public void initialize(Configuration hconf) throws HiveException {
       // hconf is null in unit testing
@@ -560,9 +564,11 @@ public class VectorGroupByOperator extends Operator<GroupByDesc>
           spill.discard();
         }
       } else if (spill != null && spill.hasRuns()) {
+        logReduction("kept");
         spillHashTable();
         mergeSpilledRuns();
       } else {
+        logReduction("kept");
         flush(true);
       }
       if (!aborted && sumBatchSize == 0 && GroupByOperator.shouldEmitSummaryRow(conf)) {
@@ -890,6 +896,13 @@ public class VectorGroupByOperator extends Operator<GroupByDesc>
      * Checks if the HT reduces the number of entries by at least minReductionHashAggr factor
      * @throws HiveException
      */
+    /** One line per task: how much the hash aggregation reduced, and the rows:groups at its first mode checks. */
+    private void logReduction(String outcome) {
+      LOG.info("{} hash aggregation {}: {} rows, {} groups, min reduction {}, rows:groups at checks{}",
+          getOperatorId(), outcome, sumBatchSize, numEntriesHashTable + numFlushedOutEntriesBeforeFinalFlush,
+          minReductionHashAggr, modeChecks);
+    }
+
     private void checkHashModeEfficiency() throws HiveException {
       if (lastModeCheckRowCount > numRowsCompareHashAggr) {
         lastModeCheckRowCount = 0;
@@ -905,8 +918,12 @@ public class VectorGroupByOperator extends Operator<GroupByDesc>
         final long inputRecords = sumBatchSize;
         final long outputRecords = numEntriesHashTable + numFlushedOutEntriesBeforeFinalFlush;
         final float ratio = (outputRecords) / (inputRecords * 1.0f);
+        if (modeCheckCount++ < MAX_LOGGED_MODE_CHECKS) {
+          modeChecks.append(' ').append(inputRecords).append(':').append(outputRecords);
+        }
         if (ratio > minReductionHashAggr) {
           if (inputRecords > maxHtEntries) { // Don't bail out too soon.
+            logReduction("switched");
             flush(true);
             if (passThroughAggregates != null) {
               changeToPassThroughMode();
@@ -927,6 +944,9 @@ public class VectorGroupByOperator extends Operator<GroupByDesc>
    * per entry estimate only covers the aggregation buffers, if any. While the table or the columns
    * grow, their old and new arrays are both live; that transient is not accounted.
    */
+  /** The mode checks whose rows and groups the summary of a hash aggregation lists. */
+  private static final int MAX_LOGGED_MODE_CHECKS = 32;
+
   abstract class ProcessingModeHashAggregateKeyTable extends ProcessingModeHashAggregate {
 
     @VisibleForTesting
