@@ -52,7 +52,7 @@ public abstract class VectorReduceSinkUniformHashOperator extends VectorReduceSi
 
   // The serialized all null key and its hash code.
   private transient byte[] nullBytes;
-  private transient int nullKeyHashCode;
+  protected transient int nullKeyHashCode;
 
   // The object that determines equal key series.
   protected transient VectorKeySeriesSerialized serializedKeySeries;
