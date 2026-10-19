@@ -1130,3 +1130,303 @@ STAGE PLANS:
       Processor Tree:
         ListSink
 
+PREHOOK: query: create table customer (c_customer_sk bigint, c_current_addr_sk bigint, c_birth_country string)
+PREHOOK: type: CREATETABLE
+PREHOOK: Output: database:default
+PREHOOK: Output: default@customer
+POSTHOOK: query: create table customer (c_customer_sk bigint, c_current_addr_sk bigint, c_birth_country string)
+POSTHOOK: type: CREATETABLE
+POSTHOOK: Output: database:default
+POSTHOOK: Output: default@customer
+PREHOOK: query: create table customer_address (ca_address_sk bigint, ca_zip string, ca_country string)
+PREHOOK: type: CREATETABLE
+PREHOOK: Output: database:default
+PREHOOK: Output: default@customer_address
+POSTHOOK: query: create table customer_address (ca_address_sk bigint, ca_zip string, ca_country string)
+POSTHOOK: type: CREATETABLE
+POSTHOOK: Output: database:default
+POSTHOOK: Output: default@customer_address
+PREHOOK: query: create table store_zip (s_store_sk bigint, s_zip string, s_market_id int)
+PREHOOK: type: CREATETABLE
+PREHOOK: Output: database:default
+PREHOOK: Output: default@store_zip
+POSTHOOK: query: create table store_zip (s_store_sk bigint, s_zip string, s_market_id int)
+POSTHOOK: type: CREATETABLE
+POSTHOOK: Output: database:default
+POSTHOOK: Output: default@store_zip
+PREHOOK: query: alter table customer update statistics set('numRows'='65000000','rawDataSize'='6500000000')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@customer
+PREHOOK: Output: default@customer
+POSTHOOK: query: alter table customer update statistics set('numRows'='65000000','rawDataSize'='6500000000')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@customer
+POSTHOOK: Output: default@customer
+PREHOOK: query: alter table customer_address update statistics set('numRows'='32500000','rawDataSize'='3250000000')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@customer_address
+PREHOOK: Output: default@customer_address
+POSTHOOK: query: alter table customer_address update statistics set('numRows'='32500000','rawDataSize'='3250000000')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@customer_address
+POSTHOOK: Output: default@customer_address
+PREHOOK: query: alter table store_zip update statistics set('numRows'='1500','rawDataSize'='60000')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@store_zip
+PREHOOK: Output: default@store_zip
+POSTHOOK: query: alter table store_zip update statistics set('numRows'='1500','rawDataSize'='60000')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@store_zip
+POSTHOOK: Output: default@store_zip
+PREHOOK: query: alter table customer update statistics for column c_customer_sk set('numDVs'='65000000','numNulls'='0','lowValue'='1','highValue'='65000000')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@customer
+PREHOOK: Output: default@customer
+POSTHOOK: query: alter table customer update statistics for column c_customer_sk set('numDVs'='65000000','numNulls'='0','lowValue'='1','highValue'='65000000')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@customer
+POSTHOOK: Output: default@customer
+PREHOOK: query: alter table customer update statistics for column c_current_addr_sk set('numDVs'='30000000','numNulls'='0','lowValue'='1','highValue'='32500000')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@customer
+PREHOOK: Output: default@customer
+POSTHOOK: query: alter table customer update statistics for column c_current_addr_sk set('numDVs'='30000000','numNulls'='0','lowValue'='1','highValue'='32500000')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@customer
+POSTHOOK: Output: default@customer
+PREHOOK: query: alter table customer update statistics for column c_birth_country set('numDVs'='211','numNulls'='0','avgColLen'='8.4','maxColLen'='20')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@customer
+PREHOOK: Output: default@customer
+POSTHOOK: query: alter table customer update statistics for column c_birth_country set('numDVs'='211','numNulls'='0','avgColLen'='8.4','maxColLen'='20')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@customer
+POSTHOOK: Output: default@customer
+PREHOOK: query: alter table customer_address update statistics for column ca_address_sk set('numDVs'='32500000','numNulls'='0','lowValue'='1','highValue'='32500000')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@customer_address
+PREHOOK: Output: default@customer_address
+POSTHOOK: query: alter table customer_address update statistics for column ca_address_sk set('numDVs'='32500000','numNulls'='0','lowValue'='1','highValue'='32500000')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@customer_address
+POSTHOOK: Output: default@customer_address
+PREHOOK: query: alter table customer_address update statistics for column ca_zip set('numDVs'='9900','numNulls'='0','avgColLen'='5.0','maxColLen'='10')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@customer_address
+PREHOOK: Output: default@customer_address
+POSTHOOK: query: alter table customer_address update statistics for column ca_zip set('numDVs'='9900','numNulls'='0','avgColLen'='5.0','maxColLen'='10')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@customer_address
+POSTHOOK: Output: default@customer_address
+PREHOOK: query: alter table customer_address update statistics for column ca_country set('numDVs'='1','numNulls'='0','avgColLen'='13.0','maxColLen'='13')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@customer_address
+PREHOOK: Output: default@customer_address
+POSTHOOK: query: alter table customer_address update statistics for column ca_country set('numDVs'='1','numNulls'='0','avgColLen'='13.0','maxColLen'='13')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@customer_address
+POSTHOOK: Output: default@customer_address
+PREHOOK: query: alter table store_zip update statistics for column s_store_sk set('numDVs'='1500','numNulls'='0','lowValue'='1','highValue'='1500')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@store_zip
+PREHOOK: Output: default@store_zip
+POSTHOOK: query: alter table store_zip update statistics for column s_store_sk set('numDVs'='1500','numNulls'='0','lowValue'='1','highValue'='1500')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@store_zip
+POSTHOOK: Output: default@store_zip
+PREHOOK: query: alter table store_zip update statistics for column s_zip set('numDVs'='1000','numNulls'='0','avgColLen'='5.0','maxColLen'='10')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@store_zip
+PREHOOK: Output: default@store_zip
+POSTHOOK: query: alter table store_zip update statistics for column s_zip set('numDVs'='1000','numNulls'='0','avgColLen'='5.0','maxColLen'='10')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@store_zip
+POSTHOOK: Output: default@store_zip
+PREHOOK: query: alter table store_zip update statistics for column s_market_id set('numDVs'='10','numNulls'='0','lowValue'='1','highValue'='10')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@store_zip
+PREHOOK: Output: default@store_zip
+POSTHOOK: query: alter table store_zip update statistics for column s_market_id set('numDVs'='10','numNulls'='0','lowValue'='1','highValue'='10')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@store_zip
+POSTHOOK: Output: default@store_zip
+PREHOOK: query: explain
+select count(*) from store_sales, customer, customer_address, store_zip
+where ss_customer_sk = c_customer_sk and ss_store_sk = s_store_sk and c_current_addr_sk = ca_address_sk
+  and s_zip = ca_zip and s_market_id = 7 and c_birth_country <> upper(ca_country)
+PREHOOK: type: QUERY
+PREHOOK: Input: default@customer
+PREHOOK: Input: default@customer_address
+PREHOOK: Input: default@store_sales
+PREHOOK: Input: default@store_zip
+#### A masked pattern was here ####
+POSTHOOK: query: explain
+select count(*) from store_sales, customer, customer_address, store_zip
+where ss_customer_sk = c_customer_sk and ss_store_sk = s_store_sk and c_current_addr_sk = ca_address_sk
+  and s_zip = ca_zip and s_market_id = 7 and c_birth_country <> upper(ca_country)
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@customer
+POSTHOOK: Input: default@customer_address
+POSTHOOK: Input: default@store_sales
+POSTHOOK: Input: default@store_zip
+#### A masked pattern was here ####
+STAGE DEPENDENCIES:
+  Stage-1 is a root stage
+  Stage-0 depends on stages: Stage-1
+
+STAGE PLANS:
+  Stage: Stage-1
+    Tez
+#### A masked pattern was here ####
+      Edges:
+        Map 1 <- Map 2 (BROADCAST_EDGE)
+        Map 3 <- Map 1 (BROADCAST_EDGE)
+        Map 4 <- Map 3 (BROADCAST_EDGE)
+        Reducer 5 <- Map 4 (CUSTOM_SIMPLE_EDGE)
+#### A masked pattern was here ####
+      Vertices:
+        Map 1 
+            Map Operator Tree:
+                TableScan
+                  alias: customer_address
+                  filterExpr: (ca_address_sk is not null and ca_zip is not null) (type: boolean)
+                  probeDecodeDetails: cacheKey:HASH_MAP_MAPJOIN_85_container, bigKeyColName:ca_zip, smallTablePos:1, keyRatio:0.015151515151515152
+                  Statistics: Num rows: 32500000 Data size: 6305000000 Basic stats: COMPLETE Column stats: COMPLETE
+                  Filter Operator
+                    predicate: (ca_address_sk is not null and ca_zip is not null) (type: boolean)
+                    Statistics: Num rows: 32500000 Data size: 6305000000 Basic stats: COMPLETE Column stats: COMPLETE
+                    Select Operator
+                      expressions: ca_address_sk (type: bigint), ca_zip (type: string), upper(ca_country) (type: string)
+                      outputColumnNames: _col0, _col1, _col2
+                      Statistics: Num rows: 32500000 Data size: 6305000000 Basic stats: COMPLETE Column stats: COMPLETE
+                      Map Join Operator
+                        condition map:
+                             Inner Join 0 to 1
+                        keys:
+                          0 _col1 (type: string)
+                          1 _col1 (type: string)
+                        outputColumnNames: _col0, _col2, _col3
+                        input vertices:
+                          1 Map 2
+                        Statistics: Num rows: 492424 Data size: 55643912 Basic stats: COMPLETE Column stats: COMPLETE
+                        Reduce Output Operator
+                          key expressions: _col0 (type: bigint)
+                          null sort order: z
+                          sort order: +
+                          Map-reduce partition columns: _col0 (type: bigint)
+                          Statistics: Num rows: 492424 Data size: 55643912 Basic stats: COMPLETE Column stats: COMPLETE
+                          value expressions: _col2 (type: string), _col3 (type: bigint)
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Map 2 
+            Map Operator Tree:
+                TableScan
+                  alias: store_zip
+                  filterExpr: ((s_market_id = 7) and s_store_sk is not null and s_zip is not null) (type: boolean)
+                  Statistics: Num rows: 1500 Data size: 151500 Basic stats: COMPLETE Column stats: COMPLETE
+                  Filter Operator
+                    predicate: ((s_market_id = 7) and s_store_sk is not null and s_zip is not null) (type: boolean)
+                    Statistics: Num rows: 150 Data size: 15150 Basic stats: COMPLETE Column stats: COMPLETE
+                    Select Operator
+                      expressions: s_store_sk (type: bigint), s_zip (type: string)
+                      outputColumnNames: _col0, _col1
+                      Statistics: Num rows: 150 Data size: 14550 Basic stats: COMPLETE Column stats: COMPLETE
+                      Reduce Output Operator
+                        key expressions: _col1 (type: string)
+                        null sort order: z
+                        sort order: +
+                        Map-reduce partition columns: _col1 (type: string)
+                        Statistics: Num rows: 150 Data size: 14550 Basic stats: COMPLETE Column stats: COMPLETE
+                        value expressions: _col0 (type: bigint)
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Map 3 
+            Map Operator Tree:
+                TableScan
+                  alias: customer
+                  filterExpr: (c_customer_sk is not null and c_current_addr_sk is not null) (type: boolean)
+                  probeDecodeDetails: cacheKey:HASH_MAP_MAPJOIN_86_container, bigKeyColName:c_current_addr_sk, smallTablePos:0, keyRatio:0.016414133333333334
+                  Statistics: Num rows: 65000000 Data size: 7020000000 Basic stats: COMPLETE Column stats: COMPLETE
+                  Filter Operator
+                    predicate: (c_customer_sk is not null and c_current_addr_sk is not null) (type: boolean)
+                    Statistics: Num rows: 65000000 Data size: 7020000000 Basic stats: COMPLETE Column stats: COMPLETE
+                    Select Operator
+                      expressions: c_customer_sk (type: bigint), c_current_addr_sk (type: bigint), c_birth_country (type: string)
+                      outputColumnNames: _col0, _col1, _col2
+                      Statistics: Num rows: 65000000 Data size: 7020000000 Basic stats: COMPLETE Column stats: COMPLETE
+                      Map Join Operator
+                        condition map:
+                             Inner Join 0 to 1
+                        keys:
+                          0 _col0 (type: bigint)
+                          1 _col1 (type: bigint)
+                        outputColumnNames: _col2, _col3, _col5, _col7
+                        input vertices:
+                          0 Map 1
+                        residual filter predicates: {(_col7 <> _col2)}
+                        Statistics: Num rows: 6500001 Data size: 1332500205 Basic stats: COMPLETE Column stats: COMPLETE
+                        Reduce Output Operator
+                          key expressions: _col5 (type: bigint), _col3 (type: bigint)
+                          null sort order: zz
+                          sort order: ++
+                          Map-reduce partition columns: _col5 (type: bigint), _col3 (type: bigint)
+                          Statistics: Num rows: 6500001 Data size: 1332500205 Basic stats: COMPLETE Column stats: COMPLETE
+            Execution mode: llap
+            LLAP IO: all inputs
+        Map 4 
+            Map Operator Tree:
+                TableScan
+                  alias: store_sales
+                  filterExpr: (ss_store_sk is not null and ss_customer_sk is not null) (type: boolean)
+                  Statistics: Num rows: 28800426268 Data size: 440066847312 Basic stats: COMPLETE Column stats: COMPLETE
+                  Filter Operator
+                    predicate: (ss_store_sk is not null and ss_customer_sk is not null) (type: boolean)
+                    Statistics: Num rows: 26266271131 Data size: 401345279392 Basic stats: COMPLETE Column stats: COMPLETE
+                    Select Operator
+                      expressions: ss_customer_sk (type: bigint), ss_store_sk (type: bigint)
+                      outputColumnNames: _col0, _col1
+                      Statistics: Num rows: 26266271131 Data size: 401345279392 Basic stats: COMPLETE Column stats: COMPLETE
+                      Map Join Operator
+                        condition map:
+                             Inner Join 0 to 1
+                        keys:
+                          0 _col5 (type: bigint), _col3 (type: bigint)
+                          1 _col0 (type: bigint), _col1 (type: bigint)
+                        input vertices:
+                          0 Map 3
+                        Statistics: Num rows: 1751086 Data size: 14008688 Basic stats: COMPLETE Column stats: COMPLETE
+                        Group By Operator
+                          aggregations: count()
+                          minReductionHashAggr: 0.99
+                          mode: hash
+                          outputColumnNames: _col0
+                          Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                          Reduce Output Operator
+                            null sort order: 
+                            sort order: 
+                            Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                            value expressions: _col0 (type: bigint)
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Reducer 5 
+            Execution mode: vectorized, llap
+            Reduce Operator Tree:
+              Group By Operator
+                aggregations: count(VALUE._col0)
+                mode: mergepartial
+                outputColumnNames: _col0
+                Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                File Output Operator
+                  compressed: false
+                  Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                  table:
+                      input format: org.apache.hadoop.mapred.SequenceFileInputFormat
+                      output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
+                      serde: org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe
+
+  Stage: Stage-0
+    Fetch Operator
+      limit: -1
+      Processor Tree:
+        ListSink
+

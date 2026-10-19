@@ -79,3 +79,25 @@ where d1.d_quarter_name = '2000Q1' and d1.d_date_sk = ss_sold_date_sk and i_item
 group by i_item_id, i_item_desc, s_state
 order by i_item_id, i_item_desc, s_state
 limit 100;
+
+-- q24: the key of the customer x store side ranges over customer x store (65M x 1,500 combinations), not over the
+-- customers: store_sales keeps the fraction of its (customer, store) pairs the side holds, and the join stays small
+create table customer (c_customer_sk bigint, c_current_addr_sk bigint, c_birth_country string);
+create table customer_address (ca_address_sk bigint, ca_zip string, ca_country string);
+create table store_zip (s_store_sk bigint, s_zip string, s_market_id int);
+alter table customer update statistics set('numRows'='65000000','rawDataSize'='6500000000');
+alter table customer_address update statistics set('numRows'='32500000','rawDataSize'='3250000000');
+alter table store_zip update statistics set('numRows'='1500','rawDataSize'='60000');
+alter table customer update statistics for column c_customer_sk set('numDVs'='65000000','numNulls'='0','lowValue'='1','highValue'='65000000');
+alter table customer update statistics for column c_current_addr_sk set('numDVs'='30000000','numNulls'='0','lowValue'='1','highValue'='32500000');
+alter table customer update statistics for column c_birth_country set('numDVs'='211','numNulls'='0','avgColLen'='8.4','maxColLen'='20');
+alter table customer_address update statistics for column ca_address_sk set('numDVs'='32500000','numNulls'='0','lowValue'='1','highValue'='32500000');
+alter table customer_address update statistics for column ca_zip set('numDVs'='9900','numNulls'='0','avgColLen'='5.0','maxColLen'='10');
+alter table customer_address update statistics for column ca_country set('numDVs'='1','numNulls'='0','avgColLen'='13.0','maxColLen'='13');
+alter table store_zip update statistics for column s_store_sk set('numDVs'='1500','numNulls'='0','lowValue'='1','highValue'='1500');
+alter table store_zip update statistics for column s_zip set('numDVs'='1000','numNulls'='0','avgColLen'='5.0','maxColLen'='10');
+alter table store_zip update statistics for column s_market_id set('numDVs'='10','numNulls'='0','lowValue'='1','highValue'='10');
+explain
+select count(*) from store_sales, customer, customer_address, store_zip
+where ss_customer_sk = c_customer_sk and ss_store_sk = s_store_sk and c_current_addr_sk = ca_address_sk
+  and s_zip = ca_zip and s_market_id = 7 and c_birth_country <> upper(ca_country);

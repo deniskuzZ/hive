@@ -2356,8 +2356,30 @@ public class StatsRulesProcFactory {
       if (pkPos < 0 || !OperatorUtils.treesWithIndependentInputs(parents.get(0), parents.get(1))) {
         return -1;
       }
-      double pkSelectivity = Math.min(1.0, (double) parents.get(pkPos).getStatistics().getNumRows() / pkTableRows);
+      double pkDomain = keyDomain((ReduceSinkOperator) parents.get(pkPos), pkTableRows);
+      double pkSelectivity = Math.min(1.0, parents.get(pkPos).getStatistics().getNumRows() / pkDomain);
       return (long) Math.ceil(parents.get(1 - pkPos).getStatistics().getNumRows() * pkSelectivity);
+    }
+
+    /**
+     * The number of combinations of a key's values: the product of the rows of the tables its columns come from (a
+     * key of customer and store columns ranges over customer x store), or the rows of the largest table under the
+     * ReduceSink when a column cannot be traced to a table.
+     */
+    private static double keyDomain(ReduceSinkOperator rs, long largestTableRows) {
+      Set<TableScanOperator> tables = new HashSet<>();
+      for (ExprNodeDesc key : rs.getConf().getKeyCols()) {
+        ExprNodeDescUtils.ColumnOrigin origin = ExprNodeDescUtils.findColumnOrigin(key, rs);
+        if (origin == null || !(origin.op instanceof TableScanOperator ts) || ts.getStatistics() == null) {
+          return largestTableRows;
+        }
+        tables.add(ts);
+      }
+      double domain = 1;
+      for (TableScanOperator ts : tables) {
+        domain *= Math.max(ts.getStatistics().getNumRows(), 1);
+      }
+      return Math.max(domain, largestTableRows);
     }
 
     /**
