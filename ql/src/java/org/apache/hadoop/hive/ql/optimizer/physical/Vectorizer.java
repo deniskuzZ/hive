@@ -56,6 +56,7 @@ import org.apache.hadoop.hive.ql.exec.vector.mapjoin.VectorMapJoinAntiJoinLongOp
 import org.apache.hadoop.hive.ql.exec.vector.mapjoin.VectorMapJoinAntiJoinMultiKeyOperator;
 import org.apache.hadoop.hive.ql.exec.vector.mapjoin.VectorMapJoinAntiJoinStringOperator;
 import org.apache.hadoop.hive.ql.exec.vector.reducesink.*;
+import org.apache.hadoop.hive.ql.exec.vector.shuffle.ColumnarShuffleBlock;
 import org.apache.hadoop.hive.ql.exec.vector.udf.VectorUDFArgDesc;
 import org.apache.hadoop.hive.ql.io.AcidUtils;
 import org.apache.hadoop.hive.serde2.lazybinary.LazyBinarySerDe2;
@@ -161,6 +162,7 @@ import org.apache.hadoop.hive.ql.plan.ReduceWork;
 import org.apache.hadoop.hive.ql.plan.SMBJoinDesc;
 import org.apache.hadoop.hive.ql.plan.TableDesc;
 import org.apache.hadoop.hive.ql.plan.TableScanDesc;
+import org.apache.hadoop.hive.ql.plan.TezEdgeProperty.EdgeType;
 import org.apache.hadoop.hive.ql.plan.TezWork;
 import org.apache.hadoop.hive.ql.plan.VectorGroupByDesc;
 import org.apache.hadoop.hive.ql.plan.VectorMapJoinDesc;
@@ -365,6 +367,7 @@ public class Vectorizer implements PhysicalPlanResolver {
   private boolean useVectorDeserialize;
   private boolean useRowDeserialize;
   private boolean isReduceVectorizationEnabled;
+  private boolean isColumnarShuffleEnabled;
   private boolean isPtfVectorizationEnabled;
   private boolean isVectorizationComplexTypesEnabled;
 
@@ -1077,6 +1080,9 @@ public class Vectorizer implements PhysicalPlanResolver {
 
             logMergeJoinWorkExplainVectorization(mergeJoinWork);
           }
+        }
+        if (isColumnarShuffleEnabled) {
+          useColumnarShuffle(work);
         }
       } else if (currTask instanceof FetchTask) {
         LOG.info("Vectorizing Fetch not supported");
@@ -2522,6 +2528,9 @@ public class Vectorizer implements PhysicalPlanResolver {
     isPtfVectorizationEnabled =
         HiveConf.getBoolVar(hiveConf,
             HiveConf.ConfVars.HIVE_VECTORIZATION_PTF_ENABLED);
+    isColumnarShuffleEnabled =
+        HiveConf.getBoolVar(hiveConf,
+            HiveConf.ConfVars.HIVE_VECTORIZATION_COLUMNAR_SHUFFLE_ENABLED);
 
     isVectorizationComplexTypesEnabled =
         HiveConf.getBoolVar(hiveConf,
@@ -4370,6 +4379,76 @@ public class Vectorizer implements PhysicalPlanResolver {
       return false;
     }
 
+    return true;
+  }
+
+  /**
+   * Switches the vectorized ReduceSink of an unsorted edge into the vectorized input of a vectorized reducer to the
+   * columnar shuffle (VectorReduceSinkColumnarOperator) and marks that input of the reducer as columnar. The input is
+   * the one ReduceRecordProcessor vectorizes, the reducer's tag (the big table of a dynamically partitioned hash
+   * join). Its rows go to the partitions the row path gives them, so the other inputs of the reducer keep their path.
+   */
+  private void useColumnarShuffle(TezWork tezWork) throws SemanticException {
+    for (BaseWork parent : tezWork.getAllWork()) {
+      if (!parent.getVectorMode()) {
+        continue;
+      }
+      for (BaseWork child : tezWork.getChildren(parent)) {
+        if (!(child instanceof ReduceWork reduceWork) || !reduceWork.getVectorMode() || reduceWork.getNeedsTagging()
+            || tezWork.getEdgeProperty(parent, child).getEdgeType() != EdgeType.CUSTOM_SIMPLE_EDGE) {
+          continue;
+        }
+        List<Integer> tags = reduceWork.getTagToInput().entrySet().stream()
+            .filter(e -> e.getValue().equals(parent.getName())).map(Map.Entry::getKey).toList();
+        List<Operator<? extends OperatorDesc>> sinks = parent.getAllLeafOperators().stream()
+            .filter(op -> op instanceof VectorReduceSinkUniformHashOperator
+                && child.getName().equals(((ReduceSinkDesc) op.getConf()).getOutputName()))
+            .toList();
+        if (tags.size() != 1 || tags.get(0) != reduceWork.getTag() || sinks.size() != 1
+            || !isColumnarShuffleSink(sinks.get(0))) {
+          continue;
+        }
+        Operator<? extends OperatorDesc> sink = sinks.get(0);
+        VectorizationOperator vectorSink = (VectorizationOperator) sink;
+        Operator<? extends OperatorDesc> columnar;
+        try {
+          columnar = OperatorFactory.getVectorOperator(VectorReduceSinkColumnarOperator.class,
+              sink.getCompilationOpContext(), sink.getConf(), vectorSink.getInputVectorizationContext(),
+              vectorSink.getVectorDesc());
+        } catch (HiveException e) {
+          throw new SemanticException(e);
+        }
+        fixupParentChildOperators(sink, columnar);
+        planMapper.link(sink, columnar);
+        int tag = tags.get(0);
+        TableDesc valueDesc = (TableDesc) reduceWork.getTagToValueDesc().get(tag).clone();
+        valueDesc.getProperties().setProperty(ColumnarShuffleBlock.INPUT_PROPERTY, "true");
+        reduceWork.getTagToValueDesc().set(tag, valueDesc);
+        LOG.info("Columnar shuffle {} -> {}", parent.getName(), child.getName());
+      }
+    }
+  }
+
+  /** Whether the keys of a uniform hash ReduceSink have a fixed BinarySortable width and its values travel in blocks. */
+  private static boolean isColumnarShuffleSink(Operator<? extends OperatorDesc> sink) {
+    ReduceSinkDesc desc = (ReduceSinkDesc) sink.getConf();
+    VectorReduceSinkDesc vectorDesc = (VectorReduceSinkDesc) ((VectorizationOperator) sink).getVectorDesc();
+    VectorReduceSinkInfo info = vectorDesc.getVectorReduceSinkInfo();
+    if (vectorDesc.getIsEmptyKey() || desc.getTopN() >= 0 || vectorDesc.getIsAcidChange()) {
+      return false;
+    }
+    for (TypeInfo keyType : info.getReduceSinkKeyTypeInfos()) {
+      if (VectorReduceSinkColumnarOperator.keyWidth(keyType) < 0) {
+        return false;
+      }
+    }
+    if (!vectorDesc.getIsEmptyValue()) {
+      for (Type valueType : info.getReduceSinkValueColumnVectorTypes()) {
+        if (!ColumnarShuffleBlock.supports(valueType)) {
+          return false;
+        }
+      }
+    }
     return true;
   }
 

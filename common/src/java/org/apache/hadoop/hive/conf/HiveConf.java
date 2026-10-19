@@ -4608,6 +4608,10 @@ public class HiveConf extends Configuration {
         "This flag should be set to true to enable the new vectorization\n" +
         "of queries using ReduceSink.\ni" +
         "The default value is true."),
+    HIVE_VECTORIZATION_COLUMNAR_SHUFFLE_ENABLED("hive.vectorized.execution.columnar.shuffle.enabled", false,
+        "Whether a vectorized ReduceSink of an unsorted edge into a vectorized reducer ships its rows in columnar\n"
+        + "blocks, one record per block of a partition, instead of a serialized record per row. Applies to edges\n"
+        + "whose keys are BOOLEAN, TINYINT, SMALLINT, INT, DATE or BIGINT, partitioned as the row path does."),
     HIVE_VECTORIZATION_USE_VECTORIZED_INPUT_FILE_FORMAT("hive.vectorized.use.vectorized.input.format", true,
         "This flag should be set to true to enable vectorizing with vectorized input file format capable SerDe.\n" +
         "The default value is true."),
