@@ -45,6 +45,8 @@ public class <ClassName> extends Filter<TypeName>ColumnBetween {
   // Transient members initialized by transientInit method.
   protected transient boolean initialized;
   protected transient boolean isLeftOrRightNull;
+  // the rows passed before the runtime values arrived
+  private transient long rowsPassed;
 
   public <ClassName>(int colNum, DynamicValue leftValue, DynamicValue rightValue) {
     super(colNum, <DefaultValue>, <DefaultValue>);
@@ -93,7 +95,11 @@ public class <ClassName> extends Filter<TypeName>ColumnBetween {
         rVal = rightDynamicValue.getValue();
       } catch (NoDynamicValuesException e) {
         // The runtime values have not arrived: the batch passes until they do.
+        rowsPassed += batch.size;
         return;
+      }
+      if (rowsPassed > 0) {
+        LOG.info("Runtime value {} arrived after {} rows passed", leftDynamicValue.getId(), rowsPassed);
       }
       if (lVal == null || rVal == null) {
         isLeftOrRightNull = true;

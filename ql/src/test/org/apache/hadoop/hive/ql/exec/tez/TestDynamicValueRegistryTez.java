@@ -202,6 +202,38 @@ public class TestDynamicValueRegistryTez {
     }
   }
 
+  /** A value whose filters wait for it is read on its task's input, where a value they pass rows for is missing. */
+  @Test
+  public void testAValueWaitedForIsReadOnItsTasksInput() throws Exception {
+    LlapProxy.setDaemon(true);
+    ExecutorService task = Executors.newSingleThreadExecutor();
+    try {
+      Configuration taskConf = taskConf(APPLICATION);
+      ObjectCache cache = ObjectCacheFactory.getCache(taskConf, QUERY_ID, false, true);
+      RegistryConfTez registryConf = conf(APPLICATION, 1, input(42L), new AtomicBoolean());
+      task.submit(() -> {
+        cache.<DynamicValueRegistryTez>retrieve(DynamicValue.registryKey(taskConf), DynamicValueRegistryTez::new)
+            .init(registryConf);
+        return null;
+      }).get();
+
+      assertEquals(NoDynamicValuesException.class, task.submit(() -> {
+        try {
+          return value(taskConf).getValue();
+        } catch (NoDynamicValuesException e) {
+          return e.getClass();
+        }
+      }).get());
+      DynamicValue waited = value(taskConf);
+      waited.setWaitForArrival(true);
+      assertEquals(new LongWritable(42), task.submit(waited::getValue).get());
+    } finally {
+      task.shutdownNow();
+      ObjectCacheFactory.removeLlapQueryCache(QUERY_ID);
+      LlapProxy.setDaemon(false);
+    }
+  }
+
   /** A task does not wait for a runtime value source: the value is missing until its input is ready. */
   @Test
   public void testInitDoesNotWaitForASource() throws Exception {

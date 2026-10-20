@@ -57,6 +57,9 @@ public class DynamicValue implements LiteralDelegate, Serializable {
   transient protected Object val;
   transient boolean initialized = false;
 
+  /** Whether its filters wait for the value instead of passing rows until it arrives. */
+  private boolean waitForArrival;
+
   public DynamicValue(String id, TypeInfo typeInfo) {
     this.id = id;
     this.typeInfo = typeInfo;
@@ -96,6 +99,14 @@ public class DynamicValue implements LiteralDelegate, Serializable {
     this.id = id;
   }
 
+  public boolean isWaitForArrival() {
+    return waitForArrival;
+  }
+
+  public void setWaitForArrival(boolean waitForArrival) {
+    this.waitForArrival = waitForArrival;
+  }
+
   @Override
   public Object getLiteral() {
     return getJavaValue();
@@ -109,9 +120,9 @@ public class DynamicValue implements LiteralDelegate, Serializable {
     return objectInspector.getPrimitiveWritableObject(getValue());
   }
 
-  /** The value, or {@link NoDynamicValuesException} while it has not arrived. */
+  /** The value, or {@link NoDynamicValuesException} while it has not arrived unless its filters wait for it. */
   public Object getValue() {
-    return getValue(false);
+    return getValue(waitForArrival);
   }
 
   /** The value, waiting for it to arrive; for consumers that cannot pass rows without it. */
@@ -156,6 +167,6 @@ public class DynamicValue implements LiteralDelegate, Serializable {
   @Override
   public String toString() {
     // If the id is a generated unique ID then this could affect .q file golden files for tests that run EXPLAIN queries.
-    return "DynamicValue(" + id + ")";
+    return "DynamicValue(" + id + (waitForArrival ? ", wait" : "") + ")";
   }
 }

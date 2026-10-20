@@ -121,11 +121,11 @@ STAGE PLANS:
             Map Operator Tree:
                 TableScan
                   alias: d
-                  filterExpr: (d_month_seq is not null and d_month_seq BETWEEN DynamicValue(RS_52_date_dim_d_month_seq_min) AND DynamicValue(RS_52_date_dim_d_month_seq_max) and in_bloom_filter(d_month_seq, DynamicValue(RS_52_date_dim_d_month_seq_bloom_filter))) (type: boolean)
+                  filterExpr: (d_month_seq is not null and d_month_seq BETWEEN DynamicValue(RS_52_date_dim_d_month_seq_min, wait) AND DynamicValue(RS_52_date_dim_d_month_seq_max, wait) and in_bloom_filter(d_month_seq, DynamicValue(RS_52_date_dim_d_month_seq_bloom_filter, wait))) (type: boolean)
                   probeDecodeDetails: cacheKey:HASH_MAP_MAPJOIN_172_container, bigKeyColName:d_month_seq, smallTablePos:1, keyRatio:0.012710127101271012
                   Statistics: Num rows: 73049 Data size: 876588 Basic stats: COMPLETE Column stats: COMPLETE
                   Filter Operator
-                    predicate: (d_month_seq is not null and d_month_seq BETWEEN DynamicValue(RS_52_date_dim_d_month_seq_min) AND DynamicValue(RS_52_date_dim_d_month_seq_max) and in_bloom_filter(d_month_seq, DynamicValue(RS_52_date_dim_d_month_seq_bloom_filter))) (type: boolean)
+                    predicate: (d_month_seq is not null and d_month_seq BETWEEN DynamicValue(RS_52_date_dim_d_month_seq_min, wait) AND DynamicValue(RS_52_date_dim_d_month_seq_max, wait) and in_bloom_filter(d_month_seq, DynamicValue(RS_52_date_dim_d_month_seq_bloom_filter, wait))) (type: boolean)
                     Statistics: Num rows: 73049 Data size: 876588 Basic stats: COMPLETE Column stats: COMPLETE
                     Select Operator
                       expressions: d_date_sk (type: bigint), d_month_seq (type: int)

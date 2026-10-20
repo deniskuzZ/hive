@@ -58,6 +58,8 @@ public class VectorInBloomFilterColDynamicValue extends VectorExpression {
 
   private ObjectCache runtimeCache;
   private String runtimeCacheKey;
+  // the rows passed before the bloom filter arrived
+  private transient long rowsPassed;
 
   public VectorInBloomFilterColDynamicValue(int colNum, DynamicValue bloomFilterDynamicValue) {
     super(colNum, -1);
@@ -155,7 +157,11 @@ public class VectorInBloomFilterColDynamicValue extends VectorExpression {
         bloomFilterDynamicValue.getValue();
       } catch (NoDynamicValuesException e) {
         // The bloom filter has not arrived: the batch passes until it does.
+        rowsPassed += batch.size;
         return;
+      }
+      if (rowsPassed > 0) {
+        LOG.info("Runtime value {} arrived after {} rows passed", bloomFilterDynamicValue.getId(), rowsPassed);
       }
       initValue();
     }
