@@ -19,6 +19,8 @@
 
 package org.apache.hadoop.hive.ql.exec;
 
+import java.util.ArrayList;
+
 import org.apache.hadoop.hive.ql.CompilationOpContext;
 import org.apache.hadoop.hive.ql.plan.CommonMergeJoinDesc;
 import org.apache.hadoop.hive.ql.plan.FilterDesc;
@@ -34,6 +36,23 @@ import static java.util.Collections.singletonList;
 import static org.junit.jupiter.api.Assertions.*;
 
 class TestOperatorUtils {
+  @Test
+  void testAncestorBeyondTheRoot() {
+    // a path that runs past an operator without parents finds nothing (TS - SEL - RS, three steps up from RS)
+    CompilationOpContext context = new CompilationOpContext();
+    Operator<?> ts = OperatorFactory.get(context, TableScanDesc.class);
+    Operator<?> select = OperatorFactory.get(context, SelectDesc.class);
+    Operator<?> rs = OperatorFactory.get(context, ReduceSinkDesc.class);
+    ts.setParentOperators(new ArrayList<>());
+    ts.setChildOperators(singletonList(select));
+    select.setParentOperators(singletonList(ts));
+    select.setChildOperators(singletonList(rs));
+    rs.setParentOperators(singletonList(select));
+
+    assertSame(select, OperatorUtils.ancestor(rs, SelectOperator.class, 0));
+    assertNull(OperatorUtils.ancestor(rs, SelectOperator.class, 0, 0, 0));
+  }
+
   @Test
   void testHasMoreGBYsReturnsFalseWhenLimitIs0() {
     // RS-SEL-LIM-FIL
