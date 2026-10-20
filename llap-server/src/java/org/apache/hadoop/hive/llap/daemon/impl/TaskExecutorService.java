@@ -49,6 +49,7 @@ import org.apache.hadoop.hive.llap.daemon.FinishableStateUpdateHandler;
 import org.apache.hadoop.hive.llap.daemon.SchedulerFragmentCompletingListener;
 import org.apache.hadoop.hive.llap.daemon.impl.comparator.LlapQueueComparatorBase;
 import org.apache.hadoop.hive.llap.daemon.rpc.LlapDaemonProtocolProtos.FragmentRuntimeInfo;
+import org.apache.hadoop.hive.llap.daemon.rpc.LlapDaemonProtocolProtos.IOSpecProto;
 import org.apache.hadoop.hive.llap.daemon.rpc.LlapDaemonProtocolProtos.SignableVertexSpec;
 import org.apache.hadoop.hive.llap.metrics.LlapDaemonExecutorMetrics;
 import org.apache.hadoop.hive.llap.tezplugins.helpers.MonotonicClock;
@@ -415,7 +416,8 @@ public class TaskExecutorService extends AbstractService
             // (numSlotsAvailable can go negative, if the callback after the thread completes is delayed)
             boolean shouldWait = numSlotsAvailable.get() <= 0 && lastKillTimeMs == null;
             boolean canKill = false;
-            if (task.canFinishForPriority() || task.isGuaranteed()) {
+            if (task.canFinishForPriority() || task.isGuaranteed()
+                || waitsOn(preemptionQueue.peek(), task)) {
               if (LOG.isDebugEnabled()) {
                 LOG.debug("Attempting to schedule task {}, canFinish={}. Current state: "
                     + "preemptionQueueSize={}, numSlotsAvailable={}, waitQueueSize={}",
@@ -977,8 +979,35 @@ public class TaskExecutorService extends AbstractService
     if (candVrtx.getHiveQueryId().equals(vicVrtx.getHiveQueryId()) &&
         candVrtx.getVertexIndex() == vicVrtx.getVertexIndex()) return false;
     if (candidate.isGuaranteed() && !victim.isGuaranteed()) return true;
+    if (candidate.isGuaranteed() == victim.isGuaranteed()
+        && !victim.getTaskRunnerCallable().canFinish() && waitsOn(victim, candidate)) {
+      return true;
+    }
     return ((candidate.isGuaranteed() == victim.isGuaranteed())
         && candidate.canFinishForPriority() && !victim.getTaskRunnerCallable().canFinish());
+  }
+
+  /**
+   * Whether the victim reads an input of the candidate's vertex in the same query, so it cannot finish before the
+   * candidate runs. Such a candidate may preempt the victim whatever the finishable state says: that state changes
+   * only when a source state update reaches the daemon, and a victim holding the last executor would otherwise wait
+   * for a candidate queued behind it until an update arrives, if ever.
+   */
+  private static boolean waitsOn(TaskWrapper victim, TaskWrapper candidate) {
+    if (victim == null) {
+      return false;
+    }
+    QueryFragmentInfo v = victim.getTaskRunnerCallable().getFragmentInfo();
+    QueryFragmentInfo c = candidate.getTaskRunnerCallable().getFragmentInfo();
+    if (v.getQueryInfo() != c.getQueryInfo()) {
+      return false;
+    }
+    for (IOSpecProto input : v.getVertexSpec().getInputSpecsList()) {
+      if (input.getConnectedVertexName().equals(c.getVertexName())) {
+        return true;
+      }
+    }
+    return false;
   }
 
   @VisibleForTesting
