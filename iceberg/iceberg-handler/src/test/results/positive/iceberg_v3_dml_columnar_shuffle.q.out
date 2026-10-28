@@ -1,0 +1,240 @@
+PREHOOK: query: create external table cs_on (id int, name string, part int) partitioned by spec (part)
+stored by iceberg tblproperties ('format-version'='3')
+PREHOOK: type: CREATETABLE
+PREHOOK: Output: database:default
+PREHOOK: Output: default@cs_on
+POSTHOOK: query: create external table cs_on (id int, name string, part int) partitioned by spec (part)
+stored by iceberg tblproperties ('format-version'='3')
+POSTHOOK: type: CREATETABLE
+POSTHOOK: Output: database:default
+POSTHOOK: Output: default@cs_on
+PREHOOK: query: create external table cs_off (id int, name string, part int) partitioned by spec (part)
+stored by iceberg tblproperties ('format-version'='3')
+PREHOOK: type: CREATETABLE
+PREHOOK: Output: database:default
+PREHOOK: Output: default@cs_off
+POSTHOOK: query: create external table cs_off (id int, name string, part int) partitioned by spec (part)
+stored by iceberg tblproperties ('format-version'='3')
+POSTHOOK: type: CREATETABLE
+POSTHOOK: Output: database:default
+POSTHOOK: Output: default@cs_off
+PREHOOK: query: insert into cs_on select pos, concat('n', pos), pos % 3 from (select posexplode(split(space(2999), ' '))) t
+PREHOOK: type: QUERY
+PREHOOK: Input: _dummy_database@_dummy_table
+PREHOOK: Output: default@cs_on
+POSTHOOK: query: insert into cs_on select pos, concat('n', pos), pos % 3 from (select posexplode(split(space(2999), ' '))) t
+POSTHOOK: type: QUERY
+POSTHOOK: Input: _dummy_database@_dummy_table
+POSTHOOK: Output: default@cs_on
+PREHOOK: query: insert into cs_off select * from cs_on
+PREHOOK: type: QUERY
+PREHOOK: Input: default@cs_on
+PREHOOK: Output: default@cs_off
+POSTHOOK: query: insert into cs_off select * from cs_on
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@cs_on
+POSTHOOK: Output: default@cs_off
+PREHOOK: query: create external table cs_src (id int) stored by iceberg tblproperties ('format-version'='3')
+PREHOOK: type: CREATETABLE
+PREHOOK: Output: database:default
+PREHOOK: Output: default@cs_src
+POSTHOOK: query: create external table cs_src (id int) stored by iceberg tblproperties ('format-version'='3')
+POSTHOOK: type: CREATETABLE
+POSTHOOK: Output: database:default
+POSTHOOK: Output: default@cs_src
+PREHOOK: query: insert into cs_src select pos * 5 from (select posexplode(split(space(599), ' '))) t
+PREHOOK: type: QUERY
+PREHOOK: Input: _dummy_database@_dummy_table
+PREHOOK: Output: default@cs_src
+POSTHOOK: query: insert into cs_src select pos * 5 from (select posexplode(split(space(599), ' '))) t
+POSTHOOK: type: QUERY
+POSTHOOK: Input: _dummy_database@_dummy_table
+POSTHOOK: Output: default@cs_src
+PREHOOK: query: explain vectorization only operator delete from cs_on where id % 7 = 0
+PREHOOK: type: QUERY
+PREHOOK: Input: default@cs_on
+PREHOOK: Output: default@cs_on
+POSTHOOK: query: explain vectorization only operator delete from cs_on where id % 7 = 0
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@cs_on
+POSTHOOK: Output: default@cs_on
+PLAN VECTORIZATION:
+  enabled: true
+  enabledConditionsMet: [hive.vectorized.execution.enabled IS true]
+
+STAGE DEPENDENCIES:
+  Stage-2 is a root stage
+  Stage-3 depends on stages: Stage-2
+  Stage-1 depends on stages: Stage-3
+  Stage-4 depends on stages: Stage-1
+
+STAGE PLANS:
+  Stage: Stage-2
+    Tez
+      Edges:
+        Reducer 2 <- Map 1 (CUSTOM_SIMPLE_EDGE)
+      Vertices:
+        Map 1 
+            Map Operator Tree:
+                  TableScan Vectorization:
+                      native: true
+                    Filter Vectorization:
+                        className: VectorFilterOperator
+                        native: true
+                      Select Vectorization:
+                          className: VectorSelectOperator
+                          native: true
+                        Reduce Sink Vectorization:
+                            className: VectorReduceSinkColumnarObjectHashOperator
+                            native: true
+                            nativeConditionsMet: hive.vectorized.execution.reducesink.new.enabled IS true, hive.execution.engine tez IN [tez] IS true, No PTF TopN IS true, No DISTINCT columns IS true, BinarySortableSerDe for keys IS true, LazyBinarySerDe for values IS true
+            Execution mode: vectorized
+            Map Vectorization:
+                enabled: true
+                enabledConditionsMet: hive.vectorized.use.vectorized.input.format IS true
+                inputFormatFeatureSupport: [DECIMAL_64]
+                featureSupportInUse: [DECIMAL_64]
+                inputFileFormats: org.apache.iceberg.mr.hive.HiveIcebergInputFormat
+                allNative: true
+                usesVectorUDFAdaptor: false
+                vectorized: true
+        Reducer 2 
+            Execution mode: vectorized
+            Reduce Vectorization:
+                enabled: true
+                enableConditionsMet: hive.vectorized.execution.reduce.enabled IS true, hive.execution.engine tez IN [tez] IS true
+                allNative: false
+                usesVectorUDFAdaptor: false
+                vectorized: true
+            Reduce Operator Tree:
+                Select Vectorization:
+                    className: VectorSelectOperator
+                    native: true
+                  File Sink Vectorization:
+                      className: VectorFileSinkOperator
+                      native: false
+
+  Stage: Stage-3
+
+  Stage: Stage-1
+
+  Stage: Stage-4
+
+PREHOOK: query: delete from cs_on where id % 7 = 0
+PREHOOK: type: QUERY
+PREHOOK: Input: default@cs_on
+PREHOOK: Output: default@cs_on
+POSTHOOK: query: delete from cs_on where id % 7 = 0
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@cs_on
+POSTHOOK: Output: default@cs_on
+PREHOOK: query: update cs_on set name = 'u' where id % 11 = 0
+PREHOOK: type: QUERY
+PREHOOK: Input: default@cs_on
+PREHOOK: Output: default@cs_on
+PREHOOK: Output: default@cs_on
+POSTHOOK: query: update cs_on set name = 'u' where id % 11 = 0
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@cs_on
+POSTHOOK: Output: default@cs_on
+POSTHOOK: Output: default@cs_on
+PREHOOK: query: merge into cs_on t using cs_src s on t.id = s.id
+when matched and t.id % 2 = 0 then update set name = 'm'
+when matched then delete
+when not matched then insert values (s.id, 'i', s.id % 3)
+PREHOOK: type: QUERY
+PREHOOK: Input: default@cs_on
+PREHOOK: Input: default@cs_src
+PREHOOK: Output: default@cs_on
+PREHOOK: Output: default@cs_on
+PREHOOK: Output: default@merge_tmp_table
+POSTHOOK: query: merge into cs_on t using cs_src s on t.id = s.id
+when matched and t.id % 2 = 0 then update set name = 'm'
+when matched then delete
+when not matched then insert values (s.id, 'i', s.id % 3)
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@cs_on
+POSTHOOK: Input: default@cs_src
+POSTHOOK: Output: default@cs_on
+POSTHOOK: Output: default@cs_on
+POSTHOOK: Output: default@merge_tmp_table
+POSTHOOK: Lineage: merge_tmp_table.val EXPRESSION [(cs_on)cs_on.null, ]
+PREHOOK: query: delete from cs_off where id % 7 = 0
+PREHOOK: type: QUERY
+PREHOOK: Input: default@cs_off
+PREHOOK: Output: default@cs_off
+POSTHOOK: query: delete from cs_off where id % 7 = 0
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@cs_off
+POSTHOOK: Output: default@cs_off
+PREHOOK: query: update cs_off set name = 'u' where id % 11 = 0
+PREHOOK: type: QUERY
+PREHOOK: Input: default@cs_off
+PREHOOK: Output: default@cs_off
+PREHOOK: Output: default@cs_off
+POSTHOOK: query: update cs_off set name = 'u' where id % 11 = 0
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@cs_off
+POSTHOOK: Output: default@cs_off
+POSTHOOK: Output: default@cs_off
+PREHOOK: query: merge into cs_off t using cs_src s on t.id = s.id
+when matched and t.id % 2 = 0 then update set name = 'm'
+when matched then delete
+when not matched then insert values (s.id, 'i', s.id % 3)
+PREHOOK: type: QUERY
+PREHOOK: Input: default@cs_off
+PREHOOK: Input: default@cs_src
+PREHOOK: Output: default@cs_off
+PREHOOK: Output: default@cs_off
+PREHOOK: Output: default@merge_tmp_table
+POSTHOOK: query: merge into cs_off t using cs_src s on t.id = s.id
+when matched and t.id % 2 = 0 then update set name = 'm'
+when matched then delete
+when not matched then insert values (s.id, 'i', s.id % 3)
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@cs_off
+POSTHOOK: Input: default@cs_src
+POSTHOOK: Output: default@cs_off
+POSTHOOK: Output: default@cs_off
+POSTHOOK: Output: default@merge_tmp_table
+POSTHOOK: Lineage: merge_tmp_table.val EXPRESSION [(cs_off)cs_off.null, ]
+PREHOOK: query: select count(*), count(distinct id), sum(id) from cs_on
+PREHOOK: type: QUERY
+PREHOOK: Input: default@cs_on
+PREHOOK: Output: hdfs://### HDFS PATH ###
+POSTHOOK: query: select count(*), count(distinct id), sum(id) from cs_on
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@cs_on
+POSTHOOK: Output: hdfs://### HDFS PATH ###
+2400	2400	3598498
+PREHOOK: query: select count(*) from cs_on a full outer join cs_off b on a.id = b.id and a.name = b.name and a.part = b.part
+where a.id is null or b.id is null
+PREHOOK: type: QUERY
+PREHOOK: Input: default@cs_off
+PREHOOK: Input: default@cs_on
+PREHOOK: Output: hdfs://### HDFS PATH ###
+POSTHOOK: query: select count(*) from cs_on a full outer join cs_off b on a.id = b.id and a.name = b.name and a.part = b.part
+where a.id is null or b.id is null
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@cs_off
+POSTHOOK: Input: default@cs_on
+POSTHOOK: Output: hdfs://### HDFS PATH ###
+0
+PREHOOK: query: select count(*), count(distinct referenced_data_file) from default.cs_on.delete_files
+PREHOOK: type: QUERY
+PREHOOK: Input: default@cs_on
+PREHOOK: Output: hdfs://### HDFS PATH ###
+POSTHOOK: query: select count(*), count(distinct referenced_data_file) from default.cs_on.delete_files
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@cs_on
+POSTHOOK: Output: hdfs://### HDFS PATH ###
+6	6
+PREHOOK: query: select count(*), count(distinct referenced_data_file) from default.cs_off.delete_files
+PREHOOK: type: QUERY
+PREHOOK: Input: default@cs_off
+PREHOOK: Output: hdfs://### HDFS PATH ###
+POSTHOOK: query: select count(*), count(distinct referenced_data_file) from default.cs_off.delete_files
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@cs_off
+POSTHOOK: Output: hdfs://### HDFS PATH ###
+6	6

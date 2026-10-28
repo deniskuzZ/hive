@@ -4384,7 +4384,9 @@ public class Vectorizer implements PhysicalPlanResolver {
 
   /**
    * Switches the vectorized ReduceSink of an unsorted edge into the vectorized input of a vectorized reducer to the
-   * columnar shuffle (VectorReduceSinkColumnarOperator) and marks that input of the reducer as columnar. The input is
+   * columnar shuffle (VectorReduceSinkColumnarOperator for a uniform hash ReduceSink,
+   * VectorReduceSinkColumnarObjectHashOperator for an object hash one) and marks that input of the reducer as columnar.
+   * The input is
    * the one ReduceRecordProcessor vectorizes, the reducer's tag (the big table of a dynamically partitioned hash
    * join). Its rows go to the partitions the row path gives them, so the other inputs of the reducer keep their path.
    */
@@ -4401,7 +4403,8 @@ public class Vectorizer implements PhysicalPlanResolver {
         List<Integer> tags = reduceWork.getTagToInput().entrySet().stream()
             .filter(e -> e.getValue().equals(parent.getName())).map(Map.Entry::getKey).toList();
         List<Operator<? extends OperatorDesc>> sinks = parent.getAllLeafOperators().stream()
-            .filter(op -> op instanceof VectorReduceSinkUniformHashOperator
+            .filter(op -> (op instanceof VectorReduceSinkUniformHashOperator
+                    || op instanceof VectorReduceSinkObjectHashOperator)
                 && child.getName().equals(((ReduceSinkDesc) op.getConf()).getOutputName()))
             .toList();
         if (tags.size() != 1 || tags.get(0) != reduceWork.getTag() || sinks.size() != 1
@@ -4412,7 +4415,8 @@ public class Vectorizer implements PhysicalPlanResolver {
         VectorizationOperator vectorSink = (VectorizationOperator) sink;
         Operator<? extends OperatorDesc> columnar;
         try {
-          columnar = OperatorFactory.getVectorOperator(VectorReduceSinkColumnarOperator.class,
+          columnar = OperatorFactory.getVectorOperator(sink instanceof VectorReduceSinkObjectHashOperator
+                  ? VectorReduceSinkColumnarObjectHashOperator.class : VectorReduceSinkColumnarOperator.class,
               sink.getCompilationOpContext(), sink.getConf(), vectorSink.getInputVectorizationContext(),
               vectorSink.getVectorDesc());
         } catch (HiveException e) {
@@ -4429,17 +4433,30 @@ public class Vectorizer implements PhysicalPlanResolver {
     }
   }
 
-  /** Whether the key and value columns of a uniform hash ReduceSink travel in blocks. */
+  /**
+   * Whether the key and value columns of a ReduceSink travel in blocks: a uniform hash ReduceSink, or an object hash one
+   * that partitions an empty key's rows by its partition columns, with no buckets.
+   */
   private static boolean isColumnarShuffleSink(Operator<? extends OperatorDesc> sink) {
     ReduceSinkDesc desc = (ReduceSinkDesc) sink.getConf();
     VectorReduceSinkDesc vectorDesc = (VectorReduceSinkDesc) ((VectorizationOperator) sink).getVectorDesc();
     VectorReduceSinkInfo info = vectorDesc.getVectorReduceSinkInfo();
-    if (vectorDesc.getIsEmptyKey() || desc.getTopN() >= 0 || vectorDesc.getIsAcidChange()) {
+    if (desc.getTopN() >= 0 || vectorDesc.getIsAcidChange()) {
       return false;
     }
-    for (Type keyType : info.getReduceSinkKeyColumnVectorTypes()) {
-      if (!ColumnarShuffleBlock.supports(keyType)) {
+    if (sink instanceof VectorReduceSinkObjectHashOperator) {
+      if (!vectorDesc.getIsEmptyKey() || vectorDesc.getIsEmptyPartitions() || !vectorDesc.getIsEmptyBuckets()
+          || vectorDesc.getIsEmptyValue()) {
         return false;
+      }
+    } else if (vectorDesc.getIsEmptyKey()) {
+      return false;
+    }
+    if (!vectorDesc.getIsEmptyKey()) {
+      for (Type keyType : info.getReduceSinkKeyColumnVectorTypes()) {
+        if (!ColumnarShuffleBlock.supports(keyType)) {
+          return false;
+        }
       }
     }
     if (!vectorDesc.getIsEmptyValue()) {
