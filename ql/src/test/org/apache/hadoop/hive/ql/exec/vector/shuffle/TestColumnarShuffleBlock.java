@@ -28,6 +28,7 @@ import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 
@@ -68,8 +69,8 @@ public class TestColumnarShuffleBlock {
       ColumnarPartitionBuffers buffers = new ColumnarPartitionBuffers(batch, new int[] {0, 1, 2, 3, 4, 5, 6},
           partitions, blockRows, (partition, columns, rows) -> {
             assertTrue(rows <= blockRows);
-            ByteBuffer block = ByteBuffer.allocate(ColumnarShuffleBlock.encodedSize(columns, rows));
-            ColumnarShuffleBlock.encode(columns, rows, block);
+            ByteBuffer block = ByteBuffer.allocate(ColumnarShuffleBlock.encodedSize(columns, null, rows));
+            ColumnarShuffleBlock.encode(columns, null, rows, block);
             block.flip();
             int n = ColumnarShuffleBlock.decode(block, decoded);
             assertEquals(rows, n);
@@ -107,6 +108,79 @@ public class TestColumnarShuffleBlock {
   }
 
   /**
+   * Through the writer, a batch whose rows all go to one partition leaves as a block of its own that keeps its
+   * repeating columns repeating, and the rows of the other batches gather per partition: every partition gets its
+   * rows, in any order.
+   */
+  @Test
+  public void testWriterRoundTripPerPartition() throws Exception {
+    Random random = new Random(11);
+    for (int partitions : new int[] {1, 7, 1009}) {
+      VectorizedRowBatch batch = newBatch();
+      List<List<String>> expected = new ArrayList<>();
+      List<List<String>> actual = new ArrayList<>();
+      for (int p = 0; p < partitions; p++) {
+        expected.add(new ArrayList<>());
+        actual.add(new ArrayList<>());
+      }
+      ColumnVector[] decoded = newBatch().cols;
+      int[] repeatingBlocks = {0};
+      ColumnarShuffleWriter writer = new ColumnarShuffleWriter(batch, new int[] {0, 1, 2, 3, 4, 5, 6}, partitions,
+          (partition, block) -> {
+            block.flip();
+            int n = ColumnarShuffleBlock.decode(block, decoded);
+            for (int c = 0; c < COLUMNS; c++) {
+              if (decoded[c].isRepeating) {
+                // only a block of a whole batch repeats: the batch being written
+                assertEquals(n, batch.size);
+                assertTrue(batch.cols[c].isRepeating);
+                repeatingBlocks[0]++;
+              }
+            }
+            for (int i = 0; i < n; i++) {
+              actual.get(partition).add(row(decoded, i));
+            }
+          });
+      int[] partition = new int[VectorizedRowBatch.DEFAULT_SIZE];
+      for (int b = 0; b < 40; b++) {
+        fill(batch, random);
+        boolean onePartition = random.nextBoolean();
+        int only = random.nextInt(partitions);
+        for (int i = 0; i < batch.size; i++) {
+          partition[i] = onePartition ? only : random.nextInt(partitions);
+        }
+        if (random.nextInt(3) == 0) {
+          batch.selectedInUse = true;
+          int n = 0;
+          for (int i = 0; i < batch.size; i++) {
+            if (random.nextBoolean()) {
+              batch.selected[n++] = i;
+            }
+          }
+          batch.size = n;
+        } else {
+          batch.selectedInUse = false;
+        }
+        if (batch.size == 0) {
+          continue;
+        }
+        for (int k = 0; k < batch.size; k++) {
+          int i = batch.selectedInUse ? batch.selected[k] : k;
+          expected.get(partition[i]).add(row(batch.cols, i));
+        }
+        writer.write(batch, partition);
+      }
+      writer.close();
+      for (int p = 0; p < partitions; p++) {
+        Collections.sort(expected.get(p));
+        Collections.sort(actual.get(p));
+      }
+      assertEquals(expected, actual);
+      assertTrue(repeatingBlocks[0] > 0);
+    }
+  }
+
+  /**
    * A decimal travels between its two vectors, as a reducer reads a decimal of up to 18 digits as decimal64 whichever
    * vector the ReduceSink holds it in.
    */
@@ -140,8 +214,8 @@ public class TestColumnarShuffleBlock {
 
   private static void roundTrip(ColumnVector source, ColumnVector target, int rows) {
     ColumnVector[] columns = {source};
-    ByteBuffer block = ByteBuffer.allocate(ColumnarShuffleBlock.encodedSize(columns, rows));
-    ColumnarShuffleBlock.encode(columns, rows, block);
+    ByteBuffer block = ByteBuffer.allocate(ColumnarShuffleBlock.encodedSize(columns, null, rows));
+    ColumnarShuffleBlock.encode(columns, null, rows, block);
     block.flip();
     assertEquals(rows, ColumnarShuffleBlock.decode(block, new ColumnVector[] {target}));
   }

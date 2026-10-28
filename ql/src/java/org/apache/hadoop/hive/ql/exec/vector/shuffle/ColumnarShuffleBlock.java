@@ -33,10 +33,11 @@ import org.apache.hadoop.hive.ql.exec.vector.TimestampColumnVector;
 import org.apache.hadoop.hive.serde2.io.HiveDecimalWritable;
 
 /**
- * A block of rows of a columnar shuffle: the first rows of a set of column vectors, encoded column by column.
+ * A block of rows of a columnar shuffle: rows of a set of column vectors, encoded column by column.
  * <p>
- * Layout (little endian): int rows, int columns, then per column: byte kind, byte hasNulls, the null flags (one byte per
- * row) when hasNulls, and the values of all rows (a null row's value is not meaningful): LONG and DOUBLE as 8 bytes,
+ * Layout (little endian): int rows, int columns, then per column: byte kind, byte flags (HAS_NULLS, REPEATING), the null
+ * flags (one byte per row) when HAS_NULLS, and the values of all rows (a null row's value is not meaningful), or of
+ * the one row of a REPEATING column, whose value every row has: LONG and DOUBLE as 8 bytes,
  * TIMESTAMP as 8 + 4 bytes, BYTES as an int length per row then the bytes. A DECIMAL, of either vector (a
  * Decimal64ColumnVector is a LONG vector), is a byte scale and a byte wide: up to 18 digits (not wide) the unscaled
  * longs at that scale, else per row a byte scale, a byte length and the two's complement bytes of the unscaled value
@@ -52,6 +53,9 @@ public final class ColumnarShuffleBlock {
   static final byte BYTES = 3;
   static final byte DECIMAL = 4;
   static final byte TIMESTAMP = 5;
+
+  private static final byte HAS_NULLS = 1;
+  private static final byte REPEATING = 2;
 
   private ColumnarShuffleBlock() {
   }
@@ -71,76 +75,109 @@ public final class ColumnarShuffleBlock {
     }
   }
 
-  /** The encoded size of the first rows of the columns, at most: for sizing the output. */
-  public static int encodedSize(ColumnVector[] columns, int rows) {
+  /** The encoded size of the rows of the columns, at most: for sizing the output. */
+  public static int encodedSize(ColumnVector[] columns, int[] selected, int rows) {
     int size = 2 * Integer.BYTES;
     for (ColumnVector column : columns) {
-      size += 2 + (column.noNulls ? 0 : rows);
+      int n = column.isRepeating ? 1 : rows;
+      size += 2 + (column.noNulls ? 0 : n);
       size += switch (kind(column)) {
-        case LONG, DOUBLE -> rows * Long.BYTES;
-        case TIMESTAMP -> rows * (Long.BYTES + Integer.BYTES);
+        case LONG, DOUBLE -> n * Long.BYTES;
+        case TIMESTAMP -> n * (Long.BYTES + Integer.BYTES);
         case BYTES -> {
           BytesColumnVector bytes = (BytesColumnVector) column;
-          int n = rows * Integer.BYTES;
-          for (int i = 0; i < rows; i++) {
-            n += bytes.length[i];
+          int[] rowOf = column.isRepeating ? null : selected;
+          int length = n * Integer.BYTES;
+          for (int k = 0; k < n; k++) {
+            length += valueLength(bytes, row(rowOf, k));
           }
-          yield n;
+          yield length;
         }
-        default -> 2 + (isWide(column) ? rows * (2 + HiveDecimal.MAX_PRECISION) : rows * Long.BYTES);
+        default -> 2 + (isWide(column) ? n * (2 + HiveDecimal.MAX_PRECISION) : n * Long.BYTES);
       };
     }
     return size;
   }
 
-  /** Encodes the first rows of the columns (not repeating, no selection) into the buffer. */
-  public static void encode(ColumnVector[] columns, int rows, ByteBuffer out) {
+  /**
+   * Encodes rows of the columns into the buffer: the batch rows selected[0..rows), or the first rows without a
+   * selection. A repeating column travels as its one value.
+   */
+  public static void encode(ColumnVector[] columns, int[] selected, int rows, ByteBuffer out) {
     out.order(ByteOrder.LITTLE_ENDIAN);
     out.putInt(rows);
     out.putInt(columns.length);
     for (ColumnVector column : columns) {
+      int n = column.isRepeating ? 1 : rows;
+      int[] rowOf = column.isRepeating ? null : selected;
       byte kind = kind(column);
       out.put(kind);
-      out.put((byte) (column.noNulls ? 0 : 1));
+      out.put((byte) ((column.noNulls ? 0 : HAS_NULLS) | (column.isRepeating ? REPEATING : 0)));
       if (!column.noNulls) {
-        for (int i = 0; i < rows; i++) {
-          out.put((byte) (column.isNull[i] ? 1 : 0));
+        for (int k = 0; k < n; k++) {
+          out.put((byte) (column.isNull[row(rowOf, k)] ? 1 : 0));
         }
       }
       switch (kind) {
       case LONG:
-        putLongs(out, ((LongColumnVector) column).vector, rows);
+        putLongs(out, ((LongColumnVector) column).vector, rowOf, n);
         break;
       case DOUBLE:
-        out.asDoubleBuffer().put(((DoubleColumnVector) column).vector, 0, rows);
-        out.position(out.position() + rows * Double.BYTES);
+        double[] doubles = ((DoubleColumnVector) column).vector;
+        if (rowOf == null) {
+          out.asDoubleBuffer().put(doubles, 0, n);
+          out.position(out.position() + n * Double.BYTES);
+        } else {
+          for (int k = 0; k < n; k++) {
+            out.putDouble(doubles[rowOf[k]]);
+          }
+        }
         break;
       case TIMESTAMP:
         TimestampColumnVector timestamps = (TimestampColumnVector) column;
-        putLongs(out, timestamps.time, rows);
-        out.asIntBuffer().put(timestamps.nanos, 0, rows);
-        out.position(out.position() + rows * Integer.BYTES);
+        putLongs(out, timestamps.time, rowOf, n);
+        if (rowOf == null) {
+          out.asIntBuffer().put(timestamps.nanos, 0, n);
+          out.position(out.position() + n * Integer.BYTES);
+        } else {
+          for (int k = 0; k < n; k++) {
+            out.putInt(timestamps.nanos[rowOf[k]]);
+          }
+        }
         break;
       case BYTES:
         BytesColumnVector bytes = (BytesColumnVector) column;
-        for (int i = 0; i < rows; i++) {
-          out.putInt(bytes.length[i]);
+        for (int k = 0; k < n; k++) {
+          out.putInt(valueLength(bytes, row(rowOf, k)));
         }
-        for (int i = 0; i < rows; i++) {
-          out.put(bytes.vector[i], bytes.start[i], bytes.length[i]);
+        for (int k = 0; k < n; k++) {
+          int i = row(rowOf, k);
+          if (valueLength(bytes, i) > 0) {
+            out.put(bytes.vector[i], bytes.start[i], bytes.length[i]);
+          }
         }
         break;
       default:
         if (column instanceof Decimal64ColumnVector decimal64) {
           out.put((byte) decimal64.scale);
           out.put((byte) 0);
-          putLongs(out, decimal64.vector, rows);
+          putLongs(out, decimal64.vector, rowOf, n);
         } else {
-          encodeDecimal((DecimalColumnVector) column, rows, out);
+          encodeDecimal((DecimalColumnVector) column, rowOf, n, out);
         }
         break;
       }
     }
+  }
+
+  /** The length a bytes row travels with: a null row's value is not meaningful (a batch may hold no array for it). */
+  private static int valueLength(BytesColumnVector bytes, int i) {
+    return !bytes.noNulls && bytes.isNull[i] ? 0 : bytes.length[i];
+  }
+
+  /** The batch row of the k-th encoded row. */
+  private static int row(int[] selected, int k) {
+    return selected == null ? k : selected[k];
   }
 
   /** Decodes a block into the first rows of the columns, which must have the block's kinds; returns the rows. */
@@ -158,53 +195,61 @@ public final class ColumnarShuffleBlock {
       }
       column.reset();
       column.ensureSize(rows, false);
-      boolean hasNulls = in.get() != 0;
-      if (hasNulls) {
+      byte flags = in.get();
+      column.isRepeating = (flags & REPEATING) != 0;
+      int n = column.isRepeating ? 1 : rows;
+      if ((flags & HAS_NULLS) != 0) {
         column.noNulls = false;
-        for (int i = 0; i < rows; i++) {
+        for (int i = 0; i < n; i++) {
           column.isNull[i] = in.get() != 0;
         }
       }
       switch (kind) {
       case LONG:
-        getLongs(in, ((LongColumnVector) column).vector, rows);
+        getLongs(in, ((LongColumnVector) column).vector, n);
         break;
       case DOUBLE:
-        in.asDoubleBuffer().get(((DoubleColumnVector) column).vector, 0, rows);
-        in.position(in.position() + rows * Double.BYTES);
+        in.asDoubleBuffer().get(((DoubleColumnVector) column).vector, 0, n);
+        in.position(in.position() + n * Double.BYTES);
         break;
       case TIMESTAMP:
         TimestampColumnVector timestamps = (TimestampColumnVector) column;
-        getLongs(in, timestamps.time, rows);
-        in.asIntBuffer().get(timestamps.nanos, 0, rows);
-        in.position(in.position() + rows * Integer.BYTES);
+        getLongs(in, timestamps.time, n);
+        in.asIntBuffer().get(timestamps.nanos, 0, n);
+        in.position(in.position() + n * Integer.BYTES);
         break;
       case BYTES:
         BytesColumnVector bytes = (BytesColumnVector) column;
-        int[] lengths = new int[rows];
-        for (int i = 0; i < rows; i++) {
+        int[] lengths = new int[n];
+        for (int i = 0; i < n; i++) {
           lengths[i] = in.getInt();
         }
         // values reference the block: no copy
         byte[] block = in.array();
         int offset = in.arrayOffset() + in.position();
-        for (int i = 0; i < rows; i++) {
+        for (int i = 0; i < n; i++) {
           bytes.setRef(i, block, offset, lengths[i]);
           offset += lengths[i];
         }
         in.position(offset - in.arrayOffset());
         break;
       default:
-        decodeDecimal(in, column, rows);
+        decodeDecimal(in, column, n);
         break;
       }
     }
     return rows;
   }
 
-  private static void putLongs(ByteBuffer out, long[] values, int rows) {
-    out.asLongBuffer().put(values, 0, rows);
-    out.position(out.position() + rows * Long.BYTES);
+  private static void putLongs(ByteBuffer out, long[] values, int[] selected, int rows) {
+    if (selected == null) {
+      out.asLongBuffer().put(values, 0, rows);
+      out.position(out.position() + rows * Long.BYTES);
+    } else {
+      for (int k = 0; k < rows; k++) {
+        out.putLong(values[selected[k]]);
+      }
+    }
   }
 
   private static void getLongs(ByteBuffer in, long[] values, int rows) {
@@ -218,11 +263,12 @@ public final class ColumnarShuffleBlock {
         && decimals.precision > HiveDecimalWritable.DECIMAL64_DECIMAL_DIGITS;
   }
 
-  private static void encodeDecimal(DecimalColumnVector decimals, int rows, ByteBuffer out) {
+  private static void encodeDecimal(DecimalColumnVector decimals, int[] selected, int rows, ByteBuffer out) {
     out.put((byte) decimals.scale);
     boolean wide = isWide(decimals);
     out.put((byte) (wide ? 1 : 0));
-    for (int i = 0; i < rows; i++) {
+    for (int k = 0; k < rows; k++) {
+      int i = row(selected, k);
       boolean isNull = !decimals.noNulls && decimals.isNull[i];
       HiveDecimalWritable value = decimals.vector[i];
       if (!wide) {

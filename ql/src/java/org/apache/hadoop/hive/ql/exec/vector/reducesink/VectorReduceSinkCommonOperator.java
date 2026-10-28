@@ -21,12 +21,14 @@ package org.apache.hadoop.hive.ql.exec.vector.reducesink;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Properties;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hive.ql.CompilationOpContext;
 import org.apache.hadoop.hive.ql.exec.Operator;
+import org.apache.hadoop.hive.ql.exec.PartitionedOutputCollector;
 import org.apache.hadoop.hive.ql.exec.TerminalOperator;
 import org.apache.hadoop.hive.ql.exec.TopNHash;
 import org.apache.hadoop.hive.ql.exec.Utilities;
@@ -369,6 +371,27 @@ public abstract class VectorReduceSinkCommonOperator extends TerminalOperator<Re
       //     VectorizedBatchUtil.displayBytes(valueBytesWritable.getBytes(), 0, valueBytesWritable.getLength()));
 
       out.collect(keyWritable, valueWritable);
+    }
+  }
+
+  /** The partitions of the edge: the output collector is set after the operators are initialized. */
+  protected int outputPartitions() {
+    return out instanceof PartitionedOutputCollector partitioned ? partitioned.getNumPartitions() : 1;
+  }
+
+  /** Collects a block of a columnar shuffle: its key is the partition, and so is its hash code. */
+  protected void collectBlock(int partition, ByteBuffer block) throws IOException {
+    keyWritable.setSize(Integer.BYTES);
+    byte[] key = keyWritable.get();
+    key[0] = (byte) (partition >>> 24);
+    key[1] = (byte) (partition >>> 16);
+    key[2] = (byte) (partition >>> 8);
+    key[3] = (byte) partition;
+    keyWritable.setDistKeyLength(Integer.BYTES);
+    keyWritable.setHashCode(partition);
+    valueBytesWritable.set(block.array(), 0, block.position());
+    if (out != null) {
+      out.collect(keyWritable, valueBytesWritable);
     }
   }
 
