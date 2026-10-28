@@ -21,15 +21,15 @@
 # hive-exec classes -- must run on Java 21.  This image adds a Java 21 JDK at
 # /opt/jdk21 using a multi-stage build from eclipse-temurin:21-jdk; the daemons
 # continue to use the default Java 8.
-FROM --platform=linux/amd64 eclipse-temurin:21-jdk AS jdk21
+FROM --platform=linux/amd64 eclipse-temurin:25-jdk AS jdk25
 FROM apache/hadoop:3.4.2
 
 USER root
-COPY --from=jdk21 /opt/java/openjdk /opt/jdk21
+COPY --from=jdk25 /opt/java/openjdk /opt/jdk25
 # Ensure the JDK binaries are executable and verify the copy is functional.
 # Fails at image-build time if the JDK is incompatible with the base image's
 # glibc, surfacing the problem early rather than silently at YARN container
 # launch time (where YARN shows exit code 1 and empty stderr).
-RUN chmod 755 /opt/jdk21/bin/java && /opt/jdk21/bin/java -version
+RUN chmod 755 /opt/jdk25/bin/java && /opt/jdk25/bin/java -version
 
 USER hadoop
