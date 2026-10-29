@@ -27,12 +27,14 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.hadoop.conf.Configuration;
@@ -143,6 +145,9 @@ public class VectorGroupByOperator extends Operator<GroupByDesc>
   private transient Object[] forwardCache;
 
   private transient VectorizedRowBatch outputBatch;
+
+  // the processing mode when grouping sets are aggregated from their parents (VectorGroupByDesc#getGroupingSetParents)
+  private transient ProcessingModeHashAggregateFromParent fromParent;
   private transient VectorizedRowBatchCtx vrbCtx;
 
   /*
@@ -272,11 +277,16 @@ public class VectorGroupByOperator extends Operator<GroupByDesc>
      * allocates a new aggregation buffer set.
      */
     protected VectorAggregationBufferRow allocateAggregationBuffer() throws HiveException {
+      return allocateAggregationBuffer(aggregators);
+    }
+
+    VectorAggregationBufferRow allocateAggregationBuffer(VectorAggregateExpression[] groupAggregators)
+        throws HiveException {
       VectorAggregateExpression.AggregationBuffer[] aggregationBuffers =
-          new VectorAggregateExpression.AggregationBuffer[aggregators.length];
-      for (int i=0; i < aggregators.length; ++i) {
-        aggregationBuffers[i] = aggregators[i].getNewAggregationBuffer();
-        aggregators[i].reset(aggregationBuffers[i]);
+          new VectorAggregateExpression.AggregationBuffer[groupAggregators.length];
+      for (int i=0; i < groupAggregators.length; ++i) {
+        aggregationBuffers[i] = groupAggregators[i].getNewAggregationBuffer();
+        groupAggregators[i].reset(aggregationBuffers[i]);
       }
       VectorAggregationBufferRow bufferSet = new VectorAggregationBufferRow(aggregationBuffers);
       return bufferSet;
@@ -288,9 +298,14 @@ public class VectorGroupByOperator extends Operator<GroupByDesc>
     }
 
     public void finishAggregators(VectorAggregationBufferRow vectorAggregationBufferRow, boolean aborted) {
+      finishAggregators(vectorAggregationBufferRow, aborted, aggregators);
+    }
+
+    void finishAggregators(VectorAggregationBufferRow vectorAggregationBufferRow, boolean aborted,
+        VectorAggregateExpression[] groupAggregators) {
       if (vectorAggregationBufferRow != null) {
-        for (int i = 0; i < aggregators.length; ++i) {
-          aggregators[i].finish(vectorAggregationBufferRow.getAggregationBuffer(i), aborted);
+        for (int i = 0; i < groupAggregators.length; ++i) {
+          groupAggregators[i].finish(vectorAggregationBufferRow.getAggregationBuffer(i), aborted);
         }
       }
     }
@@ -366,7 +381,7 @@ public class VectorGroupByOperator extends Operator<GroupByDesc>
     /**
      * Sum of batch size processed (ie. rows).
      */
-    private long sumBatchSize;
+    long sumBatchSize;
 
     /**
      * Max number of entries in the vector group by aggregation hashtables.
@@ -398,7 +413,7 @@ public class VectorGroupByOperator extends Operator<GroupByDesc>
     /**
      * Count of rows since the last check for changing from aggregate to streaming mode
      */
-    private long lastModeCheckRowCount = 0;
+    long lastModeCheckRowCount = 0;
 
     /**
      * Minimum factor for hash table to reduce number of entries
@@ -638,7 +653,7 @@ public class VectorGroupByOperator extends Operator<GroupByDesc>
       }
     }
 
-    private KeyWrapper cloneKeyWrapper(VectorHashKeyWrapperBase from) {
+    KeyWrapper cloneKeyWrapper(VectorHashKeyWrapperBase from) {
       if (reusableKeyWrapperBuffer != null && reusableKeyWrapperBuffer.size() > 0) {
         KeyWrapper keyWrapper = reusableKeyWrapperBuffer.poll();
         from.copyKey(keyWrapper);
@@ -728,18 +743,32 @@ public class VectorGroupByOperator extends Operator<GroupByDesc>
      * @throws HiveException
      */
     void flush(boolean all) throws HiveException {
+      flush(mapKeysAggregationBuffers, aggregators, all, true);
+      if (all) {
+        totalAccessCount = 0;
+        numFlushedOutEntriesBeforeFinalFlush = 0;
+      }
+    }
 
-      int entriesToFlush = all ? numEntriesHashTable :
-        (int)(numEntriesHashTable * this.percentEntriesToFlush);
+    /**
+     * Emits the groups of a table: all of them, or the share a flush takes, which keeps the most accessed ones. The
+     * aggregation buffers of the groups that leave are reused, when asked to, for new groups of this operator's own
+     * aggregations.
+     */
+    void flush(Map<KeyWrapper, VectorAggregationBufferRow> table, VectorAggregateExpression[] groupAggregators,
+        boolean all, boolean reuseBuffers) throws HiveException {
+
+      int entriesToFlush = all ? table.size() :
+        (int)(table.size() * this.percentEntriesToFlush);
       int entriesFlushed = 0;
 
       logFlush(entriesToFlush, all);
       int avgAccess = computeAvgAccess();
 
-      /* Iterate the global (keywrapper,aggregationbuffers) map and emit
+      /* Iterate the (keywrapper,aggregationbuffers) map and emit
        a row for each key */
       Iterator<Map.Entry<KeyWrapper, VectorAggregationBufferRow>> iter =
-          mapKeysAggregationBuffers.entrySet().iterator();
+          table.entrySet().iterator();
       while(iter.hasNext()) {
         Map.Entry<KeyWrapper, VectorAggregationBufferRow> pair = iter.next();
         KeyWrapper keyWrapper = pair.getKey();
@@ -753,12 +782,14 @@ public class VectorGroupByOperator extends Operator<GroupByDesc>
           }
         }
 
-        finishAggregators(bufferRow, false);
-        writeSingleRow((VectorHashKeyWrapperBase) keyWrapper, bufferRow);
+        finishAggregators(bufferRow, false, groupAggregators);
+        writeSingleRow((VectorHashKeyWrapperBase) keyWrapper, bufferRow, groupAggregators);
 
         if (!all) {
           totalAccessCount -= bufferRow.getAccessCount();
-          reusableAggregationBufferRows.add(bufferRow);
+          if (reuseBuffers) {
+            reusableAggregationBufferRows.add(bufferRow);
+          }
           bufferRow.resetAccessCount();
           if (reusableKeyWrapperBuffer != null) {
             reusableKeyWrapperBuffer.add(pair.getKey());
@@ -776,10 +807,8 @@ public class VectorGroupByOperator extends Operator<GroupByDesc>
       }
 
       if (all) {
-        mapKeysAggregationBuffers.clear();
-        totalAccessCount = 0;
-        numEntriesHashTable = 0;
-        numFlushedOutEntriesBeforeFinalFlush = 0;
+        numEntriesHashTable -= table.size();
+        table.clear();
       }
     }
 
@@ -903,7 +932,7 @@ public class VectorGroupByOperator extends Operator<GroupByDesc>
           minReductionHashAggr, modeChecks);
     }
 
-    private void checkHashModeEfficiency() throws HiveException {
+    void checkHashModeEfficiency() throws HiveException {
       if (lastModeCheckRowCount > numRowsCompareHashAggr) {
         lastModeCheckRowCount = 0;
         if (LOG.isDebugEnabled()) {
@@ -933,6 +962,139 @@ public class VectorGroupByOperator extends Operator<GroupByDesc>
           }
         }
       }
+    }
+  }
+
+  /**
+   * Hash aggregation of grouping sets that aggregates the input rows only in the sets no other set contains, and every
+   * other set from the partial results of its parent, the set with the fewest keys that contains it
+   * (hive.vectorized.groupby.grouping.sets.from.parent): a ROLLUP aggregates each level from the one above it. Each
+   * set has a table; its groups leave it as in a hash aggregation, when the tables flush and at the end, parents
+   * first, and the output batch of a set's groups is aggregated in the set's children before it is forwarded.
+   */
+  final class ProcessingModeHashAggregateFromParent extends ProcessingModeHashAggregate {
+
+    private int[] parents;
+    /** The sets the input rows are aggregated in. */
+    private int[] roots;
+    private int[][] children;
+    /** The sets in the order their groups leave the tables, parents first. */
+    private int[] order;
+    private Map<KeyWrapper, VectorAggregationBufferRow>[] tables;
+
+    /** The key of a partial result in a child set: the output columns of the keys, with the id of the child. */
+    private VectorHashKeyWrapperBatch mergeKeyWrappersBatch;
+    /** The aggregations of a child set, which merge the partial results of its parent. */
+    private VectorAggregateExpression[] mergeAggregators;
+    private final VectorAggregationBufferRow[] mergeGroups =
+        new VectorAggregationBufferRow[VectorizedRowBatch.DEFAULT_SIZE];
+
+    /** The set whose groups the output batch holds while they leave its table, or -1. */
+    private int emittingSet = -1;
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public void initialize(Configuration hconf) throws HiveException {
+      super.initialize(hconf);
+      parents = vectorDesc.getGroupingSetParents();
+      roots = IntStream.range(0, parents.length).filter(set -> parents[set] < 0).toArray();
+      children = IntStream.range(0, parents.length)
+          .mapToObj(parent -> IntStream.range(0, parents.length).filter(set -> parents[set] == parent).toArray())
+          .toArray(int[][]::new);
+      // a parent leaves out fewer keys than its children
+      order = IntStream.range(0, parents.length).boxed()
+          .sorted(Comparator.comparingInt(set -> Long.bitCount(groupingSets[set])))
+          .mapToInt(Integer::intValue).toArray();
+      tables = new Map[parents.length];
+      for (int set = 0; set < parents.length; set++) {
+        tables[set] = set == roots[0] ? mapKeysAggregationBuffers : new HashMap<>();
+      }
+
+      // the partial results of a hash aggregation keep the set id, which their merge keys on
+      Preconditions.checkState(!conf.pruneGroupingSetId());
+      final VectorExpression[] mergeKeyExpressions = new VectorExpression[keyExpressions.length];
+      for (int k = 0; k < keyExpressions.length; k++) {
+        final IdentityExpression key = new IdentityExpression(k);
+        key.setOutputTypeInfo(keyExpressions[k].getOutputTypeInfo());
+        key.setOutputDataTypePhysicalVariation(keyExpressions[k].getOutputDataTypePhysicalVariation());
+        mergeKeyExpressions[k] = key;
+      }
+      mergeKeyWrappersBatch = VectorHashKeyWrapperBatch.compileKeyWrapperBatch(mergeKeyExpressions);
+      final VectorAggregationDesc[] mergeVecAggrDescs = vectorDesc.getMergeVecAggrDescs();
+      mergeAggregators = new VectorAggregateExpression[mergeVecAggrDescs.length];
+      for (int i = 0; i < mergeAggregators.length; i++) {
+        mergeAggregators[i] = instantiateExpression(mergeVecAggrDescs[i]);
+        VectorExpression.doTransientInit(mergeAggregators[i].getInputExpression(), hconf);
+      }
+      LOG.info("{} aggregates grouping sets {} from their parents {}", getOperatorId(),
+          Arrays.toString(groupingSets), Arrays.toString(parents));
+    }
+
+    @Override
+    public void processBatch(VectorizedRowBatch batch) throws HiveException {
+      for (int r = 0; r < roots.length; r++) {
+        groupingSetsDummyVectorExpression.setLongValue(groupingSets[roots[r]]);
+        groupingSetsDummyVectorExpression.evaluate(batch);
+        // the table the hash aggregation looks the keys up in
+        mapKeysAggregationBuffers = tables[roots[r]];
+        doProcessBatch(batch, r == 0, allGroupingSetsOverrideIsNulls[roots[r]]);
+      }
+      // every set counts the input rows, as when it aggregates them
+      final long rows = (long) batch.size * (parents.length - roots.length);
+      sumBatchSize += rows;
+      lastModeCheckRowCount += rows;
+      checkHashModeEfficiency();
+    }
+
+    @Override
+    void flush(boolean all) throws HiveException {
+      for (int set : order) {
+        emittingSet = set;
+        flush(tables[set], parents[set] < 0 ? aggregators : mergeAggregators, all, parents[set] < 0);
+        if (outputBatch.size > 0) {
+          // the last groups of the set reach its children before the groups of the next set leave
+          flushOutput();
+        }
+      }
+      emittingSet = -1;
+      if (all) {
+        totalAccessCount = 0;
+        numFlushedOutEntriesBeforeFinalFlush = 0;
+      }
+    }
+
+    /**
+     * Aggregates the groups in the output batch, the partial results of the set they leave, in its children.
+     */
+    void aggregateInChildren(VectorizedRowBatch batch) throws HiveException {
+      if (emittingSet < 0) {
+        return;
+      }
+      final LongColumnVector groupingSetIds = (LongColumnVector) batch.cols[groupingSetsPosition];
+      for (int child : children[emittingSet]) {
+        groupingSetIds.fill(groupingSets[child]);
+        mergeKeyWrappersBatch.evaluateBatchGroupingSets(batch, allGroupingSetsOverrideIsNulls[child]);
+        final VectorHashKeyWrapperBase[] keyWrappers = mergeKeyWrappersBatch.getVectorHashKeyWrappers();
+        final Map<KeyWrapper, VectorAggregationBufferRow> table = tables[child];
+        for (int i = 0; i < batch.size; i++) {
+          VectorAggregationBufferRow group = table.get(keyWrappers[i]);
+          if (group == null) {
+            group = allocateAggregationBuffer(mergeAggregators);
+            table.put(cloneKeyWrapper(keyWrappers[i]), group);
+            numEntriesHashTable++;
+            numEntriesSinceCheck++;
+          } else {
+            group.incrementAccessCount();
+            totalAccessCount++;
+          }
+          mergeGroups[i] = group;
+        }
+        for (int i = 0; i < mergeAggregators.length; i++) {
+          mergeAggregators[i].aggregateInputSelection(mergeGroups, i, batch);
+        }
+      }
+      // the rows go on as the partial results of their own set
+      groupingSetIds.fill(groupingSets[emittingSet]);
     }
   }
 
@@ -1789,6 +1951,8 @@ public class VectorGroupByOperator extends Operator<GroupByDesc>
         processingMode = this.new ProcessingModeHashAggregateSingleLongKey();
       } else if (isSerializedKey()) {
         processingMode = this.new ProcessingModeHashAggregateSerializedKey();
+      } else if (vectorDesc.getGroupingSetParents() != null) {
+        processingMode = fromParent = this.new ProcessingModeHashAggregateFromParent();
       } else {
         processingMode = this.new ProcessingModeHashAggregate();
       }
@@ -2178,6 +2342,11 @@ public class VectorGroupByOperator extends Operator<GroupByDesc>
    */
   private void writeSingleRow(VectorHashKeyWrapperBase kw, VectorAggregationBufferRow agg)
       throws HiveException {
+    writeSingleRow(kw, agg, aggregators);
+  }
+
+  private void writeSingleRow(VectorHashKeyWrapperBase kw, VectorAggregationBufferRow agg,
+      VectorAggregateExpression[] groupAggregators) throws HiveException {
 
     int colNum = 0;
     final int batchIndex = outputBatch.size;
@@ -2186,8 +2355,8 @@ public class VectorGroupByOperator extends Operator<GroupByDesc>
     for (int i = 0; i < outputKeyLength; ++i) {
       keyWrappersBatch.assignRowColumn(outputBatch, batchIndex, colNum++, kw);
     }
-    for (int i = 0; i < aggregators.length; ++i) {
-      aggregators[i].assignRowColumn(outputBatch, batchIndex, colNum++,
+    for (int i = 0; i < groupAggregators.length; ++i) {
+      groupAggregators[i].assignRowColumn(outputBatch, batchIndex, colNum++,
           agg.getAggregationBuffer(i));
     }
     ++outputBatch.size;
@@ -2223,6 +2392,9 @@ public class VectorGroupByOperator extends Operator<GroupByDesc>
     if (spilling) {
       spill.add(outputBatch, outputHashes);
     } else {
+      if (fromParent != null) {
+        fromParent.aggregateInChildren(outputBatch);
+      }
       vectorForward(outputBatch);
     }
     outputBatch.reset();

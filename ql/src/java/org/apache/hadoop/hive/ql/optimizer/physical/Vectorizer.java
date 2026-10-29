@@ -368,6 +368,7 @@ public class Vectorizer implements PhysicalPlanResolver {
   private boolean useRowDeserialize;
   private boolean isReduceVectorizationEnabled;
   private boolean isColumnarShuffleEnabled;
+  private boolean isGroupingSetsFromParentEnabled;
   private boolean isPtfVectorizationEnabled;
   private boolean isVectorizationComplexTypesEnabled;
 
@@ -2531,6 +2532,8 @@ public class Vectorizer implements PhysicalPlanResolver {
     isColumnarShuffleEnabled =
         HiveConf.getBoolVar(hiveConf,
             HiveConf.ConfVars.HIVE_VECTORIZATION_COLUMNAR_SHUFFLE_ENABLED);
+    isGroupingSetsFromParentEnabled =
+        HiveConf.getBoolVar(hiveConf, HiveConf.ConfVars.HIVE_VECTORIZATION_GROUPBY_GROUPING_SETS_FROM_PARENT);
 
     isVectorizationComplexTypesEnabled =
         HiveConf.getBoolVar(hiveConf,
@@ -2840,6 +2843,7 @@ public class Vectorizer implements PhysicalPlanResolver {
 
     vectorGroupByDesc.setIsVectorizationComplexTypesEnabled(isVectorizationComplexTypesEnabled);
     vectorGroupByDesc.setIsVectorizationGroupByComplexTypesEnabled(isVectorizationGroupByComplexTypesEnabled);
+    vectorGroupByDesc.setIsGroupingSetsFromParentEnabled(isGroupingSetsFromParentEnabled);
 
     LOG.info("Vector GROUP BY operator will use processing mode " + processingMode.name());
 
@@ -4885,11 +4889,84 @@ public class Vectorizer implements PhysicalPlanResolver {
     vectorGroupByDesc.setKeyExpressions(vecKeyExpressions);
     vectorGroupByDesc.setVecAggrDescs(vecAggrDescs);
     vectorGroupByDesc.setProjectedOutputColumns(projectedOutputColumns);
+    if (vectorGroupByDesc.getIsGroupingSetsFromParentEnabled()
+        && vectorGroupByDesc.getProcessingMode() == ProcessingMode.HASH && groupByDesc.isGroupingSetsPresent()
+        && !groupByDesc.isDistinct() && !groupByDesc.isUnsortedInput()) {
+      setGroupingSetParents(groupByDesc, vecKeyExpressions, vecAggrDescs, vContext, vectorGroupByDesc);
+    }
     Operator<GroupByDesc> vectorOp =
         OperatorFactory.getVectorOperator(
             groupByOp.getCompilationOpContext(), groupByDesc,
             vContext, vectorGroupByDesc);
     return new ImmutablePair<Operator<? extends OperatorDesc>, String>(vectorOp, null);
+  }
+
+  /**
+   * Lets a hash aggregation of grouping sets aggregate each set that another set contains from the partial results of
+   * its parent, when each aggregation has a vectorized merge of its partial results that outputs the same type. The
+   * merges read the partial results as the operator outputs them.
+   */
+  private static void setGroupingSetParents(GroupByDesc groupByDesc, VectorExpression[] keyExpressions,
+      VectorAggregationDesc[] vecAggrDescs, VectorizationContext vContext, VectorGroupByDesc vectorGroupByDesc)
+      throws HiveException {
+    final int[] parents = groupingSetParents(groupByDesc.getListGroupingSets());
+    if (Arrays.stream(parents).allMatch(parent -> parent < 0)) {
+      return;
+    }
+    final int keyCount = keyExpressions.length;
+    final List<String> outputColumnNames = groupByDesc.getOutputColumnNames();
+    final List<TypeInfo> outputTypeInfos = new ArrayList<>();
+    final List<DataTypePhysicalVariation> outputVariations = new ArrayList<>();
+    for (int i = 0; i < keyCount; i++) {
+      outputTypeInfos.add(keyExpressions[i].getOutputTypeInfo());
+      outputVariations.add(keyExpressions[i].getOutputDataTypePhysicalVariation());
+    }
+    for (VectorAggregationDesc vecAggrDesc : vecAggrDescs) {
+      outputTypeInfos.add(vecAggrDesc.getOutputTypeInfo());
+      outputVariations.add(vecAggrDesc.getOutputDataTypePhysicalVariation());
+    }
+    final VectorizationContext outputContext = new VectorizationContext("merge", outputColumnNames, vContext);
+    outputContext.setInitialTypeInfos(outputTypeInfos);
+    outputContext.setInitialDataTypePhysicalVariations(outputVariations);
+
+    final List<AggregationDesc> aggregators = groupByDesc.getAggregators();
+    final VectorAggregationDesc[] merges = new VectorAggregationDesc[vecAggrDescs.length];
+    for (int i = 0; i < merges.length; i++) {
+      final AggregationDesc aggregator = aggregators.get(i);
+      final int column = keyCount + i;
+      final AggregationDesc merge = new AggregationDesc(aggregator.getGenericUDAFName(),
+          ReflectionUtils.newInstance(aggregator.getGenericUDAFEvaluator().getClass(), null),
+          new ArrayList<>(List.of(
+              new ExprNodeColumnDesc(outputTypeInfos.get(column), outputColumnNames.get(column), "", false))),
+          false, GenericUDAFEvaluator.Mode.PARTIAL2);
+      merges[i] = getVectorAggregationDesc(merge, outputContext).left;
+      if (merges[i] == null || !merges[i].getOutputTypeInfo().equals(vecAggrDescs[i].getOutputTypeInfo())
+          || merges[i].getOutputDataTypePhysicalVariation() != vecAggrDescs[i].getOutputDataTypePhysicalVariation()) {
+        return;
+      }
+    }
+    vectorGroupByDesc.setGroupingSetParents(parents, merges);
+  }
+
+  /**
+   * Returns the parent of each grouping set: the set with the fewest keys among those that contain it, or -1 when no
+   * other set does. A grouping set is the mask of the keys it leaves out.
+   */
+  @VisibleForTesting
+  static int[] groupingSetParents(List<Long> groupingSets) {
+    final int[] parents = new int[groupingSets.size()];
+    for (int child = 0; child < parents.length; child++) {
+      final long childSet = groupingSets.get(child);
+      parents[child] = -1;
+      for (int parent = 0; parent < parents.length; parent++) {
+        final long parentSet = groupingSets.get(parent);
+        if (parentSet != childSet && (parentSet & ~childSet) == 0
+            && (parents[child] < 0 || Long.bitCount(parentSet) > Long.bitCount(groupingSets.get(parents[child])))) {
+          parents[child] = parent;
+        }
+      }
+    }
+    return parents;
   }
 
   public static Operator<? extends OperatorDesc> vectorizeSelectOperator(

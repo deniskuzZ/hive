@@ -4604,6 +4604,11 @@ public class HiveConf extends Configuration {
         "Exceeding this will trigger a flush irrelevant of memory pressure condition."),
     HIVE_VECTORIZATION_GROUPBY_FLUSH_PERCENT("hive.vectorized.groupby.flush.percent", (float) 0.1,
         "Percent of entries in the group by aggregation hash flushed when the memory threshold is exceeded."),
+    HIVE_VECTORIZATION_GROUPBY_GROUPING_SETS_FROM_PARENT("hive.vectorized.groupby.grouping.sets.from.parent", true,
+        "Whether a vectorized hash aggregation with grouping sets aggregates the input rows only in the sets that no\n" +
+        "other set contains, and every other set from the partial results of its parent, the set with the fewest keys\n" +
+        "that contains it, as they leave the hash table. A ROLLUP then aggregates each level from the one above it\n" +
+        "instead of every input row in every level."),
     HIVE_VECTORIZATION_REDUCESINK_NEW_ENABLED("hive.vectorized.execution.reducesink.new.enabled", true,
         "This flag should be set to true to enable the new vectorization\n" +
         "of queries using ReduceSink.\ni" +
