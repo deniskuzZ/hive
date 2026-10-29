@@ -276,4 +276,15 @@ public class TestVectorizer {
     boolean valid = v.validateExprNodeDesc(betweenExpr, "Test", Mode.FILTER, false);
     Assert.assertTrue(valid);
   }
+
+  @Test
+  public void testGroupingSetParents() {
+    // a grouping set is the mask of the keys it leaves out; its parent is the set with the fewest keys containing it
+    // ROLLUP(a, b, c): (a, b, c), (a, b), (a), ()
+    Assert.assertArrayEquals(new int[] {-1, 0, 1, 2}, Vectorizer.groupingSetParents(Arrays.asList(0L, 1L, 3L, 7L)));
+    // CUBE(a, b): (a, b), (a), (b), (); () has two parents of one key, the first is taken
+    Assert.assertArrayEquals(new int[] {-1, 0, 0, 1}, Vectorizer.groupingSetParents(Arrays.asList(0L, 1L, 2L, 3L)));
+    // GROUPING SETS ((a, b), (a, c), (a), ()) over a, b, c: two sets no other contains
+    Assert.assertArrayEquals(new int[] {-1, -1, 0, 2}, Vectorizer.groupingSetParents(Arrays.asList(1L, 2L, 3L, 7L)));
+  }
 }
