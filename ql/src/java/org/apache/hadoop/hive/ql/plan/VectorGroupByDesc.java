@@ -67,6 +67,11 @@ public class VectorGroupByDesc extends AbstractVectorDesc  {
   private int[] projectedOutputColumns;
   private boolean isVectorizationComplexTypesEnabled;
   private boolean isVectorizationGroupByComplexTypesEnabled;
+  private boolean isGroupingSetsFromParentEnabled;
+  // a hash aggregation of grouping sets that aggregates a set from its parent: the parent of each set, -1 for a set no
+  // other contains, and the aggregations that merge the partial results of a parent
+  private int[] groupingSetParents;
+  private VectorAggregationDesc[] mergeVecAggrDescs;
 
   public VectorGroupByDesc() {
     this.processingMode = ProcessingMode.NONE;
@@ -117,6 +122,27 @@ public class VectorGroupByDesc extends AbstractVectorDesc  {
 
   public boolean getIsVectorizationGroupByComplexTypesEnabled() {
     return isVectorizationGroupByComplexTypesEnabled;
+  }
+
+  public void setIsGroupingSetsFromParentEnabled(boolean isGroupingSetsFromParentEnabled) {
+    this.isGroupingSetsFromParentEnabled = isGroupingSetsFromParentEnabled;
+  }
+
+  public boolean getIsGroupingSetsFromParentEnabled() {
+    return isGroupingSetsFromParentEnabled;
+  }
+
+  public void setGroupingSetParents(int[] groupingSetParents, VectorAggregationDesc[] mergeVecAggrDescs) {
+    this.groupingSetParents = groupingSetParents;
+    this.mergeVecAggrDescs = mergeVecAggrDescs;
+  }
+
+  public int[] getGroupingSetParents() {
+    return groupingSetParents;
+  }
+
+  public VectorAggregationDesc[] getMergeVecAggrDescs() {
+    return mergeVecAggrDescs;
   }
 
   /**
