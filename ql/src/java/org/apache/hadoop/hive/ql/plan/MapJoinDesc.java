@@ -31,6 +31,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Set;
+import java.util.TreeMap;
 
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.ql.exec.MemoryMonitorInfo;
@@ -69,6 +70,9 @@ public class MapJoinDesc extends JoinDesc implements Serializable {
   private Map<Integer, String> parentToInput = new HashMap<Integer, String>();
   private Map<Integer, Long> parentKeyCounts = new HashMap<Integer, Long>();
   private Map<Integer, Long> parentDataSizes = new HashMap<Integer, Long>();
+  // the work of the final GROUP BY that produced the input at the position: the hash table loader runs it on the
+  // input, the GROUP BY's partial aggregates, and loads the rows its ReduceSink emits
+  private Map<Integer, ReduceWork> parentToBuildWork = new HashMap<>();
 
   // table alias (small) --> input file name (big) --> target file names (small)
   private Map<String, Map<String, List<String>>> aliasBucketFileNameMapping;
@@ -111,6 +115,7 @@ public class MapJoinDesc extends JoinDesc implements Serializable {
     this.parentToInput = clone.parentToInput;
     this.parentKeyCounts = clone.parentKeyCounts;
     this.parentDataSizes = clone.parentDataSizes;
+    this.parentToBuildWork = clone.parentToBuildWork;
     this.isBucketMapJoin = clone.isBucketMapJoin;
     this.isHybridHashJoin = clone.isHybridHashJoin;
     this.cacheKey = clone.cacheKey;
@@ -156,6 +161,20 @@ public class MapJoinDesc extends JoinDesc implements Serializable {
 
   public void setParentToInput(Map<Integer, String> parentToInput) {
     this.parentToInput = parentToInput;
+  }
+
+  public Map<Integer, ReduceWork> getParentToBuildWork() {
+    return parentToBuildWork;
+  }
+
+  @Explain(displayName = "build aggregates", explainLevels = { Level.USER, Level.DEFAULT, Level.EXTENDED })
+  public Map<Integer, String> getBuildWorkExplain() {
+    if (parentToBuildWork.isEmpty()) {
+      return null;
+    }
+    Map<Integer, String> explain = new TreeMap<>();
+    parentToBuildWork.forEach((pos, work) -> explain.put(pos, work.getName() + " on " + parentToInput.get(pos)));
+    return explain;
   }
 
   public Map<Integer, Long> getParentKeyCounts() {

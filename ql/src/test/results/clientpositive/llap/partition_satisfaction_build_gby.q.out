@@ -1,0 +1,1431 @@
+PREHOOK: query: create table psb_s (s_k bigint, s_j int, s_v int)
+PREHOOK: type: CREATETABLE
+PREHOOK: Output: database:default
+PREHOOK: Output: default@psb_s
+POSTHOOK: query: create table psb_s (s_k bigint, s_j int, s_v int)
+POSTHOOK: type: CREATETABLE
+POSTHOOK: Output: database:default
+POSTHOOK: Output: default@psb_s
+PREHOOK: query: create table psb_w (w_k bigint, w_j int, w_v int)
+PREHOOK: type: CREATETABLE
+PREHOOK: Output: database:default
+PREHOOK: Output: default@psb_w
+POSTHOOK: query: create table psb_w (w_k bigint, w_j int, w_v int)
+POSTHOOK: type: CREATETABLE
+POSTHOOK: Output: database:default
+POSTHOOK: Output: default@psb_w
+PREHOOK: query: create table psb_c (c_k bigint, c_j int, c_v int)
+PREHOOK: type: CREATETABLE
+PREHOOK: Output: database:default
+PREHOOK: Output: default@psb_c
+POSTHOOK: query: create table psb_c (c_k bigint, c_j int, c_v int)
+POSTHOOK: type: CREATETABLE
+POSTHOOK: Output: database:default
+POSTHOOK: Output: default@psb_c
+PREHOOK: query: insert into psb_s select pos + 1, pos % 2, pos % 7 from (select posexplode(split(space(1999), ' ')) as (pos, x)) t
+PREHOOK: type: QUERY
+PREHOOK: Input: _dummy_database@_dummy_table
+PREHOOK: Output: default@psb_s
+POSTHOOK: query: insert into psb_s select pos + 1, pos % 2, pos % 7 from (select posexplode(split(space(1999), ' ')) as (pos, x)) t
+POSTHOOK: type: QUERY
+POSTHOOK: Input: _dummy_database@_dummy_table
+POSTHOOK: Output: default@psb_s
+POSTHOOK: Lineage: psb_s.s_j SCRIPT []
+POSTHOOK: Lineage: psb_s.s_k SCRIPT []
+POSTHOOK: Lineage: psb_s.s_v SCRIPT []
+PREHOOK: query: insert into psb_s select pos + 1, pos % 2, 1 from (select posexplode(split(space(499), ' ')) as (pos, x)) t
+PREHOOK: type: QUERY
+PREHOOK: Input: _dummy_database@_dummy_table
+PREHOOK: Output: default@psb_s
+POSTHOOK: query: insert into psb_s select pos + 1, pos % 2, 1 from (select posexplode(split(space(499), ' ')) as (pos, x)) t
+POSTHOOK: type: QUERY
+POSTHOOK: Input: _dummy_database@_dummy_table
+POSTHOOK: Output: default@psb_s
+POSTHOOK: Lineage: psb_s.s_j SCRIPT []
+POSTHOOK: Lineage: psb_s.s_k SCRIPT []
+POSTHOOK: Lineage: psb_s.s_v SIMPLE []
+PREHOOK: query: insert into psb_s values (null, 0, 5), (null, 1, 6)
+PREHOOK: type: QUERY
+PREHOOK: Input: _dummy_database@_dummy_table
+PREHOOK: Output: default@psb_s
+POSTHOOK: query: insert into psb_s values (null, 0, 5), (null, 1, 6)
+POSTHOOK: type: QUERY
+POSTHOOK: Input: _dummy_database@_dummy_table
+POSTHOOK: Output: default@psb_s
+POSTHOOK: Lineage: psb_s.s_j SCRIPT []
+POSTHOOK: Lineage: psb_s.s_k EXPRESSION []
+POSTHOOK: Lineage: psb_s.s_v SCRIPT []
+PREHOOK: query: insert into psb_w select pos + 1001, (pos + 1000) % 2, pos % 5 from (select posexplode(split(space(1999), ' ')) as (pos, x)) t
+PREHOOK: type: QUERY
+PREHOOK: Input: _dummy_database@_dummy_table
+PREHOOK: Output: default@psb_w
+POSTHOOK: query: insert into psb_w select pos + 1001, (pos + 1000) % 2, pos % 5 from (select posexplode(split(space(1999), ' ')) as (pos, x)) t
+POSTHOOK: type: QUERY
+POSTHOOK: Input: _dummy_database@_dummy_table
+POSTHOOK: Output: default@psb_w
+POSTHOOK: Lineage: psb_w.w_j SCRIPT []
+POSTHOOK: Lineage: psb_w.w_k SCRIPT []
+POSTHOOK: Lineage: psb_w.w_v SCRIPT []
+PREHOOK: query: insert into psb_w select pos + 1001, (pos + 1000) % 2, 2 from (select posexplode(split(space(299), ' ')) as (pos, x)) t
+PREHOOK: type: QUERY
+PREHOOK: Input: _dummy_database@_dummy_table
+PREHOOK: Output: default@psb_w
+POSTHOOK: query: insert into psb_w select pos + 1001, (pos + 1000) % 2, 2 from (select posexplode(split(space(299), ' ')) as (pos, x)) t
+POSTHOOK: type: QUERY
+POSTHOOK: Input: _dummy_database@_dummy_table
+POSTHOOK: Output: default@psb_w
+POSTHOOK: Lineage: psb_w.w_j SCRIPT []
+POSTHOOK: Lineage: psb_w.w_k SCRIPT []
+POSTHOOK: Lineage: psb_w.w_v SIMPLE []
+PREHOOK: query: insert into psb_w values (null, 0, 9)
+PREHOOK: type: QUERY
+PREHOOK: Input: _dummy_database@_dummy_table
+PREHOOK: Output: default@psb_w
+POSTHOOK: query: insert into psb_w values (null, 0, 9)
+POSTHOOK: type: QUERY
+POSTHOOK: Input: _dummy_database@_dummy_table
+POSTHOOK: Output: default@psb_w
+POSTHOOK: Lineage: psb_w.w_j SCRIPT []
+POSTHOOK: Lineage: psb_w.w_k EXPRESSION []
+POSTHOOK: Lineage: psb_w.w_v SCRIPT []
+PREHOOK: query: insert into psb_c select pos + 501, (pos + 500) % 2, pos % 11 from (select posexplode(split(space(1999), ' ')) as (pos, x)) t
+PREHOOK: type: QUERY
+PREHOOK: Input: _dummy_database@_dummy_table
+PREHOOK: Output: default@psb_c
+POSTHOOK: query: insert into psb_c select pos + 501, (pos + 500) % 2, pos % 11 from (select posexplode(split(space(1999), ' ')) as (pos, x)) t
+POSTHOOK: type: QUERY
+POSTHOOK: Input: _dummy_database@_dummy_table
+POSTHOOK: Output: default@psb_c
+POSTHOOK: Lineage: psb_c.c_j SCRIPT []
+POSTHOOK: Lineage: psb_c.c_k SCRIPT []
+POSTHOOK: Lineage: psb_c.c_v SCRIPT []
+PREHOOK: query: insert into psb_c values (null, 2, 4)
+PREHOOK: type: QUERY
+PREHOOK: Input: _dummy_database@_dummy_table
+PREHOOK: Output: default@psb_c
+POSTHOOK: query: insert into psb_c values (null, 2, 4)
+POSTHOOK: type: QUERY
+POSTHOOK: Input: _dummy_database@_dummy_table
+POSTHOOK: Output: default@psb_c
+POSTHOOK: Lineage: psb_c.c_j SCRIPT []
+POSTHOOK: Lineage: psb_c.c_k EXPRESSION []
+POSTHOOK: Lineage: psb_c.c_v SCRIPT []
+PREHOOK: query: alter table psb_s update statistics set('numRows'='10000000', 'rawDataSize'='120000000')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@psb_s
+PREHOOK: Output: default@psb_s
+POSTHOOK: query: alter table psb_s update statistics set('numRows'='10000000', 'rawDataSize'='120000000')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@psb_s
+POSTHOOK: Output: default@psb_s
+PREHOOK: query: alter table psb_s update statistics for column s_k set('numDVs'='40000', 'numNulls'='1', 'lowValue'='1', 'highValue'='40000')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@psb_s
+PREHOOK: Output: default@psb_s
+POSTHOOK: query: alter table psb_s update statistics for column s_k set('numDVs'='40000', 'numNulls'='1', 'lowValue'='1', 'highValue'='40000')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@psb_s
+POSTHOOK: Output: default@psb_s
+PREHOOK: query: alter table psb_s update statistics for column s_j set('numDVs'='2', 'numNulls'='0', 'lowValue'='0', 'highValue'='1')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@psb_s
+PREHOOK: Output: default@psb_s
+POSTHOOK: query: alter table psb_s update statistics for column s_j set('numDVs'='2', 'numNulls'='0', 'lowValue'='0', 'highValue'='1')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@psb_s
+POSTHOOK: Output: default@psb_s
+PREHOOK: query: alter table psb_s update statistics for column s_v set('numDVs'='1000', 'numNulls'='0', 'lowValue'='0', 'highValue'='1000')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@psb_s
+PREHOOK: Output: default@psb_s
+POSTHOOK: query: alter table psb_s update statistics for column s_v set('numDVs'='1000', 'numNulls'='0', 'lowValue'='0', 'highValue'='1000')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@psb_s
+POSTHOOK: Output: default@psb_s
+PREHOOK: query: alter table psb_w update statistics set('numRows'='10000000', 'rawDataSize'='120000000')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@psb_w
+PREHOOK: Output: default@psb_w
+POSTHOOK: query: alter table psb_w update statistics set('numRows'='10000000', 'rawDataSize'='120000000')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@psb_w
+POSTHOOK: Output: default@psb_w
+PREHOOK: query: alter table psb_w update statistics for column w_k set('numDVs'='40000', 'numNulls'='1', 'lowValue'='1', 'highValue'='40000')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@psb_w
+PREHOOK: Output: default@psb_w
+POSTHOOK: query: alter table psb_w update statistics for column w_k set('numDVs'='40000', 'numNulls'='1', 'lowValue'='1', 'highValue'='40000')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@psb_w
+POSTHOOK: Output: default@psb_w
+PREHOOK: query: alter table psb_w update statistics for column w_j set('numDVs'='2', 'numNulls'='0', 'lowValue'='0', 'highValue'='1')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@psb_w
+PREHOOK: Output: default@psb_w
+POSTHOOK: query: alter table psb_w update statistics for column w_j set('numDVs'='2', 'numNulls'='0', 'lowValue'='0', 'highValue'='1')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@psb_w
+POSTHOOK: Output: default@psb_w
+PREHOOK: query: alter table psb_w update statistics for column w_v set('numDVs'='1000', 'numNulls'='0', 'lowValue'='0', 'highValue'='1000')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@psb_w
+PREHOOK: Output: default@psb_w
+POSTHOOK: query: alter table psb_w update statistics for column w_v set('numDVs'='1000', 'numNulls'='0', 'lowValue'='0', 'highValue'='1000')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@psb_w
+POSTHOOK: Output: default@psb_w
+PREHOOK: query: alter table psb_c update statistics set('numRows'='10000000', 'rawDataSize'='120000000')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@psb_c
+PREHOOK: Output: default@psb_c
+POSTHOOK: query: alter table psb_c update statistics set('numRows'='10000000', 'rawDataSize'='120000000')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@psb_c
+POSTHOOK: Output: default@psb_c
+PREHOOK: query: alter table psb_c update statistics for column c_k set('numDVs'='40000', 'numNulls'='1', 'lowValue'='1', 'highValue'='40000')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@psb_c
+PREHOOK: Output: default@psb_c
+POSTHOOK: query: alter table psb_c update statistics for column c_k set('numDVs'='40000', 'numNulls'='1', 'lowValue'='1', 'highValue'='40000')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@psb_c
+POSTHOOK: Output: default@psb_c
+PREHOOK: query: alter table psb_c update statistics for column c_j set('numDVs'='2', 'numNulls'='0', 'lowValue'='0', 'highValue'='1')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@psb_c
+PREHOOK: Output: default@psb_c
+POSTHOOK: query: alter table psb_c update statistics for column c_j set('numDVs'='2', 'numNulls'='0', 'lowValue'='0', 'highValue'='1')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@psb_c
+POSTHOOK: Output: default@psb_c
+PREHOOK: query: alter table psb_c update statistics for column c_v set('numDVs'='1000', 'numNulls'='0', 'lowValue'='0', 'highValue'='1000')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@psb_c
+PREHOOK: Output: default@psb_c
+POSTHOOK: query: alter table psb_c update statistics for column c_v set('numDVs'='1000', 'numNulls'='0', 'lowValue'='0', 'highValue'='1000')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@psb_c
+POSTHOOK: Output: default@psb_c
+PREHOOK: query: explain
+select *
+from (select s_k k, sum(s_v) s from psb_s group by s_k) s
+left join (select w_k k, count(*) c, sum(w_v) v from psb_w group by w_k) w on s.k = w.k
+PREHOOK: type: QUERY
+PREHOOK: Input: default@psb_s
+PREHOOK: Input: default@psb_w
+#### A masked pattern was here ####
+POSTHOOK: query: explain
+select *
+from (select s_k k, sum(s_v) s from psb_s group by s_k) s
+left join (select w_k k, count(*) c, sum(w_v) v from psb_w group by w_k) w on s.k = w.k
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@psb_s
+POSTHOOK: Input: default@psb_w
+#### A masked pattern was here ####
+STAGE DEPENDENCIES:
+  Stage-1 is a root stage
+  Stage-0 depends on stages: Stage-1
+
+STAGE PLANS:
+  Stage: Stage-1
+    Tez
+#### A masked pattern was here ####
+      Edges:
+        Reducer 2 <- Map 1 (SIMPLE_EDGE), Reducer 4 (CUSTOM_SIMPLE_EDGE)
+        Reducer 4 <- Map 3 (CUSTOM_SIMPLE_EDGE)
+#### A masked pattern was here ####
+      Vertices:
+        Map 1 
+            Map Operator Tree:
+                TableScan
+                  alias: psb_s
+                  Statistics: Num rows: 10000000 Data size: 120000000 Basic stats: COMPLETE Column stats: COMPLETE
+                  Select Operator
+                    expressions: s_k (type: bigint), s_v (type: int)
+                    outputColumnNames: s_k, s_v
+                    Statistics: Num rows: 10000000 Data size: 120000000 Basic stats: COMPLETE Column stats: COMPLETE
+                    Group By Operator
+                      aggregations: sum(s_v)
+                      keys: s_k (type: bigint)
+                      minReductionHashAggr: 0.99
+                      mode: hash
+                      outputColumnNames: _col0, _col1
+                      Statistics: Num rows: 40001 Data size: 640016 Basic stats: COMPLETE Column stats: COMPLETE
+                      Reduce Output Operator
+                        key expressions: _col0 (type: bigint)
+                        null sort order: z
+                        sort order: +
+                        Map-reduce partition columns: _col0 (type: bigint)
+                        Statistics: Num rows: 40001 Data size: 640016 Basic stats: COMPLETE Column stats: COMPLETE
+                        value expressions: _col1 (type: bigint)
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Map 3 
+            Map Operator Tree:
+                TableScan
+                  alias: psb_w
+                  filterExpr: w_k is not null (type: boolean)
+                  Statistics: Num rows: 10000000 Data size: 120000000 Basic stats: COMPLETE Column stats: COMPLETE
+                  Filter Operator
+                    predicate: w_k is not null (type: boolean)
+                    Statistics: Num rows: 9999999 Data size: 119999988 Basic stats: COMPLETE Column stats: COMPLETE
+                    Group By Operator
+                      aggregations: count(), sum(w_v)
+                      keys: w_k (type: bigint)
+                      minReductionHashAggr: 0.99
+                      mode: hash
+                      outputColumnNames: _col0, _col1, _col2
+                      Statistics: Num rows: 40001 Data size: 960024 Basic stats: COMPLETE Column stats: COMPLETE
+                      Reduce Output Operator
+                        key expressions: _col0 (type: bigint)
+                        null sort order: z
+                        sort order: +
+                        Map-reduce partition columns: _col0 (type: bigint)
+                        Statistics: Num rows: 40001 Data size: 960024 Basic stats: COMPLETE Column stats: COMPLETE
+                        value expressions: _col1 (type: bigint), _col2 (type: bigint)
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Reducer 2 
+            Execution mode: vectorized, llap
+            Reduce Operator Tree:
+              Group By Operator
+                aggregations: sum(VALUE._col0)
+                keys: KEY._col0 (type: bigint)
+                mode: mergepartial
+                outputColumnNames: _col0, _col1
+                Statistics: Num rows: 40000 Data size: 640000 Basic stats: COMPLETE Column stats: COMPLETE
+                Map Join Operator
+                  condition map:
+                       Left Outer Join 0 to 1
+                  keys:
+                    0 _col0 (type: bigint)
+                    1 _col0 (type: bigint)
+                  outputColumnNames: _col0, _col1, _col2, _col3, _col4
+                  input vertices:
+                    1 Reducer 4
+                  Statistics: Num rows: 40000 Data size: 1600000 Basic stats: COMPLETE Column stats: COMPLETE
+                  File Output Operator
+                    compressed: false
+                    Statistics: Num rows: 40000 Data size: 1600000 Basic stats: COMPLETE Column stats: COMPLETE
+                    table:
+                        input format: org.apache.hadoop.mapred.SequenceFileInputFormat
+                        output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
+                        serde: org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe
+        Reducer 4 
+            Execution mode: vectorized, llap
+            Reduce Operator Tree:
+              Group By Operator
+                aggregations: count(VALUE._col0), sum(VALUE._col1)
+                keys: KEY._col0 (type: bigint)
+                mode: mergepartial
+                outputColumnNames: _col0, _col1, _col2
+                Statistics: Num rows: 40000 Data size: 960000 Basic stats: COMPLETE Column stats: COMPLETE
+                unsortedInput: true
+                Reduce Output Operator
+                  key expressions: _col0 (type: bigint)
+                  null sort order: z
+                  sort order: +
+                  Map-reduce partition columns: _col0 (type: bigint)
+                  Statistics: Num rows: 40000 Data size: 960000 Basic stats: COMPLETE Column stats: COMPLETE
+                  value expressions: _col1 (type: bigint), _col2 (type: bigint)
+
+  Stage: Stage-0
+    Fetch Operator
+      limit: -1
+      Processor Tree:
+        ListSink
+
+PREHOOK: query: explain
+select *
+from (select s_k k, sum(s_v) s from psb_s group by s_k) s
+left join (select w_k k, count(*) c, sum(w_v) v from psb_w group by w_k) w on s.k = w.k
+PREHOOK: type: QUERY
+PREHOOK: Input: default@psb_s
+PREHOOK: Input: default@psb_w
+#### A masked pattern was here ####
+POSTHOOK: query: explain
+select *
+from (select s_k k, sum(s_v) s from psb_s group by s_k) s
+left join (select w_k k, count(*) c, sum(w_v) v from psb_w group by w_k) w on s.k = w.k
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@psb_s
+POSTHOOK: Input: default@psb_w
+#### A masked pattern was here ####
+STAGE DEPENDENCIES:
+  Stage-1 is a root stage
+  Stage-0 depends on stages: Stage-1
+
+STAGE PLANS:
+  Stage: Stage-1
+    Tez
+#### A masked pattern was here ####
+      Edges:
+        Reducer 2 <- Map 1 (SIMPLE_EDGE), Map 3 (CUSTOM_SIMPLE_EDGE)
+#### A masked pattern was here ####
+      Vertices:
+        Map 1 
+            Map Operator Tree:
+                TableScan
+                  alias: psb_s
+                  Statistics: Num rows: 10000000 Data size: 120000000 Basic stats: COMPLETE Column stats: COMPLETE
+                  Select Operator
+                    expressions: s_k (type: bigint), s_v (type: int)
+                    outputColumnNames: s_k, s_v
+                    Statistics: Num rows: 10000000 Data size: 120000000 Basic stats: COMPLETE Column stats: COMPLETE
+                    Group By Operator
+                      aggregations: sum(s_v)
+                      keys: s_k (type: bigint)
+                      minReductionHashAggr: 0.99
+                      mode: hash
+                      outputColumnNames: _col0, _col1
+                      Statistics: Num rows: 40001 Data size: 640016 Basic stats: COMPLETE Column stats: COMPLETE
+                      Reduce Output Operator
+                        key expressions: _col0 (type: bigint)
+                        null sort order: z
+                        sort order: +
+                        Map-reduce partition columns: _col0 (type: bigint)
+                        Statistics: Num rows: 40001 Data size: 640016 Basic stats: COMPLETE Column stats: COMPLETE
+                        value expressions: _col1 (type: bigint)
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Map 3 
+            Map Operator Tree:
+                TableScan
+                  alias: psb_w
+                  filterExpr: w_k is not null (type: boolean)
+                  Statistics: Num rows: 10000000 Data size: 120000000 Basic stats: COMPLETE Column stats: COMPLETE
+                  Filter Operator
+                    predicate: w_k is not null (type: boolean)
+                    Statistics: Num rows: 9999999 Data size: 119999988 Basic stats: COMPLETE Column stats: COMPLETE
+                    Group By Operator
+                      aggregations: count(), sum(w_v)
+                      keys: w_k (type: bigint)
+                      minReductionHashAggr: 0.99
+                      mode: hash
+                      outputColumnNames: _col0, _col1, _col2
+                      Statistics: Num rows: 40001 Data size: 960024 Basic stats: COMPLETE Column stats: COMPLETE
+                      Reduce Output Operator
+                        key expressions: _col0 (type: bigint)
+                        null sort order: z
+                        sort order: +
+                        Map-reduce partition columns: _col0 (type: bigint)
+                        Statistics: Num rows: 40001 Data size: 960024 Basic stats: COMPLETE Column stats: COMPLETE
+                        value expressions: _col1 (type: bigint), _col2 (type: bigint)
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Reducer 2 
+            Execution mode: vectorized, llap
+            Reduce Operator Tree:
+              Group By Operator
+                aggregations: sum(VALUE._col0)
+                keys: KEY._col0 (type: bigint)
+                mode: mergepartial
+                outputColumnNames: _col0, _col1
+                Statistics: Num rows: 40000 Data size: 640000 Basic stats: COMPLETE Column stats: COMPLETE
+                Map Join Operator
+                  build aggregates:
+                    1 Reducer 4 on Map 3
+                  condition map:
+                       Left Outer Join 0 to 1
+                  keys:
+                    0 _col0 (type: bigint)
+                    1 _col0 (type: bigint)
+                  outputColumnNames: _col0, _col1, _col2, _col3, _col4
+                  input vertices:
+                    1 Map 3
+                  Statistics: Num rows: 40000 Data size: 1600000 Basic stats: COMPLETE Column stats: COMPLETE
+                  File Output Operator
+                    compressed: false
+                    Statistics: Num rows: 40000 Data size: 1600000 Basic stats: COMPLETE Column stats: COMPLETE
+                    table:
+                        input format: org.apache.hadoop.mapred.SequenceFileInputFormat
+                        output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
+                        serde: org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe
+
+  Stage: Stage-0
+    Fetch Operator
+      limit: -1
+      Processor Tree:
+        ListSink
+
+PREHOOK: query: select count(*), count(w.k), sum(s.s), sum(w.c), sum(w.v), sum(pmod(hash(s.k, w.k), 1000003) * pmod(hash(s.s, w.c, w.v), 1000033))
+from (select s_k k, sum(s_v) s from psb_s group by s_k) s
+left join (select w_k k, count(*) c, sum(w_v) v from psb_w group by w_k) w on s.k = w.k
+PREHOOK: type: QUERY
+PREHOOK: Input: default@psb_s
+PREHOOK: Input: default@psb_w
+#### A masked pattern was here ####
+POSTHOOK: query: select count(*), count(w.k), sum(s.s), sum(w.c), sum(w.v), sum(pmod(hash(s.k, w.k), 1000003) * pmod(hash(s.s, w.c, w.v), 1000033))
+from (select s_k k, sum(s_v) s from psb_s group by s_k) s
+left join (select w_k k, count(*) c, sum(w_v) v from psb_w group by w_k) w on s.k = w.k
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@psb_s
+POSTHOOK: Input: default@psb_w
+#### A masked pattern was here ####
+2001	1000	6506	1300	2600	188779241689
+PREHOOK: query: select count(*), count(w.k), sum(s.s), sum(w.c), sum(w.v), sum(pmod(hash(s.k, w.k), 1000003) * pmod(hash(s.s, w.c, w.v), 1000033))
+from (select s_k k, sum(s_v) s from psb_s group by s_k) s
+left join (select w_k k, count(*) c, sum(w_v) v from psb_w group by w_k) w on s.k = w.k
+PREHOOK: type: QUERY
+PREHOOK: Input: default@psb_s
+PREHOOK: Input: default@psb_w
+#### A masked pattern was here ####
+POSTHOOK: query: select count(*), count(w.k), sum(s.s), sum(w.c), sum(w.v), sum(pmod(hash(s.k, w.k), 1000003) * pmod(hash(s.s, w.c, w.v), 1000033))
+from (select s_k k, sum(s_v) s from psb_s group by s_k) s
+left join (select w_k k, count(*) c, sum(w_v) v from psb_w group by w_k) w on s.k = w.k
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@psb_s
+POSTHOOK: Input: default@psb_w
+#### A masked pattern was here ####
+2001	1000	6506	1300	2600	188779241689
+PREHOOK: query: select count(*), count(w.k), sum(s.s), sum(w.c), sum(w.v), sum(pmod(hash(s.k, w.k), 1000003) * pmod(hash(s.s, w.c, w.v), 1000033))
+from (select s_k k, sum(s_v) s from psb_s group by s_k) s
+left join (select w_k k, count(*) c, sum(w_v) v from psb_w group by w_k) w on s.k = w.k
+PREHOOK: type: QUERY
+PREHOOK: Input: default@psb_s
+PREHOOK: Input: default@psb_w
+#### A masked pattern was here ####
+POSTHOOK: query: select count(*), count(w.k), sum(s.s), sum(w.c), sum(w.v), sum(pmod(hash(s.k, w.k), 1000003) * pmod(hash(s.s, w.c, w.v), 1000033))
+from (select s_k k, sum(s_v) s from psb_s group by s_k) s
+left join (select w_k k, count(*) c, sum(w_v) v from psb_w group by w_k) w on s.k = w.k
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@psb_s
+POSTHOOK: Input: default@psb_w
+#### A masked pattern was here ####
+2001	1000	6506	1300	2600	188779241689
+PREHOOK: query: explain
+select *
+from (select s_k k, s_j j, sum(s_v) s from psb_s group by s_k, s_j) s
+left join (select w_k k, w_j j, sum(w_v) v from psb_w group by w_k, w_j) w on s.k = w.k and s.j = w.j
+left join (select c_k k, c_j j, sum(c_v) v from psb_c group by c_k, c_j) c on s.k = c.k and s.j = c.j
+PREHOOK: type: QUERY
+PREHOOK: Input: default@psb_c
+PREHOOK: Input: default@psb_s
+PREHOOK: Input: default@psb_w
+#### A masked pattern was here ####
+POSTHOOK: query: explain
+select *
+from (select s_k k, s_j j, sum(s_v) s from psb_s group by s_k, s_j) s
+left join (select w_k k, w_j j, sum(w_v) v from psb_w group by w_k, w_j) w on s.k = w.k and s.j = w.j
+left join (select c_k k, c_j j, sum(c_v) v from psb_c group by c_k, c_j) c on s.k = c.k and s.j = c.j
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@psb_c
+POSTHOOK: Input: default@psb_s
+POSTHOOK: Input: default@psb_w
+#### A masked pattern was here ####
+STAGE DEPENDENCIES:
+  Stage-1 is a root stage
+  Stage-0 depends on stages: Stage-1
+
+STAGE PLANS:
+  Stage: Stage-1
+    Tez
+#### A masked pattern was here ####
+      Edges:
+        Reducer 2 <- Map 1 (SIMPLE_EDGE), Map 3 (CUSTOM_SIMPLE_EDGE), Map 5 (CUSTOM_SIMPLE_EDGE)
+#### A masked pattern was here ####
+      Vertices:
+        Map 1 
+            Map Operator Tree:
+                TableScan
+                  alias: psb_s
+                  Statistics: Num rows: 10000000 Data size: 160000000 Basic stats: COMPLETE Column stats: COMPLETE
+                  Select Operator
+                    expressions: s_k (type: bigint), s_j (type: int), s_v (type: int)
+                    outputColumnNames: s_k, s_j, s_v
+                    Statistics: Num rows: 10000000 Data size: 160000000 Basic stats: COMPLETE Column stats: COMPLETE
+                    Group By Operator
+                      aggregations: sum(s_v)
+                      keys: s_k (type: bigint), s_j (type: int)
+                      minReductionHashAggr: 0.99
+                      mode: hash
+                      outputColumnNames: _col0, _col1, _col2
+                      Statistics: Num rows: 80002 Data size: 1600040 Basic stats: COMPLETE Column stats: COMPLETE
+                      Reduce Output Operator
+                        key expressions: _col0 (type: bigint), _col1 (type: int)
+                        null sort order: zz
+                        sort order: ++
+                        Map-reduce partition columns: _col0 (type: bigint), _col1 (type: int)
+                        Statistics: Num rows: 80002 Data size: 1600040 Basic stats: COMPLETE Column stats: COMPLETE
+                        value expressions: _col2 (type: bigint)
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Map 3 
+            Map Operator Tree:
+                TableScan
+                  alias: psb_w
+                  filterExpr: (w_k is not null and w_j is not null) (type: boolean)
+                  Statistics: Num rows: 10000000 Data size: 160000000 Basic stats: COMPLETE Column stats: COMPLETE
+                  Filter Operator
+                    predicate: (w_k is not null and w_j is not null) (type: boolean)
+                    Statistics: Num rows: 9999999 Data size: 159999984 Basic stats: COMPLETE Column stats: COMPLETE
+                    Group By Operator
+                      aggregations: sum(w_v)
+                      keys: w_k (type: bigint), w_j (type: int)
+                      minReductionHashAggr: 0.99
+                      mode: hash
+                      outputColumnNames: _col0, _col1, _col2
+                      Statistics: Num rows: 80002 Data size: 1600040 Basic stats: COMPLETE Column stats: COMPLETE
+                      Reduce Output Operator
+                        key expressions: _col0 (type: bigint), _col1 (type: int)
+                        null sort order: zz
+                        sort order: ++
+                        Map-reduce partition columns: _col0 (type: bigint), _col1 (type: int)
+                        Statistics: Num rows: 80002 Data size: 1600040 Basic stats: COMPLETE Column stats: COMPLETE
+                        value expressions: _col2 (type: bigint)
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Map 5 
+            Map Operator Tree:
+                TableScan
+                  alias: psb_c
+                  filterExpr: (c_k is not null and c_j is not null) (type: boolean)
+                  Statistics: Num rows: 10000000 Data size: 160000000 Basic stats: COMPLETE Column stats: COMPLETE
+                  Filter Operator
+                    predicate: (c_k is not null and c_j is not null) (type: boolean)
+                    Statistics: Num rows: 9999999 Data size: 159999984 Basic stats: COMPLETE Column stats: COMPLETE
+                    Group By Operator
+                      aggregations: sum(c_v)
+                      keys: c_k (type: bigint), c_j (type: int)
+                      minReductionHashAggr: 0.99
+                      mode: hash
+                      outputColumnNames: _col0, _col1, _col2
+                      Statistics: Num rows: 80002 Data size: 1600040 Basic stats: COMPLETE Column stats: COMPLETE
+                      Reduce Output Operator
+                        key expressions: _col0 (type: bigint), _col1 (type: int)
+                        null sort order: zz
+                        sort order: ++
+                        Map-reduce partition columns: _col0 (type: bigint), _col1 (type: int)
+                        Statistics: Num rows: 80002 Data size: 1600040 Basic stats: COMPLETE Column stats: COMPLETE
+                        value expressions: _col2 (type: bigint)
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Reducer 2 
+            Execution mode: vectorized, llap
+            Reduce Operator Tree:
+              Group By Operator
+                aggregations: sum(VALUE._col0)
+                keys: KEY._col0 (type: bigint), KEY._col1 (type: int)
+                mode: mergepartial
+                outputColumnNames: _col0, _col1, _col2
+                Statistics: Num rows: 80000 Data size: 1600000 Basic stats: COMPLETE Column stats: COMPLETE
+                Map Join Operator
+                  build aggregates:
+                    1 Reducer 4 on Map 3
+                  condition map:
+                       Left Outer Join 0 to 1
+                  keys:
+                    0 _col0 (type: bigint), _col1 (type: int)
+                    1 _col0 (type: bigint), _col1 (type: int)
+                  outputColumnNames: _col0, _col1, _col2, _col3, _col4, _col5
+                  input vertices:
+                    1 Map 3
+                  Statistics: Num rows: 134544 Data size: 5381760 Basic stats: COMPLETE Column stats: COMPLETE
+                  Map Join Operator
+                    build aggregates:
+                      1 Reducer 6 on Map 5
+                    condition map:
+                         Left Outer Join 0 to 1
+                    keys:
+                      0 _col0 (type: bigint), _col1 (type: int)
+                      1 _col0 (type: bigint), _col1 (type: int)
+                    outputColumnNames: _col0, _col1, _col2, _col3, _col4, _col5, _col6, _col7, _col8
+                    input vertices:
+                      1 Map 5
+                    Statistics: Num rows: 226276 Data size: 13576560 Basic stats: COMPLETE Column stats: COMPLETE
+                    File Output Operator
+                      compressed: false
+                      Statistics: Num rows: 226276 Data size: 13576560 Basic stats: COMPLETE Column stats: COMPLETE
+                      table:
+                          input format: org.apache.hadoop.mapred.SequenceFileInputFormat
+                          output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
+                          serde: org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe
+
+  Stage: Stage-0
+    Fetch Operator
+      limit: -1
+      Processor Tree:
+        ListSink
+
+PREHOOK: query: select count(*), count(w.k), count(c.k), sum(s.s), sum(w.v), sum(c.v),
+  sum(pmod(hash(s.k, s.j, w.k, c.k), 1000003) * pmod(hash(s.s, w.v, c.v), 1000033))
+from (select s_k k, s_j j, sum(s_v) s from psb_s group by s_k, s_j) s
+left join (select w_k k, w_j j, sum(w_v) v from psb_w group by w_k, w_j) w on s.k = w.k and s.j = w.j
+left join (select c_k k, c_j j, sum(c_v) v from psb_c group by c_k, c_j) c on s.k = c.k and s.j = c.j
+PREHOOK: type: QUERY
+PREHOOK: Input: default@psb_c
+PREHOOK: Input: default@psb_s
+PREHOOK: Input: default@psb_w
+#### A masked pattern was here ####
+POSTHOOK: query: select count(*), count(w.k), count(c.k), sum(s.s), sum(w.v), sum(c.v),
+  sum(pmod(hash(s.k, s.j, w.k, c.k), 1000003) * pmod(hash(s.s, w.v, c.v), 1000033))
+from (select s_k k, s_j j, sum(s_v) s from psb_s group by s_k, s_j) s
+left join (select w_k k, w_j j, sum(w_v) v from psb_w group by w_k, w_j) w on s.k = w.k and s.j = w.j
+left join (select c_k k, c_j j, sum(c_v) v from psb_c group by c_k, c_j) c on s.k = c.k and s.j = c.j
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@psb_c
+POSTHOOK: Input: default@psb_s
+POSTHOOK: Input: default@psb_w
+#### A masked pattern was here ####
+2002	1000	1500	6506	2600	7486	3156567616431
+PREHOOK: query: select count(*), count(w.k), count(c.k), sum(s.s), sum(w.v), sum(c.v),
+  sum(pmod(hash(s.k, s.j, w.k, c.k), 1000003) * pmod(hash(s.s, w.v, c.v), 1000033))
+from (select s_k k, s_j j, sum(s_v) s from psb_s group by s_k, s_j) s
+left join (select w_k k, w_j j, sum(w_v) v from psb_w group by w_k, w_j) w on s.k = w.k and s.j = w.j
+left join (select c_k k, c_j j, sum(c_v) v from psb_c group by c_k, c_j) c on s.k = c.k and s.j = c.j
+PREHOOK: type: QUERY
+PREHOOK: Input: default@psb_c
+PREHOOK: Input: default@psb_s
+PREHOOK: Input: default@psb_w
+#### A masked pattern was here ####
+POSTHOOK: query: select count(*), count(w.k), count(c.k), sum(s.s), sum(w.v), sum(c.v),
+  sum(pmod(hash(s.k, s.j, w.k, c.k), 1000003) * pmod(hash(s.s, w.v, c.v), 1000033))
+from (select s_k k, s_j j, sum(s_v) s from psb_s group by s_k, s_j) s
+left join (select w_k k, w_j j, sum(w_v) v from psb_w group by w_k, w_j) w on s.k = w.k and s.j = w.j
+left join (select c_k k, c_j j, sum(c_v) v from psb_c group by c_k, c_j) c on s.k = c.k and s.j = c.j
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@psb_c
+POSTHOOK: Input: default@psb_s
+POSTHOOK: Input: default@psb_w
+#### A masked pattern was here ####
+2002	1000	1500	6506	2600	7486	3156567616431
+PREHOOK: query: select count(*), count(w.k), count(c.k), sum(s.s), sum(w.v), sum(c.v),
+  sum(pmod(hash(s.k, s.j, w.k, c.k), 1000003) * pmod(hash(s.s, w.v, c.v), 1000033))
+from (select s_k k, s_j j, sum(s_v) s from psb_s group by s_k, s_j) s
+left join (select w_k k, w_j j, sum(w_v) v from psb_w group by w_k, w_j) w on s.k = w.k and s.j = w.j
+left join (select c_k k, c_j j, sum(c_v) v from psb_c group by c_k, c_j) c on s.k = c.k and s.j = c.j
+PREHOOK: type: QUERY
+PREHOOK: Input: default@psb_c
+PREHOOK: Input: default@psb_s
+PREHOOK: Input: default@psb_w
+#### A masked pattern was here ####
+POSTHOOK: query: select count(*), count(w.k), count(c.k), sum(s.s), sum(w.v), sum(c.v),
+  sum(pmod(hash(s.k, s.j, w.k, c.k), 1000003) * pmod(hash(s.s, w.v, c.v), 1000033))
+from (select s_k k, s_j j, sum(s_v) s from psb_s group by s_k, s_j) s
+left join (select w_k k, w_j j, sum(w_v) v from psb_w group by w_k, w_j) w on s.k = w.k and s.j = w.j
+left join (select c_k k, c_j j, sum(c_v) v from psb_c group by c_k, c_j) c on s.k = c.k and s.j = c.j
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@psb_c
+POSTHOOK: Input: default@psb_s
+POSTHOOK: Input: default@psb_w
+#### A masked pattern was here ####
+2002	1000	1500	6506	2600	7486	3156567616431
+PREHOOK: query: explain
+select *
+from (select s_k k, s_j j from psb_s group by s_k, s_j) s
+full outer join (select c_k k, c_j j from psb_c group by c_k, c_j) c on s.k = c.k and s.j = c.j
+PREHOOK: type: QUERY
+PREHOOK: Input: default@psb_c
+PREHOOK: Input: default@psb_s
+#### A masked pattern was here ####
+POSTHOOK: query: explain
+select *
+from (select s_k k, s_j j from psb_s group by s_k, s_j) s
+full outer join (select c_k k, c_j j from psb_c group by c_k, c_j) c on s.k = c.k and s.j = c.j
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@psb_c
+POSTHOOK: Input: default@psb_s
+#### A masked pattern was here ####
+STAGE DEPENDENCIES:
+  Stage-1 is a root stage
+  Stage-0 depends on stages: Stage-1
+
+STAGE PLANS:
+  Stage: Stage-1
+    Tez
+#### A masked pattern was here ####
+      Edges:
+        Reducer 2 <- Map 1 (SIMPLE_EDGE), Map 3 (CUSTOM_SIMPLE_EDGE)
+#### A masked pattern was here ####
+      Vertices:
+        Map 1 
+            Map Operator Tree:
+                TableScan
+                  alias: psb_s
+                  Statistics: Num rows: 10000000 Data size: 120000000 Basic stats: COMPLETE Column stats: COMPLETE
+                  Select Operator
+                    expressions: s_k (type: bigint), s_j (type: int)
+                    outputColumnNames: s_k, s_j
+                    Statistics: Num rows: 10000000 Data size: 120000000 Basic stats: COMPLETE Column stats: COMPLETE
+                    Group By Operator
+                      keys: s_k (type: bigint), s_j (type: int)
+                      minReductionHashAggr: 0.99
+                      mode: hash
+                      outputColumnNames: _col0, _col1
+                      Statistics: Num rows: 80002 Data size: 960024 Basic stats: COMPLETE Column stats: COMPLETE
+                      Reduce Output Operator
+                        key expressions: _col0 (type: bigint), _col1 (type: int)
+                        null sort order: zz
+                        sort order: ++
+                        Map-reduce partition columns: _col0 (type: bigint), _col1 (type: int)
+                        Statistics: Num rows: 80002 Data size: 960024 Basic stats: COMPLETE Column stats: COMPLETE
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Map 3 
+            Map Operator Tree:
+                TableScan
+                  alias: psb_c
+                  Statistics: Num rows: 10000000 Data size: 120000000 Basic stats: COMPLETE Column stats: COMPLETE
+                  Select Operator
+                    expressions: c_k (type: bigint), c_j (type: int)
+                    outputColumnNames: c_k, c_j
+                    Statistics: Num rows: 10000000 Data size: 120000000 Basic stats: COMPLETE Column stats: COMPLETE
+                    Group By Operator
+                      keys: c_k (type: bigint), c_j (type: int)
+                      minReductionHashAggr: 0.99
+                      mode: hash
+                      outputColumnNames: _col0, _col1
+                      Statistics: Num rows: 80002 Data size: 960024 Basic stats: COMPLETE Column stats: COMPLETE
+                      Reduce Output Operator
+                        key expressions: _col0 (type: bigint), _col1 (type: int)
+                        null sort order: zz
+                        sort order: ++
+                        Map-reduce partition columns: _col0 (type: bigint), _col1 (type: int)
+                        Statistics: Num rows: 80002 Data size: 960024 Basic stats: COMPLETE Column stats: COMPLETE
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Reducer 2 
+            Execution mode: vectorized, llap
+            Reduce Operator Tree:
+              Group By Operator
+                keys: KEY._col0 (type: bigint), KEY._col1 (type: int)
+                mode: mergepartial
+                outputColumnNames: _col0, _col1
+                Statistics: Num rows: 80000 Data size: 960000 Basic stats: COMPLETE Column stats: COMPLETE
+                Map Join Operator
+                  build aggregates:
+                    1 Reducer 4 on Map 3
+                  condition map:
+                       Full Outer Join 0 to 1
+                  keys:
+                    0 _col0 (type: bigint), _col1 (type: int)
+                    1 _col0 (type: bigint), _col1 (type: int)
+                  outputColumnNames: _col0, _col1, _col2, _col3
+                  input vertices:
+                    1 Map 3
+                  Statistics: Num rows: 160000 Data size: 3840000 Basic stats: COMPLETE Column stats: COMPLETE
+                  File Output Operator
+                    compressed: false
+                    Statistics: Num rows: 160000 Data size: 3840000 Basic stats: COMPLETE Column stats: COMPLETE
+                    table:
+                        input format: org.apache.hadoop.mapred.SequenceFileInputFormat
+                        output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
+                        serde: org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe
+
+  Stage: Stage-0
+    Fetch Operator
+      limit: -1
+      Processor Tree:
+        ListSink
+
+PREHOOK: query: select count(*), count(s.k), count(c.k), count(case when s.k is not null and c.k is not null then 1 end),
+  sum(pmod(hash(s.k, s.j, c.k, c.j), 1000003))
+from (select s_k k, s_j j from psb_s group by s_k, s_j) s
+full outer join (select c_k k, c_j j from psb_c group by c_k, c_j) c on s.k = c.k and s.j = c.j
+PREHOOK: type: QUERY
+PREHOOK: Input: default@psb_c
+PREHOOK: Input: default@psb_s
+#### A masked pattern was here ####
+POSTHOOK: query: select count(*), count(s.k), count(c.k), count(case when s.k is not null and c.k is not null then 1 end),
+  sum(pmod(hash(s.k, s.j, c.k, c.j), 1000003))
+from (select s_k k, s_j j from psb_s group by s_k, s_j) s
+full outer join (select c_k k, c_j j from psb_c group by c_k, c_j) c on s.k = c.k and s.j = c.j
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@psb_c
+POSTHOOK: Input: default@psb_s
+#### A masked pattern was here ####
+2503	2000	2000	1500	1030608938
+PREHOOK: query: select count(*), count(s.k), count(c.k), count(case when s.k is not null and c.k is not null then 1 end),
+  sum(pmod(hash(s.k, s.j, c.k, c.j), 1000003))
+from (select s_k k, s_j j from psb_s group by s_k, s_j) s
+full outer join (select c_k k, c_j j from psb_c group by c_k, c_j) c on s.k = c.k and s.j = c.j
+PREHOOK: type: QUERY
+PREHOOK: Input: default@psb_c
+PREHOOK: Input: default@psb_s
+#### A masked pattern was here ####
+POSTHOOK: query: select count(*), count(s.k), count(c.k), count(case when s.k is not null and c.k is not null then 1 end),
+  sum(pmod(hash(s.k, s.j, c.k, c.j), 1000003))
+from (select s_k k, s_j j from psb_s group by s_k, s_j) s
+full outer join (select c_k k, c_j j from psb_c group by c_k, c_j) c on s.k = c.k and s.j = c.j
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@psb_c
+POSTHOOK: Input: default@psb_s
+#### A masked pattern was here ####
+2503	2000	2000	1500	1030608938
+PREHOOK: query: select count(*), count(s.k), count(c.k), count(case when s.k is not null and c.k is not null then 1 end),
+  sum(pmod(hash(s.k, s.j, c.k, c.j), 1000003))
+from (select s_k k, s_j j from psb_s group by s_k, s_j) s
+full outer join (select c_k k, c_j j from psb_c group by c_k, c_j) c on s.k = c.k and s.j = c.j
+PREHOOK: type: QUERY
+PREHOOK: Input: default@psb_c
+PREHOOK: Input: default@psb_s
+#### A masked pattern was here ####
+POSTHOOK: query: select count(*), count(s.k), count(c.k), count(case when s.k is not null and c.k is not null then 1 end),
+  sum(pmod(hash(s.k, s.j, c.k, c.j), 1000003))
+from (select s_k k, s_j j from psb_s group by s_k, s_j) s
+full outer join (select c_k k, c_j j from psb_c group by c_k, c_j) c on s.k = c.k and s.j = c.j
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@psb_c
+POSTHOOK: Input: default@psb_s
+#### A masked pattern was here ####
+2503	2000	2000	1500	1030608938
+PREHOOK: query: explain
+select *
+from (select s_k k, sum(s_v) s from psb_s group by s_k) s
+join (select w_k k, sum(w_v) * 2 v2 from psb_w group by w_k having count(*) > 1) w on s.k = w.k
+PREHOOK: type: QUERY
+PREHOOK: Input: default@psb_s
+PREHOOK: Input: default@psb_w
+#### A masked pattern was here ####
+POSTHOOK: query: explain
+select *
+from (select s_k k, sum(s_v) s from psb_s group by s_k) s
+join (select w_k k, sum(w_v) * 2 v2 from psb_w group by w_k having count(*) > 1) w on s.k = w.k
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@psb_s
+POSTHOOK: Input: default@psb_w
+#### A masked pattern was here ####
+STAGE DEPENDENCIES:
+  Stage-1 is a root stage
+  Stage-0 depends on stages: Stage-1
+
+STAGE PLANS:
+  Stage: Stage-1
+    Tez
+#### A masked pattern was here ####
+      Edges:
+        Reducer 2 <- Map 1 (SIMPLE_EDGE), Map 3 (CUSTOM_SIMPLE_EDGE)
+#### A masked pattern was here ####
+      Vertices:
+        Map 1 
+            Map Operator Tree:
+                TableScan
+                  alias: psb_s
+                  filterExpr: s_k is not null (type: boolean)
+                  Statistics: Num rows: 10000000 Data size: 120000000 Basic stats: COMPLETE Column stats: COMPLETE
+                  Filter Operator
+                    predicate: s_k is not null (type: boolean)
+                    Statistics: Num rows: 9999999 Data size: 119999988 Basic stats: COMPLETE Column stats: COMPLETE
+                    Group By Operator
+                      aggregations: sum(s_v)
+                      keys: s_k (type: bigint)
+                      minReductionHashAggr: 0.99
+                      mode: hash
+                      outputColumnNames: _col0, _col1
+                      Statistics: Num rows: 40001 Data size: 640016 Basic stats: COMPLETE Column stats: COMPLETE
+                      Reduce Output Operator
+                        key expressions: _col0 (type: bigint)
+                        null sort order: z
+                        sort order: +
+                        Map-reduce partition columns: _col0 (type: bigint)
+                        Statistics: Num rows: 40001 Data size: 640016 Basic stats: COMPLETE Column stats: COMPLETE
+                        value expressions: _col1 (type: bigint)
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Map 3 
+            Map Operator Tree:
+                TableScan
+                  alias: psb_w
+                  filterExpr: w_k is not null (type: boolean)
+                  Statistics: Num rows: 10000000 Data size: 120000000 Basic stats: COMPLETE Column stats: COMPLETE
+                  Filter Operator
+                    predicate: w_k is not null (type: boolean)
+                    Statistics: Num rows: 9999999 Data size: 119999988 Basic stats: COMPLETE Column stats: COMPLETE
+                    Group By Operator
+                      aggregations: sum(w_v), count()
+                      keys: w_k (type: bigint)
+                      minReductionHashAggr: 0.99
+                      mode: hash
+                      outputColumnNames: _col0, _col1, _col2
+                      Statistics: Num rows: 40001 Data size: 960024 Basic stats: COMPLETE Column stats: COMPLETE
+                      Reduce Output Operator
+                        key expressions: _col0 (type: bigint)
+                        null sort order: z
+                        sort order: +
+                        Map-reduce partition columns: _col0 (type: bigint)
+                        Statistics: Num rows: 40001 Data size: 960024 Basic stats: COMPLETE Column stats: COMPLETE
+                        value expressions: _col1 (type: bigint), _col2 (type: bigint)
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Reducer 2 
+            Execution mode: vectorized, llap
+            Reduce Operator Tree:
+              Group By Operator
+                aggregations: sum(VALUE._col0)
+                keys: KEY._col0 (type: bigint)
+                mode: mergepartial
+                outputColumnNames: _col0, _col1
+                Statistics: Num rows: 40000 Data size: 640000 Basic stats: COMPLETE Column stats: COMPLETE
+                Map Join Operator
+                  build aggregates:
+                    1 Reducer 4 on Map 3
+                  condition map:
+                       Inner Join 0 to 1
+                  keys:
+                    0 _col0 (type: bigint)
+                    1 _col0 (type: bigint)
+                  outputColumnNames: _col0, _col1, _col2, _col3
+                  input vertices:
+                    1 Map 3
+                  Statistics: Num rows: 13333 Data size: 426656 Basic stats: COMPLETE Column stats: COMPLETE
+                  File Output Operator
+                    compressed: false
+                    Statistics: Num rows: 13333 Data size: 426656 Basic stats: COMPLETE Column stats: COMPLETE
+                    table:
+                        input format: org.apache.hadoop.mapred.SequenceFileInputFormat
+                        output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
+                        serde: org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe
+
+  Stage: Stage-0
+    Fetch Operator
+      limit: -1
+      Processor Tree:
+        ListSink
+
+PREHOOK: query: select count(*), sum(s.s), sum(w.v2), sum(pmod(hash(s.k, s.s, w.v2), 1000003))
+from (select s_k k, sum(s_v) s from psb_s group by s_k) s
+join (select w_k k, sum(w_v) * 2 v2 from psb_w group by w_k having count(*) > 1) w on s.k = w.k
+PREHOOK: type: QUERY
+PREHOOK: Input: default@psb_s
+PREHOOK: Input: default@psb_w
+#### A masked pattern was here ####
+POSTHOOK: query: select count(*), sum(s.s), sum(w.v2), sum(pmod(hash(s.k, s.s, w.v2), 1000003))
+from (select s_k k, sum(s_v) s from psb_s group by s_k) s
+join (select w_k k, sum(w_v) * 2 v2 from psb_w group by w_k having count(*) > 1) w on s.k = w.k
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@psb_s
+POSTHOOK: Input: default@psb_w
+#### A masked pattern was here ####
+300	898	2400	71718608
+PREHOOK: query: select count(*), sum(s.s), sum(w.v2), sum(pmod(hash(s.k, s.s, w.v2), 1000003))
+from (select s_k k, sum(s_v) s from psb_s group by s_k) s
+join (select w_k k, sum(w_v) * 2 v2 from psb_w group by w_k having count(*) > 1) w on s.k = w.k
+PREHOOK: type: QUERY
+PREHOOK: Input: default@psb_s
+PREHOOK: Input: default@psb_w
+#### A masked pattern was here ####
+POSTHOOK: query: select count(*), sum(s.s), sum(w.v2), sum(pmod(hash(s.k, s.s, w.v2), 1000003))
+from (select s_k k, sum(s_v) s from psb_s group by s_k) s
+join (select w_k k, sum(w_v) * 2 v2 from psb_w group by w_k having count(*) > 1) w on s.k = w.k
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@psb_s
+POSTHOOK: Input: default@psb_w
+#### A masked pattern was here ####
+300	898	2400	71718608
+PREHOOK: query: select count(*), sum(s.s), sum(w.v2), sum(pmod(hash(s.k, s.s, w.v2), 1000003))
+from (select s_k k, sum(s_v) s from psb_s group by s_k) s
+join (select w_k k, sum(w_v) * 2 v2 from psb_w group by w_k having count(*) > 1) w on s.k = w.k
+PREHOOK: type: QUERY
+PREHOOK: Input: default@psb_s
+PREHOOK: Input: default@psb_w
+#### A masked pattern was here ####
+POSTHOOK: query: select count(*), sum(s.s), sum(w.v2), sum(pmod(hash(s.k, s.s, w.v2), 1000003))
+from (select s_k k, sum(s_v) s from psb_s group by s_k) s
+join (select w_k k, sum(w_v) * 2 v2 from psb_w group by w_k having count(*) > 1) w on s.k = w.k
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@psb_s
+POSTHOOK: Input: default@psb_w
+#### A masked pattern was here ####
+300	898	2400	71718608
+PREHOOK: query: alter table psb_s update statistics for column s_k set('numDVs'='100000', 'numNulls'='1', 'lowValue'='1', 'highValue'='100000')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@psb_s
+PREHOOK: Output: default@psb_s
+POSTHOOK: query: alter table psb_s update statistics for column s_k set('numDVs'='100000', 'numNulls'='1', 'lowValue'='1', 'highValue'='100000')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@psb_s
+POSTHOOK: Output: default@psb_s
+PREHOOK: query: explain
+select *
+from (select s_k k, sum(s_v) s from psb_s group by s_k) s
+join (select w_k k, w_j j, sum(w_v) v from psb_w group by w_k, w_j) w on s.k = w.k
+PREHOOK: type: QUERY
+PREHOOK: Input: default@psb_s
+PREHOOK: Input: default@psb_w
+#### A masked pattern was here ####
+POSTHOOK: query: explain
+select *
+from (select s_k k, sum(s_v) s from psb_s group by s_k) s
+join (select w_k k, w_j j, sum(w_v) v from psb_w group by w_k, w_j) w on s.k = w.k
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@psb_s
+POSTHOOK: Input: default@psb_w
+#### A masked pattern was here ####
+STAGE DEPENDENCIES:
+  Stage-1 is a root stage
+  Stage-0 depends on stages: Stage-1
+
+STAGE PLANS:
+  Stage: Stage-1
+    Tez
+#### A masked pattern was here ####
+      Edges:
+        Reducer 2 <- Map 1 (SIMPLE_EDGE), Reducer 4 (CUSTOM_SIMPLE_EDGE)
+        Reducer 4 <- Map 3 (CUSTOM_SIMPLE_EDGE)
+#### A masked pattern was here ####
+      Vertices:
+        Map 1 
+            Map Operator Tree:
+                TableScan
+                  alias: psb_s
+                  filterExpr: s_k is not null (type: boolean)
+                  Statistics: Num rows: 10000000 Data size: 120000000 Basic stats: COMPLETE Column stats: COMPLETE
+                  Filter Operator
+                    predicate: s_k is not null (type: boolean)
+                    Statistics: Num rows: 9999999 Data size: 119999988 Basic stats: COMPLETE Column stats: COMPLETE
+                    Group By Operator
+                      aggregations: sum(s_v)
+                      keys: s_k (type: bigint)
+                      minReductionHashAggr: 0.99
+                      mode: hash
+                      outputColumnNames: _col0, _col1
+                      Statistics: Num rows: 100001 Data size: 1600016 Basic stats: COMPLETE Column stats: COMPLETE
+                      Reduce Output Operator
+                        key expressions: _col0 (type: bigint)
+                        null sort order: z
+                        sort order: +
+                        Map-reduce partition columns: _col0 (type: bigint)
+                        Statistics: Num rows: 100001 Data size: 1600016 Basic stats: COMPLETE Column stats: COMPLETE
+                        value expressions: _col1 (type: bigint)
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Map 3 
+            Map Operator Tree:
+                TableScan
+                  alias: psb_w
+                  filterExpr: w_k is not null (type: boolean)
+                  Statistics: Num rows: 10000000 Data size: 160000000 Basic stats: COMPLETE Column stats: COMPLETE
+                  Filter Operator
+                    predicate: w_k is not null (type: boolean)
+                    Statistics: Num rows: 9999999 Data size: 159999984 Basic stats: COMPLETE Column stats: COMPLETE
+                    Group By Operator
+                      aggregations: sum(w_v)
+                      keys: w_k (type: bigint), w_j (type: int)
+                      minReductionHashAggr: 0.99
+                      mode: hash
+                      outputColumnNames: _col0, _col1, _col2
+                      Statistics: Num rows: 80002 Data size: 1600040 Basic stats: COMPLETE Column stats: COMPLETE
+                      Reduce Output Operator
+                        key expressions: _col0 (type: bigint), _col1 (type: int)
+                        null sort order: zz
+                        sort order: ++
+                        Map-reduce partition columns: _col0 (type: bigint), _col1 (type: int)
+                        Statistics: Num rows: 80002 Data size: 1600040 Basic stats: COMPLETE Column stats: COMPLETE
+                        value expressions: _col2 (type: bigint)
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Reducer 2 
+            Execution mode: vectorized, llap
+            Reduce Operator Tree:
+              Group By Operator
+                aggregations: sum(VALUE._col0)
+                keys: KEY._col0 (type: bigint)
+                mode: mergepartial
+                outputColumnNames: _col0, _col1
+                Statistics: Num rows: 100000 Data size: 1600000 Basic stats: COMPLETE Column stats: COMPLETE
+                Map Join Operator
+                  condition map:
+                       Inner Join 0 to 1
+                  keys:
+                    0 _col0 (type: bigint)
+                    1 _col0 (type: bigint)
+                  outputColumnNames: _col0, _col1, _col2, _col3, _col4
+                  input vertices:
+                    1 Reducer 4
+                  Statistics: Num rows: 80000 Data size: 2880000 Basic stats: COMPLETE Column stats: COMPLETE
+                  File Output Operator
+                    compressed: false
+                    Statistics: Num rows: 80000 Data size: 2880000 Basic stats: COMPLETE Column stats: COMPLETE
+                    table:
+                        input format: org.apache.hadoop.mapred.SequenceFileInputFormat
+                        output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
+                        serde: org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe
+        Reducer 4 
+            Execution mode: vectorized, llap
+            Reduce Operator Tree:
+              Group By Operator
+                aggregations: sum(VALUE._col0)
+                keys: KEY._col0 (type: bigint), KEY._col1 (type: int)
+                mode: mergepartial
+                outputColumnNames: _col0, _col1, _col2
+                Statistics: Num rows: 80000 Data size: 1600000 Basic stats: COMPLETE Column stats: COMPLETE
+                unsortedInput: true
+                Reduce Output Operator
+                  key expressions: _col0 (type: bigint)
+                  null sort order: z
+                  sort order: +
+                  Map-reduce partition columns: _col0 (type: bigint)
+                  Statistics: Num rows: 80000 Data size: 1600000 Basic stats: COMPLETE Column stats: COMPLETE
+                  value expressions: _col1 (type: int), _col2 (type: bigint)
+
+  Stage: Stage-0
+    Fetch Operator
+      limit: -1
+      Processor Tree:
+        ListSink
+
+PREHOOK: query: select count(*), sum(s.s), sum(w.v), sum(pmod(hash(s.k, w.j, s.s, w.v), 1000003))
+from (select s_k k, sum(s_v) s from psb_s group by s_k) s
+join (select w_k k, w_j j, sum(w_v) v from psb_w group by w_k, w_j) w on s.k = w.k
+PREHOOK: type: QUERY
+PREHOOK: Input: default@psb_s
+PREHOOK: Input: default@psb_w
+#### A masked pattern was here ####
+POSTHOOK: query: select count(*), sum(s.s), sum(w.v), sum(pmod(hash(s.k, w.j, s.s, w.v), 1000003))
+from (select s_k k, sum(s_v) s from psb_s group by s_k) s
+join (select w_k k, w_j j, sum(w_v) v from psb_w group by w_k, w_j) w on s.k = w.k
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@psb_s
+POSTHOOK: Input: default@psb_w
+#### A masked pattern was here ####
+1000	2998	2600	498838929
+PREHOOK: query: select count(*), sum(s.s), sum(w.v), sum(pmod(hash(s.k, w.j, s.s, w.v), 1000003))
+from (select s_k k, sum(s_v) s from psb_s group by s_k) s
+join (select w_k k, w_j j, sum(w_v) v from psb_w group by w_k, w_j) w on s.k = w.k
+PREHOOK: type: QUERY
+PREHOOK: Input: default@psb_s
+PREHOOK: Input: default@psb_w
+#### A masked pattern was here ####
+POSTHOOK: query: select count(*), sum(s.s), sum(w.v), sum(pmod(hash(s.k, w.j, s.s, w.v), 1000003))
+from (select s_k k, sum(s_v) s from psb_s group by s_k) s
+join (select w_k k, w_j j, sum(w_v) v from psb_w group by w_k, w_j) w on s.k = w.k
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@psb_s
+POSTHOOK: Input: default@psb_w
+#### A masked pattern was here ####
+1000	2998	2600	498838929
+PREHOOK: query: select count(*), sum(s.s), sum(w.v), sum(pmod(hash(s.k, w.j, s.s, w.v), 1000003))
+from (select s_k k, sum(s_v) s from psb_s group by s_k) s
+join (select w_k k, w_j j, sum(w_v) v from psb_w group by w_k, w_j) w on s.k = w.k
+PREHOOK: type: QUERY
+PREHOOK: Input: default@psb_s
+PREHOOK: Input: default@psb_w
+#### A masked pattern was here ####
+POSTHOOK: query: select count(*), sum(s.s), sum(w.v), sum(pmod(hash(s.k, w.j, s.s, w.v), 1000003))
+from (select s_k k, sum(s_v) s from psb_s group by s_k) s
+join (select w_k k, w_j j, sum(w_v) v from psb_w group by w_k, w_j) w on s.k = w.k
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@psb_s
+POSTHOOK: Input: default@psb_w
+#### A masked pattern was here ####
+1000	2998	2600	498838929
+PREHOOK: query: alter table psb_s update statistics for column s_k set('numDVs'='40000', 'numNulls'='1', 'lowValue'='1', 'highValue'='40000')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@psb_s
+PREHOOK: Output: default@psb_s
+POSTHOOK: query: alter table psb_s update statistics for column s_k set('numDVs'='40000', 'numNulls'='1', 'lowValue'='1', 'highValue'='40000')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@psb_s
+POSTHOOK: Output: default@psb_s
+PREHOOK: query: explain
+select *
+from (select s_k k, cast(s_j as bigint) j, sum(s_v) s from psb_s group by s_k, cast(s_j as bigint)) s
+join (select cast(w_j as bigint) j, w_k k, sum(w_v) v from psb_w group by cast(w_j as bigint), w_k) w on s.k = w.k and s.j = w.j
+PREHOOK: type: QUERY
+PREHOOK: Input: default@psb_s
+PREHOOK: Input: default@psb_w
+#### A masked pattern was here ####
+POSTHOOK: query: explain
+select *
+from (select s_k k, cast(s_j as bigint) j, sum(s_v) s from psb_s group by s_k, cast(s_j as bigint)) s
+join (select cast(w_j as bigint) j, w_k k, sum(w_v) v from psb_w group by cast(w_j as bigint), w_k) w on s.k = w.k and s.j = w.j
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@psb_s
+POSTHOOK: Input: default@psb_w
+#### A masked pattern was here ####
+STAGE DEPENDENCIES:
+  Stage-1 is a root stage
+  Stage-0 depends on stages: Stage-1
+
+STAGE PLANS:
+  Stage: Stage-1
+    Tez
+#### A masked pattern was here ####
+      Edges:
+        Reducer 4 <- Map 1 (CUSTOM_SIMPLE_EDGE), Map 3 (SIMPLE_EDGE)
+#### A masked pattern was here ####
+      Vertices:
+        Map 1 
+            Map Operator Tree:
+                TableScan
+                  alias: psb_s
+                  filterExpr: (s_k is not null and s_j is not null) (type: boolean)
+                  Statistics: Num rows: 10000000 Data size: 160000000 Basic stats: COMPLETE Column stats: COMPLETE
+                  Filter Operator
+                    predicate: (s_k is not null and s_j is not null) (type: boolean)
+                    Statistics: Num rows: 9999999 Data size: 159999984 Basic stats: COMPLETE Column stats: COMPLETE
+                    Select Operator
+                      expressions: s_k (type: bigint), UDFToLong(s_j) (type: bigint), s_v (type: int)
+                      outputColumnNames: _col0, _col1, _col2
+                      Statistics: Num rows: 9999999 Data size: 159999984 Basic stats: COMPLETE Column stats: COMPLETE
+                      Group By Operator
+                        aggregations: sum(_col2)
+                        keys: _col0 (type: bigint), _col1 (type: bigint)
+                        minReductionHashAggr: 0.99
+                        mode: hash
+                        outputColumnNames: _col0, _col1, _col2
+                        Statistics: Num rows: 80002 Data size: 1920048 Basic stats: COMPLETE Column stats: COMPLETE
+                        Reduce Output Operator
+                          key expressions: _col0 (type: bigint), _col1 (type: bigint)
+                          null sort order: zz
+                          sort order: ++
+                          Map-reduce partition columns: _col0 (type: bigint), _col1 (type: bigint)
+                          Statistics: Num rows: 80002 Data size: 1920048 Basic stats: COMPLETE Column stats: COMPLETE
+                          value expressions: _col2 (type: bigint)
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Map 3 
+            Map Operator Tree:
+                TableScan
+                  alias: psb_w
+                  filterExpr: (w_k is not null and w_j is not null) (type: boolean)
+                  Statistics: Num rows: 10000000 Data size: 160000000 Basic stats: COMPLETE Column stats: COMPLETE
+                  Filter Operator
+                    predicate: (w_k is not null and w_j is not null) (type: boolean)
+                    Statistics: Num rows: 9999999 Data size: 159999984 Basic stats: COMPLETE Column stats: COMPLETE
+                    Select Operator
+                      expressions: UDFToLong(w_j) (type: bigint), w_k (type: bigint), w_v (type: int)
+                      outputColumnNames: _col0, _col1, _col2
+                      Statistics: Num rows: 9999999 Data size: 159999984 Basic stats: COMPLETE Column stats: COMPLETE
+                      Group By Operator
+                        aggregations: sum(_col2)
+                        keys: _col1 (type: bigint), _col0 (type: bigint)
+                        minReductionHashAggr: 0.99
+                        mode: hash
+                        outputColumnNames: _col0, _col1, _col2
+                        Statistics: Num rows: 80002 Data size: 1920048 Basic stats: COMPLETE Column stats: COMPLETE
+                        Reduce Output Operator
+                          key expressions: _col0 (type: bigint), _col1 (type: bigint)
+                          null sort order: zz
+                          sort order: ++
+                          Map-reduce partition columns: _col0 (type: bigint), _col1 (type: bigint)
+                          Statistics: Num rows: 80002 Data size: 1920048 Basic stats: COMPLETE Column stats: COMPLETE
+                          value expressions: _col2 (type: bigint)
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Reducer 4 
+            Execution mode: vectorized, llap
+            Reduce Operator Tree:
+              Group By Operator
+                aggregations: sum(VALUE._col0)
+                keys: KEY._col0 (type: bigint), KEY._col1 (type: bigint)
+                mode: mergepartial
+                outputColumnNames: _col0, _col1, _col2
+                Statistics: Num rows: 80000 Data size: 1920000 Basic stats: COMPLETE Column stats: COMPLETE
+                Select Operator
+                  expressions: _col1 (type: bigint), _col0 (type: bigint), _col2 (type: bigint)
+                  outputColumnNames: _col0, _col1, _col2
+                  Statistics: Num rows: 80000 Data size: 1920000 Basic stats: COMPLETE Column stats: COMPLETE
+                  Map Join Operator
+                    build aggregates:
+                      0 Reducer 2 on Map 1
+                    condition map:
+                         Inner Join 0 to 1
+                    keys:
+                      0 _col0 (type: bigint), _col1 (type: bigint)
+                      1 _col1 (type: bigint), _col0 (type: bigint)
+                    outputColumnNames: _col0, _col1, _col2, _col3, _col4, _col5
+                    input vertices:
+                      0 Map 1
+                    Statistics: Num rows: 134544 Data size: 6458112 Basic stats: COMPLETE Column stats: COMPLETE
+                    File Output Operator
+                      compressed: false
+                      Statistics: Num rows: 134544 Data size: 6458112 Basic stats: COMPLETE Column stats: COMPLETE
+                      table:
+                          input format: org.apache.hadoop.mapred.SequenceFileInputFormat
+                          output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
+                          serde: org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe
+
+  Stage: Stage-0
+    Fetch Operator
+      limit: -1
+      Processor Tree:
+        ListSink
+
+PREHOOK: query: select count(*), sum(s.s), sum(w.v), sum(pmod(hash(s.k, s.j, s.s, w.v), 1000003))
+from (select s_k k, cast(s_j as bigint) j, sum(s_v) s from psb_s group by s_k, cast(s_j as bigint)) s
+join (select cast(w_j as bigint) j, w_k k, sum(w_v) v from psb_w group by cast(w_j as bigint), w_k) w on s.k = w.k and s.j = w.j
+PREHOOK: type: QUERY
+PREHOOK: Input: default@psb_s
+PREHOOK: Input: default@psb_w
+#### A masked pattern was here ####
+POSTHOOK: query: select count(*), sum(s.s), sum(w.v), sum(pmod(hash(s.k, s.j, s.s, w.v), 1000003))
+from (select s_k k, cast(s_j as bigint) j, sum(s_v) s from psb_s group by s_k, cast(s_j as bigint)) s
+join (select cast(w_j as bigint) j, w_k k, sum(w_v) v from psb_w group by cast(w_j as bigint), w_k) w on s.k = w.k and s.j = w.j
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@psb_s
+POSTHOOK: Input: default@psb_w
+#### A masked pattern was here ####
+1000	2998	2600	498838929
+PREHOOK: query: select count(*), sum(s.s), sum(w.v), sum(pmod(hash(s.k, s.j, s.s, w.v), 1000003))
+from (select s_k k, cast(s_j as bigint) j, sum(s_v) s from psb_s group by s_k, cast(s_j as bigint)) s
+join (select cast(w_j as bigint) j, w_k k, sum(w_v) v from psb_w group by cast(w_j as bigint), w_k) w on s.k = w.k and s.j = w.j
+PREHOOK: type: QUERY
+PREHOOK: Input: default@psb_s
+PREHOOK: Input: default@psb_w
+#### A masked pattern was here ####
+POSTHOOK: query: select count(*), sum(s.s), sum(w.v), sum(pmod(hash(s.k, s.j, s.s, w.v), 1000003))
+from (select s_k k, cast(s_j as bigint) j, sum(s_v) s from psb_s group by s_k, cast(s_j as bigint)) s
+join (select cast(w_j as bigint) j, w_k k, sum(w_v) v from psb_w group by cast(w_j as bigint), w_k) w on s.k = w.k and s.j = w.j
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@psb_s
+POSTHOOK: Input: default@psb_w
+#### A masked pattern was here ####
+1000	2998	2600	498838929
+PREHOOK: query: select count(*), count(w.k), count(c.k), sum(s.s), sum(w.v), sum(c.v),
+  sum(pmod(hash(s.k, s.j, w.k, c.k), 1000003) * pmod(hash(s.s, w.v, c.v), 1000033))
+from (select s_k k, s_j j, sum(s_v) s from psb_s group by s_k, s_j) s
+left join (select w_k k, w_j j, sum(w_v) v from psb_w group by w_k, w_j) w on s.k = w.k and s.j = w.j
+left join (select c_k k, c_j j, sum(c_v) v from psb_c group by c_k, c_j) c on s.k = c.k and s.j = c.j
+PREHOOK: type: QUERY
+PREHOOK: Input: default@psb_c
+PREHOOK: Input: default@psb_s
+PREHOOK: Input: default@psb_w
+#### A masked pattern was here ####
+POSTHOOK: query: select count(*), count(w.k), count(c.k), sum(s.s), sum(w.v), sum(c.v),
+  sum(pmod(hash(s.k, s.j, w.k, c.k), 1000003) * pmod(hash(s.s, w.v, c.v), 1000033))
+from (select s_k k, s_j j, sum(s_v) s from psb_s group by s_k, s_j) s
+left join (select w_k k, w_j j, sum(w_v) v from psb_w group by w_k, w_j) w on s.k = w.k and s.j = w.j
+left join (select c_k k, c_j j, sum(c_v) v from psb_c group by c_k, c_j) c on s.k = c.k and s.j = c.j
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@psb_c
+POSTHOOK: Input: default@psb_s
+POSTHOOK: Input: default@psb_w
+#### A masked pattern was here ####
+2002	1000	1500	6506	2600	7486	3156567616431
+PREHOOK: query: select count(*), count(w.k), count(c.k), sum(s.s), sum(w.v), sum(c.v),
+  sum(pmod(hash(s.k, s.j, w.k, c.k), 1000003) * pmod(hash(s.s, w.v, c.v), 1000033))
+from (select s_k k, s_j j, sum(s_v) s from psb_s group by s_k, s_j) s
+left join (select w_k k, w_j j, sum(w_v) v from psb_w group by w_k, w_j) w on s.k = w.k and s.j = w.j
+left join (select c_k k, c_j j, sum(c_v) v from psb_c group by c_k, c_j) c on s.k = c.k and s.j = c.j
+PREHOOK: type: QUERY
+PREHOOK: Input: default@psb_c
+PREHOOK: Input: default@psb_s
+PREHOOK: Input: default@psb_w
+#### A masked pattern was here ####
+POSTHOOK: query: select count(*), count(w.k), count(c.k), sum(s.s), sum(w.v), sum(c.v),
+  sum(pmod(hash(s.k, s.j, w.k, c.k), 1000003) * pmod(hash(s.s, w.v, c.v), 1000033))
+from (select s_k k, s_j j, sum(s_v) s from psb_s group by s_k, s_j) s
+left join (select w_k k, w_j j, sum(w_v) v from psb_w group by w_k, w_j) w on s.k = w.k and s.j = w.j
+left join (select c_k k, c_j j, sum(c_v) v from psb_c group by c_k, c_j) c on s.k = c.k and s.j = c.j
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@psb_c
+POSTHOOK: Input: default@psb_s
+POSTHOOK: Input: default@psb_w
+#### A masked pattern was here ####
+2002	1000	1500	6506	2600	7486	3156567616431
+PREHOOK: query: select count(*), count(w.k), sum(s.s), sum(w.c), sum(w.v), sum(pmod(hash(s.k, w.k), 1000003) * pmod(hash(s.s, w.c, w.v), 1000033))
+from (select s_k k, sum(s_v) s from psb_s group by s_k) s
+left join (select w_k k, count(*) c, sum(w_v) v from psb_w group by w_k) w on s.k = w.k
+PREHOOK: type: QUERY
+PREHOOK: Input: default@psb_s
+PREHOOK: Input: default@psb_w
+#### A masked pattern was here ####
+POSTHOOK: query: select count(*), count(w.k), sum(s.s), sum(w.c), sum(w.v), sum(pmod(hash(s.k, w.k), 1000003) * pmod(hash(s.s, w.c, w.v), 1000033))
+from (select s_k k, sum(s_v) s from psb_s group by s_k) s
+left join (select w_k k, count(*) c, sum(w_v) v from psb_w group by w_k) w on s.k = w.k
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@psb_s
+POSTHOOK: Input: default@psb_w
+#### A masked pattern was here ####
+2001	1000	6506	1300	2600	188779241689
