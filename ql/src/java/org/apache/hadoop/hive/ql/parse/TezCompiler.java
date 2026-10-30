@@ -110,6 +110,7 @@ import org.apache.hadoop.hive.ql.optimizer.topnkey.TopNKeyPushdownProcessor;
 import org.apache.hadoop.hive.ql.optimizer.correlation.ReduceSinkJoinDeDuplication;
 import org.apache.hadoop.hive.ql.optimizer.metainfo.annotation.AnnotateWithOpTraits;
 import org.apache.hadoop.hive.ql.optimizer.physical.AnnotateRunTimeStatsOptimizer;
+import org.apache.hadoop.hive.ql.optimizer.physical.BuildAggregateFusion;
 import org.apache.hadoop.hive.ql.optimizer.physical.CrossProductHandler;
 import org.apache.hadoop.hive.ql.optimizer.physical.LlapClusterStateForCompile;
 import org.apache.hadoop.hive.ql.optimizer.physical.LlapDecider;
@@ -858,6 +859,12 @@ public class TezCompiler extends TaskCompiler {
       physicalCtx = new LlapDecider(llapInfo).resolve(physicalCtx);
     } else {
       LOG.debug("Skipping llap decider");
+    }
+
+    // after vectorization and the LLAP decision: it moves vectorized works, whose LLAP modes must agree
+    if (conf.getBoolVar(HiveConf.ConfVars.HIVE_OPTIMIZE_JOIN_BUILD_AGGREGATE_FUSION)
+        && conf.getBoolVar(HiveConf.ConfVars.HIVE_CONVERT_JOIN_BUCKET_MAPJOIN_TEZ)) {
+      physicalCtx = new BuildAggregateFusion().resolve(physicalCtx);
     }
 
     //  This optimizer will serialize all filters that made it to the

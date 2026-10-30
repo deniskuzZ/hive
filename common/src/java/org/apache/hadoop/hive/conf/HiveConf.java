@@ -4800,6 +4800,11 @@ public class HiveConf extends Configuration {
     HIVE_CONVERT_JOIN_BUCKET_MAPJOIN_TEZ("hive.convert.join.bucket.mapjoin.tez", true,
         "Whether joins can be automatically converted to bucket map joins in hive \n" +
         "when tez is used as the execution engine."),
+    HIVE_OPTIMIZE_JOIN_BUILD_AGGREGATE_FUSION("hive.optimize.join.build.aggregate.fusion", false,
+        "Whether the final GROUP BY that only feeds the build input of a join partitioned on its keys runs in the join's\n" +
+        "task: its partial aggregates are partitioned into the join's vertex and merged as the hash table is loaded,\n" +
+        "instead of in a vertex of their own whose rows are shuffled again. Applies to the bucket map joins of\n" +
+        "hive.convert.join.bucket.mapjoin.tez over an unsorted GROUP BY input (hive.optimize.groupby.unsorted.shuffle)."),
     HIVE_TEZ_BMJ_USE_SUBCACHE("hive.tez.bmj.use.subcache", true,
         "Use subcache to reuse hashtable across multiple tasks"),
     HIVE_CHECK_CROSS_PRODUCT("hive.exec.check.crossproducts", true,

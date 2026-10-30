@@ -38,6 +38,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.apache.hadoop.hive.common.Pool;
 import org.apache.hadoop.hive.llap.LlapDaemonInfo;
+import org.apache.hadoop.hive.llap.LlapUtil;
 import org.apache.hadoop.hive.ql.exec.MemoryMonitorInfo;
 import org.apache.hadoop.hive.ql.exec.Operator;
 import org.apache.hadoop.hive.ql.exec.Utilities;
@@ -54,11 +55,15 @@ import org.apache.hadoop.hive.ql.exec.MapredContext;
 import org.apache.hadoop.hive.ql.exec.mr.ExecMapperContext;
 import org.apache.hadoop.hive.ql.exec.persistence.MapJoinTableContainer;
 import org.apache.hadoop.hive.ql.exec.persistence.MapJoinTableContainerSerDe;
+import org.apache.hadoop.hive.ql.exec.tez.BuildWorkRunner;
 import org.apache.hadoop.hive.ql.exec.tez.TezContext;
 import org.apache.hadoop.hive.ql.metadata.HiveException;
 import org.apache.hadoop.hive.ql.plan.MapJoinDesc;
+import org.apache.hadoop.hive.ql.plan.ReduceWork;
 import org.apache.hadoop.hive.serde2.SerDeException;
 import org.apache.hadoop.io.BytesWritable;
+import org.apache.hadoop.mapred.JobConf;
+import org.apache.hadoop.mapred.OutputCollector;
 import org.apache.tez.runtime.api.Input;
 import org.apache.tez.runtime.api.LogicalInput;
 import org.apache.tez.runtime.library.api.KeyValueReader;
@@ -86,6 +91,62 @@ public class VectorMapJoinFastHashTableLoader implements org.apache.hadoop.hive.
   private FixedSizedObjectPool<HashTableElementBatch> batchPool;
   private BlockingQueue<HashTableElementBatch>[] loadBatchQueues;
   private static final HashTableElementBatch DONE_SENTINEL = new HashTableElementBatch();
+
+  /**
+   * The entries of one input, queued by the hash of their key for the loading threads: the input's records, or the
+   * rows a build work emits for the input.
+   */
+  private final class Entries implements OutputCollector<Object, Object> {
+    private final VectorMapJoinFastTableContainer tableContainer;
+    private final String inputName;
+    // null when the memory is not monitored
+    private final MemoryMonitorInfo memoryMonitorInfo;
+    private final long effectiveThreshold;
+    private long received;
+
+    Entries(VectorMapJoinFastTableContainer tableContainer, String inputName, MemoryMonitorInfo memoryMonitorInfo,
+        long effectiveThreshold) {
+      this.tableContainer = tableContainer;
+      this.inputName = inputName;
+      this.memoryMonitorInfo = memoryMonitorInfo;
+      this.effectiveThreshold = effectiveThreshold;
+    }
+
+    @Override
+    public void collect(Object key, Object value) throws IOException {
+      BytesWritable currentKey = (BytesWritable) key;
+      BytesWritable currentValue = (BytesWritable) value;
+      long hashCode;
+      try {
+        hashCode = tableContainer.getHashCode(currentKey);
+      } catch (HiveException e) {
+        throw new IOException(e);
+      }
+      int partitionId = (int) ((numLoadThreads - 1) & hashCode); // numLoadThreads divisor must be a power of 2!
+      // call getBytes as copy is called later
+      HashTableElement h = new HashTableElement(hashCode, currentValue.copyBytes(), currentKey.copyBytes());
+      if (elementBatches[partitionId].addElement(h)) {
+        loadBatchQueues[partitionId].add(elementBatches[partitionId]);
+        elementBatches[partitionId] = batchPool.take();
+      }
+      received++;
+      if (memoryMonitorInfo != null && (received % memoryMonitorInfo.getMemoryCheckInterval() == 0)) {
+        final long estMemUsage = tableContainer.getEstimatedMemorySize();
+        if (estMemUsage > effectiveThreshold) {
+          String msg = "Hash table loading exceeded memory limits for input: " + inputName +
+              " numEntries: " + received + " estimatedMemoryUsage: " + estMemUsage +
+              " effectiveThreshold: " + effectiveThreshold + " memoryMonitorInfo: " + memoryMonitorInfo;
+          LOG.error(msg);
+          throw new MapJoinMemoryExhaustionError(msg);
+        } else {
+          LOG.info(
+              "Checking hash table loader memory usage for input: {} numEntries: {} "
+                  + "estimatedMemoryUsage: {} effectiveThreshold: {}",
+              inputName, received, estMemUsage, effectiveThreshold);
+        }
+      }
+    }
+  }
 
   public VectorMapJoinFastHashTableLoader() {
 
@@ -309,36 +370,25 @@ public class VectorMapJoinFastHashTableLoader implements org.apache.hadoop.hive.
         // Submit parallel loading Threads
         List<Future<?>> loadFutures = submitQueueDrainThreads(tableContainer);
 
-        long receivedEntries = 0;
         long startTime = System.currentTimeMillis();
-        while (kvReader.next()) {
-          BytesWritable currentKey = (BytesWritable) kvReader.getCurrentKey();
-          BytesWritable currentValue = (BytesWritable) kvReader.getCurrentValue();
-          long hashCode = tableContainer.getHashCode(currentKey);
-          int partitionId = (int) ((numLoadThreads - 1) & hashCode); // numLoadThreads divisor must be a power of 2!
-          // call getBytes as copy is called later
-          HashTableElement h = new HashTableElement(hashCode, currentValue.copyBytes(), currentKey.copyBytes());
-          if (elementBatches[partitionId].addElement(h)) {
-            loadBatchQueues[partitionId].add(elementBatches[partitionId]);
-            elementBatches[partitionId] = batchPool.take();
+        Entries entries = new Entries(tableContainer, inputName, doMemCheck ? memoryMonitorInfo : null,
+            effectiveThreshold);
+        ReduceWork buildWork = desc.getParentToBuildWork().get(pos);
+        if (buildWork == null) {
+          while (kvReader.next()) {
+            entries.collect(kvReader.getCurrentKey(), kvReader.getCurrentValue());
           }
-          receivedEntries++;
-          if (doMemCheck && (receivedEntries % memoryMonitorInfo.getMemoryCheckInterval() == 0)) {
-            final long estMemUsage = tableContainer.getEstimatedMemorySize();
-            if (estMemUsage > effectiveThreshold) {
-              String msg = "Hash table loading exceeded memory limits for input: " + inputName +
-                  " numEntries: " + receivedEntries + " estimatedMemoryUsage: " + estMemUsage +
-                  " effectiveThreshold: " + effectiveThreshold + " memoryMonitorInfo: " + memoryMonitorInfo;
-                LOG.error(msg);
-                throw new MapJoinMemoryExhaustionError(msg);
-              } else {
-              LOG.info(
-                  "Checking hash table loader memory usage for input: {} numEntries: {} "
-                      + "estimatedMemoryUsage: {} effectiveThreshold: {}",
-                  inputName, receivedEntries, estMemUsage, effectiveThreshold);
-            }
-          }
+        } else {
+          // the input is the partial aggregates of the build input's GROUP BY: it runs here, beside the table it
+          // fills, with the memory the table leaves
+          long taskMemory = desc.getMaxMemoryAvailable();
+          long buildMemory = doMemCheck ? Math.max(taskMemory - effectiveThreshold, taskMemory / 4) : taskMemory / 2;
+          LOG.info("Running {} on input {} for the hash table, with {} for its operators", buildWork.getName(),
+              inputName, LlapUtil.humanReadableByteCount(buildMemory));
+          BuildWorkRunner.run(buildWork, hconf instanceof JobConf jobConf ? jobConf : new JobConf(hconf), kvReader,
+              entries, buildMemory);
         }
+        long receivedEntries = entries.received;
 
         LOG.info("Finished loading the queue for input: {} waiting {} minutes for TPool shutdown", inputName, 2);
         addQueueDoneSentinel();
