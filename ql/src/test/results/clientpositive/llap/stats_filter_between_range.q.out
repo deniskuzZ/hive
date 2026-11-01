@@ -1,0 +1,454 @@
+PREHOOK: query: create table sb_date_dim (d_date_sk bigint, d_date date, d_month_seq int)
+PREHOOK: type: CREATETABLE
+PREHOOK: Output: database:default
+PREHOOK: Output: default@sb_date_dim
+POSTHOOK: query: create table sb_date_dim (d_date_sk bigint, d_date date, d_month_seq int)
+POSTHOOK: type: CREATETABLE
+POSTHOOK: Output: database:default
+POSTHOOK: Output: default@sb_date_dim
+PREHOOK: query: alter table sb_date_dim update statistics set('numRows'='73049','rawDataSize'='3449552')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@sb_date_dim
+PREHOOK: Output: default@sb_date_dim
+POSTHOOK: query: alter table sb_date_dim update statistics set('numRows'='73049','rawDataSize'='3449552')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@sb_date_dim
+POSTHOOK: Output: default@sb_date_dim
+PREHOOK: query: alter table sb_date_dim update statistics for column d_date_sk set('numDVs'='67850','numNulls'='0','lowValue'='2415022','highValue'='2488070')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@sb_date_dim
+PREHOOK: Output: default@sb_date_dim
+POSTHOOK: query: alter table sb_date_dim update statistics for column d_date_sk set('numDVs'='67850','numNulls'='0','lowValue'='2415022','highValue'='2488070')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@sb_date_dim
+POSTHOOK: Output: default@sb_date_dim
+PREHOOK: query: alter table sb_date_dim update statistics for column d_date set('numDVs'='76511','numNulls'='0','lowValue'='-25566','highValue'='47482')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@sb_date_dim
+PREHOOK: Output: default@sb_date_dim
+POSTHOOK: query: alter table sb_date_dim update statistics for column d_date set('numDVs'='76511','numNulls'='0','lowValue'='-25566','highValue'='47482')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@sb_date_dim
+POSTHOOK: Output: default@sb_date_dim
+PREHOOK: query: alter table sb_date_dim update statistics for column d_month_seq set('numDVs'='2398','numNulls'='0','lowValue'='0','highValue'='2400')
+PREHOOK: type: ALTERTABLE_UPDATETABLESTATS
+PREHOOK: Input: default@sb_date_dim
+PREHOOK: Output: default@sb_date_dim
+POSTHOOK: query: alter table sb_date_dim update statistics for column d_month_seq set('numDVs'='2398','numNulls'='0','lowValue'='0','highValue'='2400')
+POSTHOOK: type: ALTERTABLE_UPDATETABLESTATS
+POSTHOOK: Input: default@sb_date_dim
+POSTHOOK: Output: default@sb_date_dim
+PREHOOK: query: explain select d_date_sk from sb_date_dim where d_date between date '2002-08-06' and date '2002-09-05'
+PREHOOK: type: QUERY
+PREHOOK: Input: default@sb_date_dim
+#### A masked pattern was here ####
+POSTHOOK: query: explain select d_date_sk from sb_date_dim where d_date between date '2002-08-06' and date '2002-09-05'
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@sb_date_dim
+#### A masked pattern was here ####
+STAGE DEPENDENCIES:
+  Stage-1 is a root stage
+  Stage-0 depends on stages: Stage-1
+
+STAGE PLANS:
+  Stage: Stage-1
+    Tez
+#### A masked pattern was here ####
+      Vertices:
+        Map 1 
+            Map Operator Tree:
+                TableScan
+                  alias: sb_date_dim
+                  filterExpr: d_date BETWEEN DATE'2002-08-06' AND DATE'2002-09-05' (type: boolean)
+                  Statistics: Num rows: 73049 Data size: 4675136 Basic stats: COMPLETE Column stats: COMPLETE
+                  Filter Operator
+                    predicate: d_date BETWEEN DATE'2002-08-06' AND DATE'2002-09-05' (type: boolean)
+                    Statistics: Num rows: 18264 Data size: 1168896 Basic stats: COMPLETE Column stats: COMPLETE
+                    Select Operator
+                      expressions: d_date_sk (type: bigint)
+                      outputColumnNames: _col0
+                      Statistics: Num rows: 18264 Data size: 146112 Basic stats: COMPLETE Column stats: COMPLETE
+                      File Output Operator
+                        compressed: false
+                        Statistics: Num rows: 18264 Data size: 146112 Basic stats: COMPLETE Column stats: COMPLETE
+                        table:
+                            input format: org.apache.hadoop.mapred.SequenceFileInputFormat
+                            output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
+                            serde: org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+
+  Stage: Stage-0
+    Fetch Operator
+      limit: -1
+      Processor Tree:
+        ListSink
+
+PREHOOK: query: explain select d_date_sk from sb_date_dim where d_month_seq between 1200 and 1211
+PREHOOK: type: QUERY
+PREHOOK: Input: default@sb_date_dim
+#### A masked pattern was here ####
+POSTHOOK: query: explain select d_date_sk from sb_date_dim where d_month_seq between 1200 and 1211
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@sb_date_dim
+#### A masked pattern was here ####
+STAGE DEPENDENCIES:
+  Stage-1 is a root stage
+  Stage-0 depends on stages: Stage-1
+
+STAGE PLANS:
+  Stage: Stage-1
+    Tez
+#### A masked pattern was here ####
+      Vertices:
+        Map 1 
+            Map Operator Tree:
+                TableScan
+                  alias: sb_date_dim
+                  filterExpr: d_month_seq BETWEEN 1200 AND 1211 (type: boolean)
+                  Statistics: Num rows: 73049 Data size: 876588 Basic stats: COMPLETE Column stats: COMPLETE
+                  Filter Operator
+                    predicate: d_month_seq BETWEEN 1200 AND 1211 (type: boolean)
+                    Statistics: Num rows: 366 Data size: 4392 Basic stats: COMPLETE Column stats: COMPLETE
+                    Select Operator
+                      expressions: d_date_sk (type: bigint)
+                      outputColumnNames: _col0
+                      Statistics: Num rows: 366 Data size: 2928 Basic stats: COMPLETE Column stats: COMPLETE
+                      File Output Operator
+                        compressed: false
+                        Statistics: Num rows: 366 Data size: 2928 Basic stats: COMPLETE Column stats: COMPLETE
+                        table:
+                            input format: org.apache.hadoop.mapred.SequenceFileInputFormat
+                            output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
+                            serde: org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+
+  Stage: Stage-0
+    Fetch Operator
+      limit: -1
+      Processor Tree:
+        ListSink
+
+PREHOOK: query: explain select d_date_sk from sb_date_dim where d_date between date '2002-08-06' and date '2002-09-05'
+PREHOOK: type: QUERY
+PREHOOK: Input: default@sb_date_dim
+#### A masked pattern was here ####
+POSTHOOK: query: explain select d_date_sk from sb_date_dim where d_date between date '2002-08-06' and date '2002-09-05'
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@sb_date_dim
+#### A masked pattern was here ####
+STAGE DEPENDENCIES:
+  Stage-1 is a root stage
+  Stage-0 depends on stages: Stage-1
+
+STAGE PLANS:
+  Stage: Stage-1
+    Tez
+#### A masked pattern was here ####
+      Vertices:
+        Map 1 
+            Map Operator Tree:
+                TableScan
+                  alias: sb_date_dim
+                  filterExpr: d_date BETWEEN DATE'2002-08-06' AND DATE'2002-09-05' (type: boolean)
+                  Statistics: Num rows: 73049 Data size: 4675136 Basic stats: COMPLETE Column stats: COMPLETE
+                  Filter Operator
+                    predicate: d_date BETWEEN DATE'2002-08-06' AND DATE'2002-09-05' (type: boolean)
+                    Statistics: Num rows: 30 Data size: 1920 Basic stats: COMPLETE Column stats: COMPLETE
+                    Select Operator
+                      expressions: d_date_sk (type: bigint)
+                      outputColumnNames: _col0
+                      Statistics: Num rows: 30 Data size: 240 Basic stats: COMPLETE Column stats: COMPLETE
+                      File Output Operator
+                        compressed: false
+                        Statistics: Num rows: 30 Data size: 240 Basic stats: COMPLETE Column stats: COMPLETE
+                        table:
+                            input format: org.apache.hadoop.mapred.SequenceFileInputFormat
+                            output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
+                            serde: org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+
+  Stage: Stage-0
+    Fetch Operator
+      limit: -1
+      Processor Tree:
+        ListSink
+
+PREHOOK: query: explain select d_date_sk from sb_date_dim where d_month_seq between 1200 and 1211
+PREHOOK: type: QUERY
+PREHOOK: Input: default@sb_date_dim
+#### A masked pattern was here ####
+POSTHOOK: query: explain select d_date_sk from sb_date_dim where d_month_seq between 1200 and 1211
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@sb_date_dim
+#### A masked pattern was here ####
+STAGE DEPENDENCIES:
+  Stage-1 is a root stage
+  Stage-0 depends on stages: Stage-1
+
+STAGE PLANS:
+  Stage: Stage-1
+    Tez
+#### A masked pattern was here ####
+      Vertices:
+        Map 1 
+            Map Operator Tree:
+                TableScan
+                  alias: sb_date_dim
+                  filterExpr: d_month_seq BETWEEN 1200 AND 1211 (type: boolean)
+                  Statistics: Num rows: 73049 Data size: 876588 Basic stats: COMPLETE Column stats: COMPLETE
+                  Filter Operator
+                    predicate: d_month_seq BETWEEN 1200 AND 1211 (type: boolean)
+                    Statistics: Num rows: 366 Data size: 4392 Basic stats: COMPLETE Column stats: COMPLETE
+                    Select Operator
+                      expressions: d_date_sk (type: bigint)
+                      outputColumnNames: _col0
+                      Statistics: Num rows: 366 Data size: 2928 Basic stats: COMPLETE Column stats: COMPLETE
+                      File Output Operator
+                        compressed: false
+                        Statistics: Num rows: 366 Data size: 2928 Basic stats: COMPLETE Column stats: COMPLETE
+                        table:
+                            input format: org.apache.hadoop.mapred.SequenceFileInputFormat
+                            output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
+                            serde: org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+
+  Stage: Stage-0
+    Fetch Operator
+      limit: -1
+      Processor Tree:
+        ListSink
+
+PREHOOK: query: explain select d_date_sk from sb_date_dim where d_month_seq between 2300 and 9999
+PREHOOK: type: QUERY
+PREHOOK: Input: default@sb_date_dim
+#### A masked pattern was here ####
+POSTHOOK: query: explain select d_date_sk from sb_date_dim where d_month_seq between 2300 and 9999
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@sb_date_dim
+#### A masked pattern was here ####
+STAGE DEPENDENCIES:
+  Stage-1 is a root stage
+  Stage-0 depends on stages: Stage-1
+
+STAGE PLANS:
+  Stage: Stage-1
+    Tez
+#### A masked pattern was here ####
+      Vertices:
+        Map 1 
+            Map Operator Tree:
+                TableScan
+                  alias: sb_date_dim
+                  filterExpr: d_month_seq BETWEEN 2300 AND 9999 (type: boolean)
+                  Statistics: Num rows: 73049 Data size: 876588 Basic stats: COMPLETE Column stats: COMPLETE
+                  Filter Operator
+                    predicate: d_month_seq BETWEEN 2300 AND 9999 (type: boolean)
+                    Statistics: Num rows: 3044 Data size: 36528 Basic stats: COMPLETE Column stats: COMPLETE
+                    Select Operator
+                      expressions: d_date_sk (type: bigint)
+                      outputColumnNames: _col0
+                      Statistics: Num rows: 3044 Data size: 24352 Basic stats: COMPLETE Column stats: COMPLETE
+                      File Output Operator
+                        compressed: false
+                        Statistics: Num rows: 3044 Data size: 24352 Basic stats: COMPLETE Column stats: COMPLETE
+                        table:
+                            input format: org.apache.hadoop.mapred.SequenceFileInputFormat
+                            output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
+                            serde: org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+
+  Stage: Stage-0
+    Fetch Operator
+      limit: -1
+      Processor Tree:
+        ListSink
+
+PREHOOK: query: explain select d_date_sk from sb_date_dim where d_month_seq between -500 and 99
+PREHOOK: type: QUERY
+PREHOOK: Input: default@sb_date_dim
+#### A masked pattern was here ####
+POSTHOOK: query: explain select d_date_sk from sb_date_dim where d_month_seq between -500 and 99
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@sb_date_dim
+#### A masked pattern was here ####
+STAGE DEPENDENCIES:
+  Stage-1 is a root stage
+  Stage-0 depends on stages: Stage-1
+
+STAGE PLANS:
+  Stage: Stage-1
+    Tez
+#### A masked pattern was here ####
+      Vertices:
+        Map 1 
+            Map Operator Tree:
+                TableScan
+                  alias: sb_date_dim
+                  filterExpr: d_month_seq BETWEEN -500 AND 99 (type: boolean)
+                  Statistics: Num rows: 73049 Data size: 876588 Basic stats: COMPLETE Column stats: COMPLETE
+                  Filter Operator
+                    predicate: d_month_seq BETWEEN -500 AND 99 (type: boolean)
+                    Statistics: Num rows: 3013 Data size: 36156 Basic stats: COMPLETE Column stats: COMPLETE
+                    Select Operator
+                      expressions: d_date_sk (type: bigint)
+                      outputColumnNames: _col0
+                      Statistics: Num rows: 3013 Data size: 24104 Basic stats: COMPLETE Column stats: COMPLETE
+                      File Output Operator
+                        compressed: false
+                        Statistics: Num rows: 3013 Data size: 24104 Basic stats: COMPLETE Column stats: COMPLETE
+                        table:
+                            input format: org.apache.hadoop.mapred.SequenceFileInputFormat
+                            output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
+                            serde: org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+
+  Stage: Stage-0
+    Fetch Operator
+      limit: -1
+      Processor Tree:
+        ListSink
+
+PREHOOK: query: explain select d_date_sk from sb_date_dim where d_month_seq between 5000 and 6000
+PREHOOK: type: QUERY
+PREHOOK: Input: default@sb_date_dim
+#### A masked pattern was here ####
+POSTHOOK: query: explain select d_date_sk from sb_date_dim where d_month_seq between 5000 and 6000
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@sb_date_dim
+#### A masked pattern was here ####
+STAGE DEPENDENCIES:
+  Stage-1 is a root stage
+  Stage-0 depends on stages: Stage-1
+
+STAGE PLANS:
+  Stage: Stage-1
+    Tez
+#### A masked pattern was here ####
+      Vertices:
+        Map 1 
+            Map Operator Tree:
+                TableScan
+                  alias: sb_date_dim
+                  filterExpr: d_month_seq BETWEEN 5000 AND 6000 (type: boolean)
+                  Statistics: Num rows: 73049 Data size: 876588 Basic stats: COMPLETE Column stats: COMPLETE
+                  Filter Operator
+                    predicate: d_month_seq BETWEEN 5000 AND 6000 (type: boolean)
+                    Statistics: Num rows: 1 Data size: 12 Basic stats: COMPLETE Column stats: COMPLETE
+                    Select Operator
+                      expressions: d_date_sk (type: bigint)
+                      outputColumnNames: _col0
+                      Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                      File Output Operator
+                        compressed: false
+                        Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                        table:
+                            input format: org.apache.hadoop.mapred.SequenceFileInputFormat
+                            output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
+                            serde: org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+
+  Stage: Stage-0
+    Fetch Operator
+      limit: -1
+      Processor Tree:
+        ListSink
+
+PREHOOK: query: explain select d_date_sk from sb_date_dim where d_month_seq between 1200 and 1200
+PREHOOK: type: QUERY
+PREHOOK: Input: default@sb_date_dim
+#### A masked pattern was here ####
+POSTHOOK: query: explain select d_date_sk from sb_date_dim where d_month_seq between 1200 and 1200
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@sb_date_dim
+#### A masked pattern was here ####
+STAGE DEPENDENCIES:
+  Stage-1 is a root stage
+  Stage-0 depends on stages: Stage-1
+
+STAGE PLANS:
+  Stage: Stage-1
+    Tez
+#### A masked pattern was here ####
+      Vertices:
+        Map 1 
+            Map Operator Tree:
+                TableScan
+                  alias: sb_date_dim
+                  filterExpr: (d_month_seq = 1200) (type: boolean)
+                  Statistics: Num rows: 73049 Data size: 876588 Basic stats: COMPLETE Column stats: COMPLETE
+                  Filter Operator
+                    predicate: (d_month_seq = 1200) (type: boolean)
+                    Statistics: Num rows: 30 Data size: 360 Basic stats: COMPLETE Column stats: COMPLETE
+                    Select Operator
+                      expressions: d_date_sk (type: bigint)
+                      outputColumnNames: _col0
+                      Statistics: Num rows: 30 Data size: 240 Basic stats: COMPLETE Column stats: COMPLETE
+                      File Output Operator
+                        compressed: false
+                        Statistics: Num rows: 30 Data size: 240 Basic stats: COMPLETE Column stats: COMPLETE
+                        table:
+                            input format: org.apache.hadoop.mapred.SequenceFileInputFormat
+                            output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
+                            serde: org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+
+  Stage: Stage-0
+    Fetch Operator
+      limit: -1
+      Processor Tree:
+        ListSink
+
+PREHOOK: query: explain select d_date_sk from sb_date_dim where d_month_seq not between 1200 and 1211
+PREHOOK: type: QUERY
+PREHOOK: Input: default@sb_date_dim
+#### A masked pattern was here ####
+POSTHOOK: query: explain select d_date_sk from sb_date_dim where d_month_seq not between 1200 and 1211
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@sb_date_dim
+#### A masked pattern was here ####
+STAGE DEPENDENCIES:
+  Stage-1 is a root stage
+  Stage-0 depends on stages: Stage-1
+
+STAGE PLANS:
+  Stage: Stage-1
+    Tez
+#### A masked pattern was here ####
+      Vertices:
+        Map 1 
+            Map Operator Tree:
+                TableScan
+                  alias: sb_date_dim
+                  filterExpr: ((d_month_seq < 1200) or (d_month_seq > 1211)) (type: boolean)
+                  Statistics: Num rows: 73049 Data size: 876588 Basic stats: COMPLETE Column stats: COMPLETE
+                  Filter Operator
+                    predicate: ((d_month_seq < 1200) or (d_month_seq > 1211)) (type: boolean)
+                    Statistics: Num rows: 72715 Data size: 872580 Basic stats: COMPLETE Column stats: COMPLETE
+                    Select Operator
+                      expressions: d_date_sk (type: bigint)
+                      outputColumnNames: _col0
+                      Statistics: Num rows: 72715 Data size: 581720 Basic stats: COMPLETE Column stats: COMPLETE
+                      File Output Operator
+                        compressed: false
+                        Statistics: Num rows: 72715 Data size: 581720 Basic stats: COMPLETE Column stats: COMPLETE
+                        table:
+                            input format: org.apache.hadoop.mapred.SequenceFileInputFormat
+                            output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
+                            serde: org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+
+  Stage: Stage-0
+    Fetch Operator
+      limit: -1
+      Processor Tree:
+        ListSink
+
