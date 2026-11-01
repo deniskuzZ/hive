@@ -155,6 +155,7 @@ import org.apache.hadoop.hive.ql.stats.StatsUtils;
 import org.apache.hadoop.hive.ql.udf.generic.GenericUDAFBloomFilter.GenericUDAFBloomFilterEvaluator;
 import org.apache.hadoop.hive.ql.udf.generic.GenericUDAFEvaluator;
 import org.apache.hadoop.hive.serde2.typeinfo.TypeInfoUtils;
+import org.apache.hive.common.util.BloomKFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -1358,8 +1359,10 @@ public class TezCompiler extends TaskCompiler {
 
         if (removeBasedOnStats) {
           long expectedEntries = udafBloomFilterEvaluator.getExpectedEntries();
-          if (expectedEntries == -1 || expectedEntries >
-              pCtx.getConf().getLongVar(ConfVars.TEZ_MAX_BLOOM_FILTER_ENTRIES)) {
+          // a capped filter is built at the maximum size; the benefit counts its false positives
+          if (expectedEntries == -1
+              || expectedEntries > pCtx.getConf().getLongVar(ConfVars.TEZ_MAX_BLOOM_FILTER_ENTRIES)
+                  && !pCtx.getConf().getBoolVar(ConfVars.HIVE_TEZ_BLOOM_FILTER_CAP)) {
             if (sjInfo.getIsHint() && expectedEntries == -1) {
               throw new SemanticException("Removing hinted semijoin due to lack to stats" +
                   " or exceeding max bloom filter entries");
@@ -1439,6 +1442,30 @@ public class TezCompiler extends TaskCompiler {
 
   private static boolean isBloomFilterAgg(AggregationDesc agg) {
     return BLOOM_FILTER_FUNCTION.equals(agg.getGenericUDAFName());
+  }
+
+  /**
+   * The share of the non-matching rows a semijoin's bloom filter passes when it holds more entries than its maximum
+   * (hive.tez.bloom.filter.cap; GenericUDAFBloomFilter builds it at the maximum), 0 otherwise: the false positive
+   * probability (1 - e^(-k n / m))^k of BloomKFilter.build(maxEntries), m bits and k hashes, holding n entries.
+   */
+  private static double cappedFalsePositives(ReduceSinkOperator rs, HiveConf conf) {
+    GroupByOperator gb = OperatorUtils.ancestor(rs, GroupByOperator.class, 0);
+    if (gb == null || !conf.getBoolVar(ConfVars.HIVE_TEZ_BLOOM_FILTER_CAP)) {
+      return 0;
+    }
+    for (AggregationDesc agg : gb.getConf().getAggregators()) {
+      if (isBloomFilterAgg(agg) && agg.getGenericUDAFEvaluator() instanceof GenericUDAFBloomFilterEvaluator bloom) {
+        long n = bloom.getExpectedEntries();
+        long max = bloom.getMaxEntries();
+        if (max > 0 && n > max) {
+          double m = (double) BloomKFilter.getNumLongs(max) * Long.SIZE;
+          int k = Math.max(1, (int) Math.round(m / max * Math.log(2)));
+          return Math.pow(1 - Math.exp(-k * n / m), k);
+        }
+      }
+    }
+    return 0;
   }
 
   private static class DynamicPruningRemovalRedundantProc implements SemanticNodeProcessor {
@@ -2000,7 +2027,7 @@ public class TezCompiler extends TaskCompiler {
    * </p>
    */
   private static double getBloomFilterBenefit(SelectOperator sel, List<ExprNodeDesc> selExpr, Statistics filStats,
-      List<ExprNodeDesc> tsExpr) {
+      List<ExprNodeDesc> tsExpr, double falsePositives) {
     if (sel.getStatistics() == null || filStats == null) {
       LOG.debug("No stats available to compute BloomFilter benefit");
       return -1;
@@ -2019,6 +2046,8 @@ public class TezCompiler extends TaskCompiler {
     selectivity -= selectivity * (tsExpr.size() - 1) * 0.05;
     // Selectivity cannot be less than 0.0
     selectivity = Math.max(0.0, selectivity);
+    // a capped filter also passes this share of the rows that do not match
+    selectivity += (1 - selectivity) * falsePositives;
     // Benefit (rows filtered from ts): (1 - selectivity) * # ts rows
     return filStats.getNumRows() * (1 - selectivity);
   }
@@ -2087,9 +2116,9 @@ public class TezCompiler extends TaskCompiler {
 
   private static double computeBloomFilterNetBenefit(
       SelectOperator sel, List<ExprNodeDesc> selExpr,
-      Statistics filStats, List<ExprNodeDesc> tsExpr) {
+      Statistics filStats, List<ExprNodeDesc> tsExpr, double falsePositives) {
     double netBenefit = 0;
-    double benefit = getBloomFilterBenefit(sel, selExpr, filStats, tsExpr);
+    double benefit = getBloomFilterBenefit(sel, selExpr, filStats, tsExpr, falsePositives);
     if (benefit > 0 && filStats != null) {
       double cost = getBloomFilterCost(sel);
       if (cost > 0) {
@@ -2225,7 +2254,8 @@ public class TezCompiler extends TaskCompiler {
           filterStats = filterOperator.getStatistics().clone();
           adjustedStatsMap.put(filterOperator, filterStats);
         }
-        double reductionFactor = computeBloomFilterNetBenefit(sel, sourceColumns, filterStats, targetColumns);
+        double reductionFactor = computeBloomFilterNetBenefit(sel, sourceColumns, filterStats, targetColumns,
+            cappedFalsePositives(rs, procCtx.conf));
         if (reductionFactor < semijoinReductionThreshold) {
           // This semijoin optimization should be removed. Do it after we're done iterating
           semijoinRsToRemove.add(rs);
