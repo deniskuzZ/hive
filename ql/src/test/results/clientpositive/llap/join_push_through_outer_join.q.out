@@ -1,0 +1,721 @@
+PREHOOK: query: create table pj_s (s_k int, s_d int, s_i int, s_v int)
+PREHOOK: type: CREATETABLE
+PREHOOK: Output: database:default
+PREHOOK: Output: default@pj_s
+POSTHOOK: query: create table pj_s (s_k int, s_d int, s_i int, s_v int)
+POSTHOOK: type: CREATETABLE
+POSTHOOK: Output: database:default
+POSTHOOK: Output: default@pj_s
+PREHOOK: query: create table pj_r (r_k int, r_i int, r_v int)
+PREHOOK: type: CREATETABLE
+PREHOOK: Output: database:default
+PREHOOK: Output: default@pj_r
+POSTHOOK: query: create table pj_r (r_k int, r_i int, r_v int)
+POSTHOOK: type: CREATETABLE
+POSTHOOK: Output: database:default
+POSTHOOK: Output: default@pj_r
+PREHOOK: query: create table pj_d (d_k int, d_flag string)
+PREHOOK: type: CREATETABLE
+PREHOOK: Output: database:default
+PREHOOK: Output: default@pj_d
+POSTHOOK: query: create table pj_d (d_k int, d_flag string)
+POSTHOOK: type: CREATETABLE
+POSTHOOK: Output: database:default
+POSTHOOK: Output: default@pj_d
+PREHOOK: query: create table pj_i (i_k int, i_price int)
+PREHOOK: type: CREATETABLE
+PREHOOK: Output: database:default
+PREHOOK: Output: default@pj_i
+POSTHOOK: query: create table pj_i (i_k int, i_price int)
+POSTHOOK: type: CREATETABLE
+POSTHOOK: Output: database:default
+POSTHOOK: Output: default@pj_i
+PREHOOK: query: create table pj_x (x_k int, x_v int)
+PREHOOK: type: CREATETABLE
+PREHOOK: Output: database:default
+PREHOOK: Output: default@pj_x
+POSTHOOK: query: create table pj_x (x_k int, x_v int)
+POSTHOOK: type: CREATETABLE
+POSTHOOK: Output: database:default
+POSTHOOK: Output: default@pj_x
+PREHOOK: query: insert into pj_s select pos, if(pos % 13 = 0, null, pos % 10), pos % 7, pos from (select posexplode(split(space(39), ' '))) t
+PREHOOK: type: QUERY
+PREHOOK: Input: _dummy_database@_dummy_table
+PREHOOK: Output: default@pj_s
+POSTHOOK: query: insert into pj_s select pos, if(pos % 13 = 0, null, pos % 10), pos % 7, pos from (select posexplode(split(space(39), ' '))) t
+POSTHOOK: type: QUERY
+POSTHOOK: Input: _dummy_database@_dummy_table
+POSTHOOK: Output: default@pj_s
+POSTHOOK: Lineage: pj_s.s_d SCRIPT []
+POSTHOOK: Lineage: pj_s.s_i SCRIPT []
+POSTHOOK: Lineage: pj_s.s_k SCRIPT []
+POSTHOOK: Lineage: pj_s.s_v SCRIPT []
+PREHOOK: query: insert into pj_r select pos * 3, if(pos % 4 = 0, 99, (pos * 3) % 7), pos * 100 from (select posexplode(split(space(13), ' '))) t
+  union all select null, 1, -1
+PREHOOK: type: QUERY
+PREHOOK: Input: _dummy_database@_dummy_table
+PREHOOK: Output: default@pj_r
+POSTHOOK: query: insert into pj_r select pos * 3, if(pos % 4 = 0, 99, (pos * 3) % 7), pos * 100 from (select posexplode(split(space(13), ' '))) t
+  union all select null, 1, -1
+POSTHOOK: type: QUERY
+POSTHOOK: Input: _dummy_database@_dummy_table
+POSTHOOK: Output: default@pj_r
+POSTHOOK: Lineage: pj_r.r_i SCRIPT []
+POSTHOOK: Lineage: pj_r.r_k SCRIPT []
+POSTHOOK: Lineage: pj_r.r_v SCRIPT []
+PREHOOK: query: insert into pj_d select pos, if(pos < 4, 'Y', 'N') from (select posexplode(split(space(9), ' '))) t
+PREHOOK: type: QUERY
+PREHOOK: Input: _dummy_database@_dummy_table
+PREHOOK: Output: default@pj_d
+POSTHOOK: query: insert into pj_d select pos, if(pos < 4, 'Y', 'N') from (select posexplode(split(space(9), ' '))) t
+POSTHOOK: type: QUERY
+POSTHOOK: Input: _dummy_database@_dummy_table
+POSTHOOK: Output: default@pj_d
+POSTHOOK: Lineage: pj_d.d_flag SCRIPT []
+POSTHOOK: Lineage: pj_d.d_k SCRIPT []
+PREHOOK: query: insert into pj_i select pos, pos * 10 from (select posexplode(split(space(6), ' '))) t
+PREHOOK: type: QUERY
+PREHOOK: Input: _dummy_database@_dummy_table
+PREHOOK: Output: default@pj_i
+POSTHOOK: query: insert into pj_i select pos, pos * 10 from (select posexplode(split(space(6), ' '))) t
+POSTHOOK: type: QUERY
+POSTHOOK: Input: _dummy_database@_dummy_table
+POSTHOOK: Output: default@pj_i
+POSTHOOK: Lineage: pj_i.i_k SCRIPT []
+POSTHOOK: Lineage: pj_i.i_price SCRIPT []
+PREHOOK: query: insert into pj_x select pos % 4, pos from (select posexplode(split(space(11), ' '))) t
+PREHOOK: type: QUERY
+PREHOOK: Input: _dummy_database@_dummy_table
+PREHOOK: Output: default@pj_x
+POSTHOOK: query: insert into pj_x select pos % 4, pos from (select posexplode(split(space(11), ' '))) t
+POSTHOOK: type: QUERY
+POSTHOOK: Input: _dummy_database@_dummy_table
+POSTHOOK: Output: default@pj_x
+POSTHOOK: Lineage: pj_x.x_k SCRIPT []
+POSTHOOK: Lineage: pj_x.x_v SCRIPT []
+PREHOOK: query: analyze table pj_s compute statistics for columns
+PREHOOK: type: ANALYZE_TABLE
+PREHOOK: Input: default@pj_s
+PREHOOK: Output: default@pj_s
+#### A masked pattern was here ####
+POSTHOOK: query: analyze table pj_s compute statistics for columns
+POSTHOOK: type: ANALYZE_TABLE
+POSTHOOK: Input: default@pj_s
+POSTHOOK: Output: default@pj_s
+#### A masked pattern was here ####
+PREHOOK: query: analyze table pj_r compute statistics for columns
+PREHOOK: type: ANALYZE_TABLE
+PREHOOK: Input: default@pj_r
+PREHOOK: Output: default@pj_r
+#### A masked pattern was here ####
+POSTHOOK: query: analyze table pj_r compute statistics for columns
+POSTHOOK: type: ANALYZE_TABLE
+POSTHOOK: Input: default@pj_r
+POSTHOOK: Output: default@pj_r
+#### A masked pattern was here ####
+PREHOOK: query: analyze table pj_d compute statistics for columns
+PREHOOK: type: ANALYZE_TABLE
+PREHOOK: Input: default@pj_d
+PREHOOK: Output: default@pj_d
+#### A masked pattern was here ####
+POSTHOOK: query: analyze table pj_d compute statistics for columns
+POSTHOOK: type: ANALYZE_TABLE
+POSTHOOK: Input: default@pj_d
+POSTHOOK: Output: default@pj_d
+#### A masked pattern was here ####
+PREHOOK: query: analyze table pj_i compute statistics for columns
+PREHOOK: type: ANALYZE_TABLE
+PREHOOK: Input: default@pj_i
+PREHOOK: Output: default@pj_i
+#### A masked pattern was here ####
+POSTHOOK: query: analyze table pj_i compute statistics for columns
+POSTHOOK: type: ANALYZE_TABLE
+POSTHOOK: Input: default@pj_i
+POSTHOOK: Output: default@pj_i
+#### A masked pattern was here ####
+PREHOOK: query: analyze table pj_x compute statistics for columns
+PREHOOK: type: ANALYZE_TABLE
+PREHOOK: Input: default@pj_x
+PREHOOK: Output: default@pj_x
+#### A masked pattern was here ####
+POSTHOOK: query: analyze table pj_x compute statistics for columns
+POSTHOOK: type: ANALYZE_TABLE
+POSTHOOK: Input: default@pj_x
+POSTHOOK: Output: default@pj_x
+#### A masked pattern was here ####
+PREHOOK: query: explain cbo
+select s_k, s_v, r_v, i_price
+from pj_s left outer join pj_r on (s_k = r_k and s_i = r_i), pj_d, pj_i
+where s_d = d_k and d_flag = 'Y' and s_i = i_k and i_price > 20
+PREHOOK: type: QUERY
+PREHOOK: Input: default@pj_d
+PREHOOK: Input: default@pj_i
+PREHOOK: Input: default@pj_r
+PREHOOK: Input: default@pj_s
+#### A masked pattern was here ####
+POSTHOOK: query: explain cbo
+select s_k, s_v, r_v, i_price
+from pj_s left outer join pj_r on (s_k = r_k and s_i = r_i), pj_d, pj_i
+where s_d = d_k and d_flag = 'Y' and s_i = i_k and i_price > 20
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@pj_d
+POSTHOOK: Input: default@pj_i
+POSTHOOK: Input: default@pj_r
+POSTHOOK: Input: default@pj_s
+#### A masked pattern was here ####
+CBO PLAN:
+HiveProject(s_k=[$3], s_v=[$6], r_v=[$2], i_price=[$8])
+  HiveJoin(condition=[AND(=($3, $0), =($5, $1))], joinType=[right], algorithm=[none], cost=[not available])
+    HiveProject(r_k=[$0], r_i=[$1], r_v=[$2])
+      HiveFilter(condition=[AND(IS NOT NULL($0), IS NOT NULL($1))])
+        HiveTableScan(table=[[default, pj_r]], table:alias=[pj_r])
+    HiveJoin(condition=[=($1, $6)], joinType=[inner], algorithm=[none], cost=[not available])
+      HiveJoin(condition=[=($2, $4)], joinType=[inner], algorithm=[none], cost=[not available])
+        HiveProject(s_k=[$0], s_d=[$1], s_i=[$2], s_v=[$3])
+          HiveFilter(condition=[AND(IS NOT NULL($1), IS NOT NULL($2))])
+            HiveTableScan(table=[[default, pj_s]], table:alias=[pj_s])
+        HiveProject(i_k=[$0], i_price=[$1])
+          HiveFilter(condition=[AND(>($1, 20), IS NOT NULL($0))])
+            HiveTableScan(table=[[default, pj_i]], table:alias=[pj_i])
+      HiveProject(d_k=[$0])
+        HiveFilter(condition=[AND(=($1, 'Y'), IS NOT NULL($0))])
+          HiveTableScan(table=[[default, pj_d]], table:alias=[pj_d])
+
+PREHOOK: query: select s_k, s_v, r_v, i_price
+from pj_s left outer join pj_r on (s_k = r_k and s_i = r_i), pj_d, pj_i
+where s_d = d_k and d_flag = 'Y' and s_i = i_k and i_price > 20
+PREHOOK: type: QUERY
+PREHOOK: Input: default@pj_d
+PREHOOK: Input: default@pj_i
+PREHOOK: Input: default@pj_r
+PREHOOK: Input: default@pj_s
+#### A masked pattern was here ####
+POSTHOOK: query: select s_k, s_v, r_v, i_price
+from pj_s left outer join pj_r on (s_k = r_k and s_i = r_i), pj_d, pj_i
+where s_d = d_k and d_flag = 'Y' and s_i = i_k and i_price > 20
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@pj_d
+POSTHOOK: Input: default@pj_i
+POSTHOOK: Input: default@pj_r
+POSTHOOK: Input: default@pj_s
+#### A masked pattern was here ####
+10	10	NULL	30
+11	11	NULL	40
+12	12	NULL	50
+20	20	NULL	60
+3	3	100	30
+31	31	NULL	30
+32	32	NULL	40
+33	33	1100	50
+PREHOOK: query: select s_k, s_v, r_v, i_price
+from pj_s left outer join pj_r on (s_k = r_k and s_i = r_i), pj_d, pj_i
+where s_d = d_k and d_flag = 'Y' and s_i = i_k and i_price > 20
+PREHOOK: type: QUERY
+PREHOOK: Input: default@pj_d
+PREHOOK: Input: default@pj_i
+PREHOOK: Input: default@pj_r
+PREHOOK: Input: default@pj_s
+#### A masked pattern was here ####
+POSTHOOK: query: select s_k, s_v, r_v, i_price
+from pj_s left outer join pj_r on (s_k = r_k and s_i = r_i), pj_d, pj_i
+where s_d = d_k and d_flag = 'Y' and s_i = i_k and i_price > 20
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@pj_d
+POSTHOOK: Input: default@pj_i
+POSTHOOK: Input: default@pj_r
+POSTHOOK: Input: default@pj_s
+#### A masked pattern was here ####
+10	10	NULL	30
+11	11	NULL	40
+12	12	NULL	50
+20	20	NULL	60
+3	3	100	30
+31	31	NULL	30
+32	32	NULL	40
+33	33	1100	50
+PREHOOK: query: explain cbo
+select s_k, r_v from pj_s left outer join pj_r on (s_k = r_k and r_v > s_v), pj_d
+where s_d = d_k and d_flag = 'Y'
+PREHOOK: type: QUERY
+PREHOOK: Input: default@pj_d
+PREHOOK: Input: default@pj_r
+PREHOOK: Input: default@pj_s
+#### A masked pattern was here ####
+POSTHOOK: query: explain cbo
+select s_k, r_v from pj_s left outer join pj_r on (s_k = r_k and r_v > s_v), pj_d
+where s_d = d_k and d_flag = 'Y'
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@pj_d
+POSTHOOK: Input: default@pj_r
+POSTHOOK: Input: default@pj_s
+#### A masked pattern was here ####
+CBO PLAN:
+HiveProject(s_k=[$0], r_v=[$5])
+  HiveJoin(condition=[AND(=($0, $4), >($5, $2))], joinType=[left], algorithm=[none], cost=[not available])
+    HiveJoin(condition=[=($1, $3)], joinType=[inner], algorithm=[none], cost=[not available])
+      HiveProject(s_k=[$0], s_d=[$1], s_v=[$3])
+        HiveFilter(condition=[IS NOT NULL($1)])
+          HiveTableScan(table=[[default, pj_s]], table:alias=[pj_s])
+      HiveProject(d_k=[$0])
+        HiveFilter(condition=[AND(=($1, 'Y'), IS NOT NULL($0))])
+          HiveTableScan(table=[[default, pj_d]], table:alias=[pj_d])
+    HiveProject(r_k=[$0], r_v=[$2])
+      HiveFilter(condition=[AND(IS NOT NULL($0), IS NOT NULL($2))])
+        HiveTableScan(table=[[default, pj_r]], table:alias=[pj_r])
+
+PREHOOK: query: select s_k, r_v from pj_s left outer join pj_r on (s_k = r_k and r_v > s_v), pj_d
+where s_d = d_k and d_flag = 'Y'
+PREHOOK: type: QUERY
+PREHOOK: Input: default@pj_d
+PREHOOK: Input: default@pj_r
+PREHOOK: Input: default@pj_s
+#### A masked pattern was here ####
+POSTHOOK: query: select s_k, r_v from pj_s left outer join pj_r on (s_k = r_k and r_v > s_v), pj_d
+where s_d = d_k and d_flag = 'Y'
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@pj_d
+POSTHOOK: Input: default@pj_r
+POSTHOOK: Input: default@pj_s
+#### A masked pattern was here ####
+1	NULL
+10	NULL
+11	NULL
+12	400
+2	NULL
+20	NULL
+21	700
+22	NULL
+23	NULL
+3	100
+30	1000
+31	NULL
+32	NULL
+33	1100
+PREHOOK: query: select s_k, r_v from pj_s left outer join pj_r on (s_k = r_k and r_v > s_v), pj_d
+where s_d = d_k and d_flag = 'Y'
+PREHOOK: type: QUERY
+PREHOOK: Input: default@pj_d
+PREHOOK: Input: default@pj_r
+PREHOOK: Input: default@pj_s
+#### A masked pattern was here ####
+POSTHOOK: query: select s_k, r_v from pj_s left outer join pj_r on (s_k = r_k and r_v > s_v), pj_d
+where s_d = d_k and d_flag = 'Y'
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@pj_d
+POSTHOOK: Input: default@pj_r
+POSTHOOK: Input: default@pj_s
+#### A masked pattern was here ####
+1	NULL
+10	NULL
+11	NULL
+12	400
+2	NULL
+20	NULL
+21	700
+22	NULL
+23	NULL
+3	100
+30	1000
+31	NULL
+32	NULL
+33	1100
+PREHOOK: query: explain cbo
+select s_k, r1.r_v, r2.r_v from pj_s left outer join pj_r r1 on (s_k = r1.r_k)
+  left outer join pj_r r2 on (s_i = r2.r_i and r2.r_v < 300), pj_d
+where s_d = d_k and d_flag = 'Y'
+PREHOOK: type: QUERY
+PREHOOK: Input: default@pj_d
+PREHOOK: Input: default@pj_r
+PREHOOK: Input: default@pj_s
+#### A masked pattern was here ####
+POSTHOOK: query: explain cbo
+select s_k, r1.r_v, r2.r_v from pj_s left outer join pj_r r1 on (s_k = r1.r_k)
+  left outer join pj_r r2 on (s_i = r2.r_i and r2.r_v < 300), pj_d
+where s_d = d_k and d_flag = 'Y'
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@pj_d
+POSTHOOK: Input: default@pj_r
+POSTHOOK: Input: default@pj_s
+#### A masked pattern was here ####
+CBO PLAN:
+HiveProject(s_k=[$0], r1.r_v=[$5], r2.r_v=[$7])
+  HiveJoin(condition=[=($2, $6)], joinType=[left], algorithm=[none], cost=[not available])
+    HiveJoin(condition=[=($0, $4)], joinType=[left], algorithm=[none], cost=[not available])
+      HiveJoin(condition=[=($1, $3)], joinType=[inner], algorithm=[none], cost=[not available])
+        HiveProject(s_k=[$0], s_d=[$1], s_i=[$2])
+          HiveFilter(condition=[IS NOT NULL($1)])
+            HiveTableScan(table=[[default, pj_s]], table:alias=[pj_s])
+        HiveProject(d_k=[$0])
+          HiveFilter(condition=[AND(=($1, 'Y'), IS NOT NULL($0))])
+            HiveTableScan(table=[[default, pj_d]], table:alias=[pj_d])
+      HiveProject(r_k=[$0], r_v=[$2])
+        HiveFilter(condition=[IS NOT NULL($0)])
+          HiveTableScan(table=[[default, pj_r]], table:alias=[r1])
+    HiveProject(r_i=[$1], r_v=[$2])
+      HiveFilter(condition=[AND(<($2, 300), IS NOT NULL($1))])
+        HiveTableScan(table=[[default, pj_r]], table:alias=[r2])
+
+PREHOOK: query: select s_k, r1.r_v, r2.r_v from pj_s left outer join pj_r r1 on (s_k = r1.r_k)
+  left outer join pj_r r2 on (s_i = r2.r_i and r2.r_v < 300), pj_d
+where s_d = d_k and d_flag = 'Y'
+PREHOOK: type: QUERY
+PREHOOK: Input: default@pj_d
+PREHOOK: Input: default@pj_r
+PREHOOK: Input: default@pj_s
+#### A masked pattern was here ####
+POSTHOOK: query: select s_k, r1.r_v, r2.r_v from pj_s left outer join pj_r r1 on (s_k = r1.r_k)
+  left outer join pj_r r2 on (s_i = r2.r_i and r2.r_v < 300), pj_d
+where s_d = d_k and d_flag = 'Y'
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@pj_d
+POSTHOOK: Input: default@pj_r
+POSTHOOK: Input: default@pj_s
+#### A masked pattern was here ####
+1	NULL	-1
+10	NULL	100
+11	NULL	NULL
+12	400	NULL
+2	NULL	NULL
+20	NULL	200
+21	700	NULL
+22	NULL	-1
+23	NULL	NULL
+3	100	100
+30	1000	NULL
+31	NULL	100
+32	NULL	NULL
+33	1100	NULL
+PREHOOK: query: select s_k, r1.r_v, r2.r_v from pj_s left outer join pj_r r1 on (s_k = r1.r_k)
+  left outer join pj_r r2 on (s_i = r2.r_i and r2.r_v < 300), pj_d
+where s_d = d_k and d_flag = 'Y'
+PREHOOK: type: QUERY
+PREHOOK: Input: default@pj_d
+PREHOOK: Input: default@pj_r
+PREHOOK: Input: default@pj_s
+#### A masked pattern was here ####
+POSTHOOK: query: select s_k, r1.r_v, r2.r_v from pj_s left outer join pj_r r1 on (s_k = r1.r_k)
+  left outer join pj_r r2 on (s_i = r2.r_i and r2.r_v < 300), pj_d
+where s_d = d_k and d_flag = 'Y'
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@pj_d
+POSTHOOK: Input: default@pj_r
+POSTHOOK: Input: default@pj_s
+#### A masked pattern was here ####
+1	NULL	-1
+10	NULL	100
+11	NULL	NULL
+12	400	NULL
+2	NULL	NULL
+20	NULL	200
+21	700	NULL
+22	NULL	-1
+23	NULL	NULL
+3	100	100
+30	1000	NULL
+31	NULL	100
+32	NULL	NULL
+33	1100	NULL
+PREHOOK: query: explain cbo
+select s_k, r_v, i_price from pj_s left outer join pj_r on (s_k = r_k), pj_i
+where s_i = i_k and coalesce(r_v, 0) < i_price
+PREHOOK: type: QUERY
+PREHOOK: Input: default@pj_i
+PREHOOK: Input: default@pj_r
+PREHOOK: Input: default@pj_s
+#### A masked pattern was here ####
+POSTHOOK: query: explain cbo
+select s_k, r_v, i_price from pj_s left outer join pj_r on (s_k = r_k), pj_i
+where s_i = i_k and coalesce(r_v, 0) < i_price
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@pj_i
+POSTHOOK: Input: default@pj_r
+POSTHOOK: Input: default@pj_s
+#### A masked pattern was here ####
+CBO PLAN:
+HiveProject(s_k=[$0], r_v=[$3], i_price=[$5])
+  HiveJoin(condition=[AND(=($1, $4), OR(<($3, $5), AND($6, IS NULL($3))))], joinType=[inner], algorithm=[none], cost=[not available])
+    HiveJoin(condition=[=($0, $2)], joinType=[left], algorithm=[none], cost=[not available])
+      HiveProject(s_k=[$0], s_i=[$2])
+        HiveFilter(condition=[IS NOT NULL($2)])
+          HiveTableScan(table=[[default, pj_s]], table:alias=[pj_s])
+      HiveProject(r_k=[$0], r_v=[$2])
+        HiveFilter(condition=[IS NOT NULL($0)])
+          HiveTableScan(table=[[default, pj_r]], table:alias=[pj_r])
+    HiveProject(i_k=[$0], i_price=[$1], EXPR$0=[<(0, $1)])
+      HiveFilter(condition=[IS NOT NULL($0)])
+        HiveTableScan(table=[[default, pj_i]], table:alias=[pj_i])
+
+PREHOOK: query: select s_k, r_v, i_price from pj_s left outer join pj_r on (s_k = r_k), pj_i
+where s_i = i_k and coalesce(r_v, 0) < i_price
+PREHOOK: type: QUERY
+PREHOOK: Input: default@pj_i
+PREHOOK: Input: default@pj_r
+PREHOOK: Input: default@pj_s
+#### A masked pattern was here ####
+POSTHOOK: query: select s_k, r_v, i_price from pj_s left outer join pj_r on (s_k = r_k), pj_i
+where s_i = i_k and coalesce(r_v, 0) < i_price
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@pj_i
+POSTHOOK: Input: default@pj_r
+POSTHOOK: Input: default@pj_s
+#### A masked pattern was here ####
+1	NULL	10
+10	NULL	30
+11	NULL	40
+13	NULL	60
+16	NULL	20
+17	NULL	30
+19	NULL	50
+2	NULL	20
+20	NULL	60
+22	NULL	10
+23	NULL	20
+25	NULL	40
+26	NULL	50
+29	NULL	10
+31	NULL	30
+32	NULL	40
+34	NULL	60
+37	NULL	20
+38	NULL	30
+4	NULL	40
+5	NULL	50
+8	NULL	10
+PREHOOK: query: select s_k, r_v, i_price from pj_s left outer join pj_r on (s_k = r_k), pj_i
+where s_i = i_k and coalesce(r_v, 0) < i_price
+PREHOOK: type: QUERY
+PREHOOK: Input: default@pj_i
+PREHOOK: Input: default@pj_r
+PREHOOK: Input: default@pj_s
+#### A masked pattern was here ####
+POSTHOOK: query: select s_k, r_v, i_price from pj_s left outer join pj_r on (s_k = r_k), pj_i
+where s_i = i_k and coalesce(r_v, 0) < i_price
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@pj_i
+POSTHOOK: Input: default@pj_r
+POSTHOOK: Input: default@pj_s
+#### A masked pattern was here ####
+1	NULL	10
+10	NULL	30
+11	NULL	40
+13	NULL	60
+16	NULL	20
+17	NULL	30
+19	NULL	50
+2	NULL	20
+20	NULL	60
+22	NULL	10
+23	NULL	20
+25	NULL	40
+26	NULL	50
+29	NULL	10
+31	NULL	30
+32	NULL	40
+34	NULL	60
+37	NULL	20
+38	NULL	30
+4	NULL	40
+5	NULL	50
+8	NULL	10
+PREHOOK: query: explain cbo
+select s_k, r_v, x_v from pj_s left outer join pj_r on (s_k = r_k), pj_x
+where s_i = x_k
+PREHOOK: type: QUERY
+PREHOOK: Input: default@pj_r
+PREHOOK: Input: default@pj_s
+PREHOOK: Input: default@pj_x
+#### A masked pattern was here ####
+POSTHOOK: query: explain cbo
+select s_k, r_v, x_v from pj_s left outer join pj_r on (s_k = r_k), pj_x
+where s_i = x_k
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@pj_r
+POSTHOOK: Input: default@pj_s
+POSTHOOK: Input: default@pj_x
+#### A masked pattern was here ####
+CBO PLAN:
+HiveProject(s_k=[$0], r_v=[$3], x_v=[$5])
+  HiveJoin(condition=[=($1, $4)], joinType=[inner], algorithm=[none], cost=[not available])
+    HiveJoin(condition=[=($0, $2)], joinType=[left], algorithm=[none], cost=[not available])
+      HiveProject(s_k=[$0], s_i=[$2])
+        HiveFilter(condition=[IS NOT NULL($2)])
+          HiveTableScan(table=[[default, pj_s]], table:alias=[pj_s])
+      HiveProject(r_k=[$0], r_v=[$2])
+        HiveFilter(condition=[IS NOT NULL($0)])
+          HiveTableScan(table=[[default, pj_r]], table:alias=[pj_r])
+    HiveProject(x_k=[$0], x_v=[$1])
+      HiveFilter(condition=[IS NOT NULL($0)])
+        HiveTableScan(table=[[default, pj_x]], table:alias=[pj_x])
+
+PREHOOK: query: select s_k, r_v, x_v from pj_s left outer join pj_r on (s_k = r_k), pj_x
+where s_i = x_k
+PREHOOK: type: QUERY
+PREHOOK: Input: default@pj_r
+PREHOOK: Input: default@pj_s
+PREHOOK: Input: default@pj_x
+#### A masked pattern was here ####
+POSTHOOK: query: select s_k, r_v, x_v from pj_s left outer join pj_r on (s_k = r_k), pj_x
+where s_i = x_k
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@pj_r
+POSTHOOK: Input: default@pj_s
+POSTHOOK: Input: default@pj_x
+#### A masked pattern was here ####
+0	0	0
+0	0	4
+0	0	8
+1	NULL	1
+1	NULL	5
+1	NULL	9
+10	NULL	11
+10	NULL	3
+10	NULL	7
+14	NULL	0
+14	NULL	4
+14	NULL	8
+15	500	1
+15	500	5
+15	500	9
+16	NULL	10
+16	NULL	2
+16	NULL	6
+17	NULL	11
+17	NULL	3
+17	NULL	7
+2	NULL	10
+2	NULL	2
+2	NULL	6
+21	700	0
+21	700	4
+21	700	8
+22	NULL	1
+22	NULL	5
+22	NULL	9
+23	NULL	10
+23	NULL	2
+23	NULL	6
+24	800	11
+24	800	3
+24	800	7
+28	NULL	0
+28	NULL	4
+28	NULL	8
+29	NULL	1
+29	NULL	5
+29	NULL	9
+3	100	11
+3	100	3
+3	100	7
+30	1000	10
+30	1000	2
+30	1000	6
+31	NULL	11
+31	NULL	3
+31	NULL	7
+35	NULL	0
+35	NULL	4
+35	NULL	8
+36	1200	1
+36	1200	5
+36	1200	9
+37	NULL	10
+37	NULL	2
+37	NULL	6
+38	NULL	11
+38	NULL	3
+38	NULL	7
+7	NULL	0
+7	NULL	4
+7	NULL	8
+8	NULL	1
+8	NULL	5
+8	NULL	9
+9	300	10
+9	300	2
+9	300	6
+PREHOOK: query: select s_k, r_v, x_v from pj_s left outer join pj_r on (s_k = r_k), pj_x
+where s_i = x_k
+PREHOOK: type: QUERY
+PREHOOK: Input: default@pj_r
+PREHOOK: Input: default@pj_s
+PREHOOK: Input: default@pj_x
+#### A masked pattern was here ####
+POSTHOOK: query: select s_k, r_v, x_v from pj_s left outer join pj_r on (s_k = r_k), pj_x
+where s_i = x_k
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@pj_r
+POSTHOOK: Input: default@pj_s
+POSTHOOK: Input: default@pj_x
+#### A masked pattern was here ####
+0	0	0
+0	0	4
+0	0	8
+1	NULL	1
+1	NULL	5
+1	NULL	9
+10	NULL	11
+10	NULL	3
+10	NULL	7
+14	NULL	0
+14	NULL	4
+14	NULL	8
+15	500	1
+15	500	5
+15	500	9
+16	NULL	10
+16	NULL	2
+16	NULL	6
+17	NULL	11
+17	NULL	3
+17	NULL	7
+2	NULL	10
+2	NULL	2
+2	NULL	6
+21	700	0
+21	700	4
+21	700	8
+22	NULL	1
+22	NULL	5
+22	NULL	9
+23	NULL	10
+23	NULL	2
+23	NULL	6
+24	800	11
+24	800	3
+24	800	7
+28	NULL	0
+28	NULL	4
+28	NULL	8
+29	NULL	1
+29	NULL	5
+29	NULL	9
+3	100	11
+3	100	3
+3	100	7
+30	1000	10
+30	1000	2
+30	1000	6
+31	NULL	11
+31	NULL	3
+31	NULL	7
+35	NULL	0
+35	NULL	4
+35	NULL	8
+36	1200	1
+36	1200	5
+36	1200	9
+37	NULL	10
+37	NULL	2
+37	NULL	6
+38	NULL	11
+38	NULL	3
+38	NULL	7
+7	NULL	0
+7	NULL	4
+7	NULL	8
+8	NULL	1
+8	NULL	5
+8	NULL	9
+9	300	10
+9	300	2
+9	300	6

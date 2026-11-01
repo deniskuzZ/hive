@@ -1,0 +1,250 @@
+PREHOOK: query: create table pjc_f (f_k int, f_d int not null, f_v int)
+PREHOOK: type: CREATETABLE
+PREHOOK: Output: database:default
+PREHOOK: Output: default@pjc_f
+POSTHOOK: query: create table pjc_f (f_k int, f_d int not null, f_v int)
+POSTHOOK: type: CREATETABLE
+POSTHOOK: Output: database:default
+POSTHOOK: Output: default@pjc_f
+PREHOOK: query: create table pjc_b (b_k int, b_v int)
+PREHOOK: type: CREATETABLE
+PREHOOK: Output: database:default
+PREHOOK: Output: default@pjc_b
+POSTHOOK: query: create table pjc_b (b_k int, b_v int)
+POSTHOOK: type: CREATETABLE
+POSTHOOK: Output: database:default
+POSTHOOK: Output: default@pjc_b
+PREHOOK: query: create table pjc_d (d_k int not null, d_x int)
+PREHOOK: type: CREATETABLE
+PREHOOK: Output: database:default
+PREHOOK: Output: default@pjc_d
+POSTHOOK: query: create table pjc_d (d_k int not null, d_x int)
+POSTHOOK: type: CREATETABLE
+POSTHOOK: Output: database:default
+POSTHOOK: Output: default@pjc_d
+PREHOOK: query: alter table pjc_d add constraint pjc_d_pk primary key (d_k) disable novalidate rely
+PREHOOK: type: ALTERTABLE_ADDCONSTRAINT
+PREHOOK: Input: default@pjc_d
+PREHOOK: Output: default@pjc_d
+POSTHOOK: query: alter table pjc_d add constraint pjc_d_pk primary key (d_k) disable novalidate rely
+POSTHOOK: type: ALTERTABLE_ADDCONSTRAINT
+POSTHOOK: Input: default@pjc_d
+POSTHOOK: Output: default@pjc_d
+PREHOOK: query: alter table pjc_f add constraint pjc_f_fk foreign key (f_d) references pjc_d(d_k) disable novalidate rely
+PREHOOK: type: ALTERTABLE_ADDCONSTRAINT
+PREHOOK: Input: default@pjc_f
+PREHOOK: Output: default@pjc_f
+POSTHOOK: query: alter table pjc_f add constraint pjc_f_fk foreign key (f_d) references pjc_d(d_k) disable novalidate rely
+POSTHOOK: type: ALTERTABLE_ADDCONSTRAINT
+POSTHOOK: Input: default@pjc_f
+POSTHOOK: Output: default@pjc_f
+PREHOOK: query: insert into pjc_d select pos, pos % 3 from (select posexplode(split(space(9), ' '))) t
+PREHOOK: type: QUERY
+PREHOOK: Input: _dummy_database@_dummy_table
+PREHOOK: Output: default@pjc_d
+POSTHOOK: query: insert into pjc_d select pos, pos % 3 from (select posexplode(split(space(9), ' '))) t
+POSTHOOK: type: QUERY
+POSTHOOK: Input: _dummy_database@_dummy_table
+POSTHOOK: Output: default@pjc_d
+POSTHOOK: Lineage: pjc_d.d_k SCRIPT []
+POSTHOOK: Lineage: pjc_d.d_x SCRIPT []
+PREHOOK: query: insert into pjc_f select pos, pos % 10, pos from (select posexplode(split(space(39), ' '))) t
+PREHOOK: type: QUERY
+PREHOOK: Input: _dummy_database@_dummy_table
+PREHOOK: Output: default@pjc_f
+POSTHOOK: query: insert into pjc_f select pos, pos % 10, pos from (select posexplode(split(space(39), ' '))) t
+POSTHOOK: type: QUERY
+POSTHOOK: Input: _dummy_database@_dummy_table
+POSTHOOK: Output: default@pjc_f
+POSTHOOK: Lineage: pjc_f.f_d SCRIPT []
+POSTHOOK: Lineage: pjc_f.f_k SCRIPT []
+POSTHOOK: Lineage: pjc_f.f_v SCRIPT []
+PREHOOK: query: insert into pjc_b select pos * 2, pos from (select posexplode(split(space(19), ' '))) t
+PREHOOK: type: QUERY
+PREHOOK: Input: _dummy_database@_dummy_table
+PREHOOK: Output: default@pjc_b
+POSTHOOK: query: insert into pjc_b select pos * 2, pos from (select posexplode(split(space(19), ' '))) t
+POSTHOOK: type: QUERY
+POSTHOOK: Input: _dummy_database@_dummy_table
+POSTHOOK: Output: default@pjc_b
+POSTHOOK: Lineage: pjc_b.b_k SCRIPT []
+POSTHOOK: Lineage: pjc_b.b_v SCRIPT []
+PREHOOK: query: analyze table pjc_f compute statistics for columns
+PREHOOK: type: ANALYZE_TABLE
+PREHOOK: Input: default@pjc_f
+PREHOOK: Output: default@pjc_f
+#### A masked pattern was here ####
+POSTHOOK: query: analyze table pjc_f compute statistics for columns
+POSTHOOK: type: ANALYZE_TABLE
+POSTHOOK: Input: default@pjc_f
+POSTHOOK: Output: default@pjc_f
+#### A masked pattern was here ####
+PREHOOK: query: analyze table pjc_b compute statistics for columns
+PREHOOK: type: ANALYZE_TABLE
+PREHOOK: Input: default@pjc_b
+PREHOOK: Output: default@pjc_b
+#### A masked pattern was here ####
+POSTHOOK: query: analyze table pjc_b compute statistics for columns
+POSTHOOK: type: ANALYZE_TABLE
+POSTHOOK: Input: default@pjc_b
+POSTHOOK: Output: default@pjc_b
+#### A masked pattern was here ####
+PREHOOK: query: analyze table pjc_d compute statistics for columns
+PREHOOK: type: ANALYZE_TABLE
+PREHOOK: Input: default@pjc_d
+PREHOOK: Output: default@pjc_d
+#### A masked pattern was here ####
+POSTHOOK: query: analyze table pjc_d compute statistics for columns
+POSTHOOK: type: ANALYZE_TABLE
+POSTHOOK: Input: default@pjc_d
+POSTHOOK: Output: default@pjc_d
+#### A masked pattern was here ####
+PREHOOK: query: explain cbo
+select f_k, b_v, d.mx
+from pjc_f left outer join pjc_b on f_k = b_k
+join (select d_k, max(d_x) mx from pjc_d group by d_k) d on f_d = d.d_k
+PREHOOK: type: QUERY
+PREHOOK: Input: default@pjc_b
+PREHOOK: Input: default@pjc_d
+PREHOOK: Input: default@pjc_f
+#### A masked pattern was here ####
+POSTHOOK: query: explain cbo
+select f_k, b_v, d.mx
+from pjc_f left outer join pjc_b on f_k = b_k
+join (select d_k, max(d_x) mx from pjc_d group by d_k) d on f_d = d.d_k
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@pjc_b
+POSTHOOK: Input: default@pjc_d
+POSTHOOK: Input: default@pjc_f
+#### A masked pattern was here ####
+CBO PLAN:
+HiveProject(f_k=[$0], b_v=[$3], d.mx=[$5])
+  HiveJoin(condition=[=($1, $4)], joinType=[inner], algorithm=[none], cost=[not available])
+    HiveJoin(condition=[=($0, $2)], joinType=[left], algorithm=[none], cost=[not available])
+      HiveProject(f_k=[$0], f_d=[$1])
+        HiveTableScan(table=[[default, pjc_f]], table:alias=[pjc_f])
+      HiveProject(b_k=[$0], b_v=[$1])
+        HiveFilter(condition=[IS NOT NULL($0)])
+          HiveTableScan(table=[[default, pjc_b]], table:alias=[pjc_b])
+    HiveProject(d_k=[$0], $f1=[$1])
+      HiveAggregate(group=[{0}], agg#0=[max($1)])
+        HiveTableScan(table=[[default, pjc_d]], table:alias=[pjc_d])
+
+PREHOOK: query: select f_k, b_v, d.mx
+from pjc_f left outer join pjc_b on f_k = b_k
+join (select d_k, max(d_x) mx from pjc_d group by d_k) d on f_d = d.d_k
+order by f_k
+PREHOOK: type: QUERY
+PREHOOK: Input: default@pjc_b
+PREHOOK: Input: default@pjc_d
+PREHOOK: Input: default@pjc_f
+#### A masked pattern was here ####
+POSTHOOK: query: select f_k, b_v, d.mx
+from pjc_f left outer join pjc_b on f_k = b_k
+join (select d_k, max(d_x) mx from pjc_d group by d_k) d on f_d = d.d_k
+order by f_k
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@pjc_b
+POSTHOOK: Input: default@pjc_d
+POSTHOOK: Input: default@pjc_f
+#### A masked pattern was here ####
+0	0	0
+1	NULL	1
+2	1	2
+3	NULL	0
+4	2	1
+5	NULL	2
+6	3	0
+7	NULL	1
+8	4	2
+9	NULL	0
+10	5	0
+11	NULL	1
+12	6	2
+13	NULL	0
+14	7	1
+15	NULL	2
+16	8	0
+17	NULL	1
+18	9	2
+19	NULL	0
+20	10	0
+21	NULL	1
+22	11	2
+23	NULL	0
+24	12	1
+25	NULL	2
+26	13	0
+27	NULL	1
+28	14	2
+29	NULL	0
+30	15	0
+31	NULL	1
+32	16	2
+33	NULL	0
+34	17	1
+35	NULL	2
+36	18	0
+37	NULL	1
+38	19	2
+39	NULL	0
+PREHOOK: query: explain cbo
+select f_k, b_v, d.d_x
+from pjc_f left outer join pjc_b on f_k = b_k
+join (select cast(d_k as bigint) d_k, d_x from pjc_d) d on f_d = d.d_k
+PREHOOK: type: QUERY
+PREHOOK: Input: default@pjc_b
+PREHOOK: Input: default@pjc_d
+PREHOOK: Input: default@pjc_f
+#### A masked pattern was here ####
+POSTHOOK: query: explain cbo
+select f_k, b_v, d.d_x
+from pjc_f left outer join pjc_b on f_k = b_k
+join (select cast(d_k as bigint) d_k, d_x from pjc_d) d on f_d = d.d_k
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@pjc_b
+POSTHOOK: Input: default@pjc_d
+POSTHOOK: Input: default@pjc_f
+#### A masked pattern was here ####
+CBO PLAN:
+HiveProject(f_k=[$0], b_v=[$3], d.d_x=[$5])
+  HiveJoin(condition=[=($1, $4)], joinType=[inner], algorithm=[none], cost=[not available])
+    HiveJoin(condition=[=($0, $2)], joinType=[left], algorithm=[none], cost=[not available])
+      HiveProject(f_k=[$0], EXPR$0=[CAST($1):BIGINT])
+        HiveTableScan(table=[[default, pjc_f]], table:alias=[pjc_f])
+      HiveProject(b_k=[$0], b_v=[$1])
+        HiveFilter(condition=[IS NOT NULL($0)])
+          HiveTableScan(table=[[default, pjc_b]], table:alias=[pjc_b])
+    HiveProject(d_k=[CAST($0):BIGINT], d_x=[$1])
+      HiveTableScan(table=[[default, pjc_d]], table:alias=[pjc_d])
+
+PREHOOK: query: explain cbo
+select f_k, b_v, d_x
+from pjc_f left outer join pjc_b on f_k = b_k
+join pjc_d on f_d = d_k
+PREHOOK: type: QUERY
+PREHOOK: Input: default@pjc_b
+PREHOOK: Input: default@pjc_d
+PREHOOK: Input: default@pjc_f
+#### A masked pattern was here ####
+POSTHOOK: query: explain cbo
+select f_k, b_v, d_x
+from pjc_f left outer join pjc_b on f_k = b_k
+join pjc_d on f_d = d_k
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@pjc_b
+POSTHOOK: Input: default@pjc_d
+POSTHOOK: Input: default@pjc_f
+#### A masked pattern was here ####
+CBO PLAN:
+HiveProject(f_k=[$0], b_v=[$3], d_x=[$5])
+  HiveJoin(condition=[=($1, $4)], joinType=[inner], algorithm=[none], cost=[not available])
+    HiveJoin(condition=[=($0, $2)], joinType=[left], algorithm=[none], cost=[not available])
+      HiveProject(f_k=[$0], f_d=[$1])
+        HiveTableScan(table=[[default, pjc_f]], table:alias=[pjc_f])
+      HiveProject(b_k=[$0], b_v=[$1])
+        HiveFilter(condition=[IS NOT NULL($0)])
+          HiveTableScan(table=[[default, pjc_b]], table:alias=[pjc_b])
+    HiveProject(d_k=[$0], d_x=[$1])
+      HiveTableScan(table=[[default, pjc_d]], table:alias=[pjc_d])
+

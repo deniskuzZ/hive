@@ -235,6 +235,7 @@ import org.apache.hadoop.hive.ql.optimizer.calcite.rules.HiveJoinAddNotNullRule;
 import org.apache.hadoop.hive.ql.optimizer.calcite.rules.HiveJoinCommuteRule;
 import org.apache.hadoop.hive.ql.optimizer.calcite.rules.HiveJoinConstraintsRule;
 import org.apache.hadoop.hive.ql.optimizer.calcite.rules.HiveJoinProjectTransposeRule;
+import org.apache.hadoop.hive.ql.optimizer.calcite.rules.HiveJoinPushThroughOuterJoinRule;
 import org.apache.hadoop.hive.ql.optimizer.calcite.rules.HiveJoinPushTransitivePredicatesRule;
 import org.apache.hadoop.hive.ql.optimizer.calcite.rules.HiveJoinToMultiJoinRule;
 import org.apache.hadoop.hive.ql.optimizer.calcite.rules.HiveAntiSemiJoinRule;
@@ -2228,6 +2229,9 @@ public class CalcitePlanner extends SemanticAnalyzer {
         rules.add(HiveJoinSwapConstraintsRule.INSTANCE);
       }
       rules.add(HiveSemiJoinProjectTransposeRule.INSTANCE);
+      if (conf.getBoolVar(ConfVars.HIVE_OPTIMIZE_JOIN_PUSH_THROUGH_OUTER_JOIN)) {
+        rules.add(HiveJoinPushThroughOuterJoinRule.INSTANCE);
+      }
       rules.add(HiveJoinProjectTransposeRule.LEFT_PROJECT_BTW_JOIN);
       rules.add(HiveJoinProjectTransposeRule.RIGHT_PROJECT_BTW_JOIN);
       rules.add(HiveProjectMergeRule.INSTANCE);
