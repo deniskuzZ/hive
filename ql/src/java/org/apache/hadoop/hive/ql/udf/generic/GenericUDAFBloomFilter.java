@@ -345,6 +345,10 @@ public class GenericUDAFBloomFilter implements GenericUDAFResolver2 {
       this.maxEntries = maxEntries;
     }
 
+    public long getMaxEntries() {
+      return maxEntries;
+    }
+
     public void setMinEntries(long minEntries) {
       this.minEntries = minEntries;
     }
