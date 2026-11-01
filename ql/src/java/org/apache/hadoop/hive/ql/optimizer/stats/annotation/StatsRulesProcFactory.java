@@ -892,7 +892,42 @@ public class StatsRulesProcFactory {
 
       ExprNodeDesc newExpression = rewriteBetweenToIn(comparisonExpression, leftExpression, rightExpression, invert);
 
+      // as the AND of two comparisons, not an IN of the integers in a short range, which counts them
+      if (!invert && newExpression instanceof ExprNodeGenericFuncDesc rewritten
+          && rewritten.getGenericUDF() instanceof GenericUDFOPAnd
+          && comparisonExpression instanceof ExprNodeColumnDesc columnDesc
+          && leftExpression instanceof ExprNodeConstantDesc && rightExpression instanceof ExprNodeConstantDesc
+          && aspCtx.getConf().getBoolVar(HiveConf.ConfVars.HIVE_STATS_FILTER_BETWEEN_RANGE)) {
+        ColStatistics cs = stats.getColumnStatisticsFromColName(columnDesc.getColumn());
+        Long rows = evaluateBetweenWithRangeStats(cs, currNumRows, columnDesc.getTypeString().toLowerCase(),
+            leftValueString, rightValueString, aspCtx);
+        if (rows != null) {
+          aspCtx.addAffectedColumn(columnDesc);
+          return rows;
+        }
+      }
+
       return evaluateExpression(stats, newExpression, aspCtx, neededCols, op, currNumRows);
+    }
+
+    /**
+     * The rows of a BETWEEN from the overlap of its bounds with the column's range, values uniform within the range,
+     * or null without range statistics or with equal bounds (an equality). As two comparisons ANDed, each bound
+     * would be estimated over the whole range and the two selectivities multiplied: a 30-day range of date_dim's
+     * 200 years came out as a quarter of it.
+     */
+    private Long evaluateBetweenWithRangeStats(ColStatistics cs, long currNumRows, String type, String lowerValue,
+        String upperValue, AnnotateStatsProcCtx aspCtx) {
+      if (cs == null || cs.getRange() == null || cs.getRange().minValue == null || cs.getRange().maxValue == null
+          || !aspCtx.isUniformWithinRange()) {
+        return null;
+      }
+      try {
+        EvaluateComparatorWithRange<?> helper = rangeHelper(type);
+        return helper == null ? null : helper.evaluateBetween(cs.getRange(), lowerValue, upperValue, currNumRows);
+      } catch (IllegalArgumentException e) { // a bound that does not parse as the column type
+        return null;
+      }
     }
 
     private long evaluateNotExpr(Statistics stats, ExprNodeDesc pred, long currNumRows,
@@ -1144,70 +1179,84 @@ public class StatsRulesProcFactory {
         }
         return null;
       }
+
+      Long evaluateBetween(Range range, String lowerValue, String upperValue, long currNumRows) {
+        T maxValue = convert.apply(range.maxValue);
+        T minValue = convert.apply(range.minValue);
+        T lower = parse.apply(lowerValue);
+        T upper = parse.apply(upperValue);
+        if (lower.compareTo(upper) == 0) {
+          return null;
+        }
+        if (lower.compareTo(minValue) < 0) {
+          lower = minValue;
+        }
+        if (upper.compareTo(maxValue) > 0) {
+          upper = maxValue;
+        }
+        if (lower.compareTo(upper) > 0) {
+          return 0L;
+        }
+        if (minValue.compareTo(maxValue) == 0) {
+          return currNumRows;
+        }
+        return Math.round(rescaleRows.rescaleNumberOfRows(lower, upper, minValue, maxValue, currNumRows));
+      }
     }
 
     private Long evaluateComparatorWithRangeStats(ColStatistics cs, long currNumRows, String type, String boundValue,
         boolean upperBound, boolean closedBound, AnnotateStatsProcCtx aspCtx) {
       try {
-        EvaluateComparatorWithRange<?> helper;
-        if (type.startsWith(serdeConstants.DECIMAL_TYPE_NAME)) {
-          type = serdeConstants.DECIMAL_TYPE_NAME;
-        }
-
-        switch (type) {
-        case serdeConstants.TINYINT_TYPE_NAME:
-          helper = new EvaluateComparatorWithRange<>(Number::byteValue, Byte::parseByte,
-              (lower, upper, min, max, numRows) -> ((double) (upper - lower) / (max - min)) * numRows);
-          break;
-        case serdeConstants.SMALLINT_TYPE_NAME:
-          helper = new EvaluateComparatorWithRange<>(Number::shortValue, Short::parseShort,
-              (lower, upper, min, max, numRows) -> ((double) (upper - lower) / (max - min)) * numRows);
-          break;
-        case serdeConstants.INT_TYPE_NAME, serdeConstants.DATE_TYPE_NAME, serdeConstants.TIMESTAMP_TYPE_NAME:
-          Function<String, Long> parse;
-          if (type.equals(serdeConstants.DATE_TYPE_NAME)) {
-            parse = str -> {
-              DateWritable writableVal = new DateWritable(java.sql.Date.valueOf(str));
-              return Long.valueOf(writableVal.getDays());
-            };
-          } else if (type.equals(serdeConstants.TIMESTAMP_TYPE_NAME)) {
-            parse = str -> {
-              TimestampWritableV2 timestampWritable = new TimestampWritableV2(Timestamp.valueOf(boundValue));
-              return timestampWritable.getTimestamp().toEpochSecond();
-            };
-          } else {
-            parse = str -> (long) Integer.parseInt(str);
-          }
-          helper = new EvaluateComparatorWithRange<>(Number::longValue, parse,
-              (lower, upper, min, max, numRows) -> ((double) (upper - lower) / (max - min)) * numRows);
-          break;
-
-        case serdeConstants.DECIMAL_TYPE_NAME, serdeConstants.BIGINT_TYPE_NAME:
-          helper = new EvaluateComparatorWithRange<>(num -> new BigDecimal(num.toString()), BigDecimal::new,
-              (lower, upper, min, max, numRows) -> ((upper.subtract(lower)).divide(max.subtract(min), 10,
-                  RoundingMode.UP)).multiply(BigDecimal.valueOf(currNumRows)).doubleValue());
-          break;
-        case serdeConstants.FLOAT_TYPE_NAME:
-          helper = new EvaluateComparatorWithRange<>(Number::floatValue, Float::parseFloat,
-              (lower, upper, min, max, numRows) -> ((double) (upper - lower) / (max - min)) * numRows);
-          break;
-        case serdeConstants.DOUBLE_TYPE_NAME:
-          helper = new EvaluateComparatorWithRange<>(Number::doubleValue, Double::parseDouble,
-              (lower, upper, min, max, numRows) -> ((upper - lower) / (max - min)) * numRows);
-          break;
-        default:
-          return null;
-        }
-
-        Long helperResult = helper.evaluate(cs.getRange(), boundValue, upperBound, closedBound, currNumRows, aspCtx);
-        if (helperResult != null) {
-          return helperResult;
-        }
-
+        EvaluateComparatorWithRange<?> helper = rangeHelper(type);
+        return helper == null ? null
+            : helper.evaluate(cs.getRange(), boundValue, upperBound, closedBound, currNumRows, aspCtx);
       } catch (NumberFormatException nfe) {
         return null;
       }
-      return null;
+    }
+
+    /** The range arithmetic of a column type, or null for a type without one. */
+    private static EvaluateComparatorWithRange<?> rangeHelper(String type) {
+      if (type.startsWith(serdeConstants.DECIMAL_TYPE_NAME)) {
+        type = serdeConstants.DECIMAL_TYPE_NAME;
+      }
+      switch (type) {
+      case serdeConstants.TINYINT_TYPE_NAME:
+        return new EvaluateComparatorWithRange<>(Number::byteValue, Byte::parseByte,
+            (lower, upper, min, max, numRows) -> ((double) (upper - lower) / (max - min)) * numRows);
+      case serdeConstants.SMALLINT_TYPE_NAME:
+        return new EvaluateComparatorWithRange<>(Number::shortValue, Short::parseShort,
+            (lower, upper, min, max, numRows) -> ((double) (upper - lower) / (max - min)) * numRows);
+      case serdeConstants.INT_TYPE_NAME, serdeConstants.DATE_TYPE_NAME, serdeConstants.TIMESTAMP_TYPE_NAME:
+        Function<String, Long> parse;
+        if (type.equals(serdeConstants.DATE_TYPE_NAME)) {
+          parse = str -> {
+            DateWritable writableVal = new DateWritable(java.sql.Date.valueOf(str));
+            return Long.valueOf(writableVal.getDays());
+          };
+        } else if (type.equals(serdeConstants.TIMESTAMP_TYPE_NAME)) {
+          parse = str -> {
+            TimestampWritableV2 timestampWritable = new TimestampWritableV2(Timestamp.valueOf(str));
+            return timestampWritable.getTimestamp().toEpochSecond();
+          };
+        } else {
+          parse = str -> (long) Integer.parseInt(str);
+        }
+        return new EvaluateComparatorWithRange<>(Number::longValue, parse,
+            (lower, upper, min, max, numRows) -> ((double) (upper - lower) / (max - min)) * numRows);
+      case serdeConstants.DECIMAL_TYPE_NAME, serdeConstants.BIGINT_TYPE_NAME:
+        return new EvaluateComparatorWithRange<>(num -> new BigDecimal(num.toString()), BigDecimal::new,
+            (lower, upper, min, max, numRows) -> ((upper.subtract(lower)).divide(max.subtract(min), 10,
+                RoundingMode.UP)).multiply(BigDecimal.valueOf(numRows)).doubleValue());
+      case serdeConstants.FLOAT_TYPE_NAME:
+        return new EvaluateComparatorWithRange<>(Number::floatValue, Float::parseFloat,
+            (lower, upper, min, max, numRows) -> ((double) (upper - lower) / (max - min)) * numRows);
+      case serdeConstants.DOUBLE_TYPE_NAME:
+        return new EvaluateComparatorWithRange<>(Number::doubleValue, Double::parseDouble,
+            (lower, upper, min, max, numRows) -> ((upper - lower) / (max - min)) * numRows);
+      default:
+        return null;
+      }
     }
 
     private long evaluateComparatorWithHistogram(ColStatistics cs, long currNumRows, String colTypeLowerCase,
