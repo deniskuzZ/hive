@@ -236,6 +236,7 @@ import org.apache.hadoop.hive.ql.optimizer.calcite.rules.HiveJoinCommuteRule;
 import org.apache.hadoop.hive.ql.optimizer.calcite.rules.HiveJoinConstraintsRule;
 import org.apache.hadoop.hive.ql.optimizer.calcite.rules.HiveJoinProjectTransposeRule;
 import org.apache.hadoop.hive.ql.optimizer.calcite.rules.HiveJoinPushThroughOuterJoinRule;
+import org.apache.hadoop.hive.ql.optimizer.calcite.rules.HiveUnwrapCastInComparisonRule;
 import org.apache.hadoop.hive.ql.optimizer.calcite.rules.HiveJoinPushTransitivePredicatesRule;
 import org.apache.hadoop.hive.ql.optimizer.calcite.rules.HiveJoinToMultiJoinRule;
 import org.apache.hadoop.hive.ql.optimizer.calcite.rules.HiveAntiSemiJoinRule;
@@ -1832,6 +1833,9 @@ public class CalcitePlanner extends SemanticAnalyzer {
       rules.add(HiveProjectFilterPullUpConstantsRule.INSTANCE);
       rules.add(HiveReduceExpressionsRule.PROJECT_INSTANCE);
       rules.add(HiveReduceExpressionsRule.FILTER_INSTANCE);
+      if (conf.getBoolVar(ConfVars.HIVE_OPTIMIZE_UNWRAP_CAST_IN_COMPARISON)) {
+        rules.add(HiveUnwrapCastInComparisonRule.INSTANCE);
+      }
       rules.add(HiveReduceExpressionsRule.JOIN_INSTANCE);
       rules.add(HiveReduceExpressionsRule.SEMIJOIN_INSTANCE);
       rules.add(HiveAggregateReduceFunctionsRule.INSTANCE);
