@@ -20,7 +20,9 @@
 package org.apache.hadoop.hive.ql.optimizer;
 
 import java.math.RoundingMode;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -91,6 +93,7 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
+import com.google.common.collect.Sets;
 import com.google.common.math.DoubleMath;
 import com.google.common.primitives.Booleans;
 
@@ -708,10 +711,11 @@ public class ConvertJoinMapJoin implements SemanticNodeProcessor {
       return false;
     }
     for (int pos = 0; pos < joinOp.getParentOperators().size(); pos++) {
-      ReduceSinkOperator partitioner = coPartitioningReduceSink(joinOp, pos);
-      if (partitioner == null) {
+      CoPartitioning coPartitioning = coPartitioningReduceSink(joinOp, pos, context.conf);
+      if (coPartitioning == null) {
         continue;
       }
+      ReduceSinkOperator partitioner = coPartitioning.partitioner();
       if (partitioner.getChildOperators().get(0) instanceof GroupByOperator
           && (!context.conf.getBoolVar(HiveConf.ConfVars.HIVE_DYNAMIC_PARTITION_HASHJOIN)
               || getMapJoinConversion(joinOp, context, 1, false, maxJoinMemory, true) != null)) {
@@ -742,6 +746,11 @@ public class ConvertJoinMapJoin implements SemanticNodeProcessor {
       if (pinned) {
         partitioner.getConf().getReducerTraits().remove(ReducerTraits.AUTOPARALLEL);
       }
+      if (coPartitioning.joinKeys() != null) {
+        // the GROUP BY's input is partitioned on the join keys alone, by their values
+        partitioner.getConf().setPartitionCols(coPartitioning.joinKeys());
+        partitioner.getConf().getReducerTraits().remove(ReducerTraits.UNIFORM);
+      }
       MapJoinDesc joinDesc = mapJoinOp.getConf();
       joinDesc.setBucketMapJoin(true);
       Map<String, Integer> bigTableBucketNumMapping = new HashMap<>();
@@ -753,8 +762,10 @@ public class ConvertJoinMapJoin implements SemanticNodeProcessor {
       setNumberOfBucketsOnChildren(mapJoinOp);
       for (Operator<? extends OperatorDesc> parentOp : mapJoinOp.getParentOperators()) {
         if (parentOp instanceof ReduceSinkOperator smallTableRS) {
-          // the partitioned join's hash (coPartitioningReduceSink) into its fixed number of partitions
-          smallTableRS.getConf().setReducerTraits(EnumSet.of(ReducerTraits.UNIFORM, ReducerTraits.FIXED));
+          // the partitioned join's hash (coPartitioningReduceSink) into its fixed number of partitions: Murmur3 over
+          // the serialized key, or over the key's values as the GROUP BY's input partitioned on the join keys
+          smallTableRS.getConf().setReducerTraits(coPartitioning.joinKeys() == null
+              ? EnumSet.of(ReducerTraits.UNIFORM, ReducerTraits.FIXED) : EnumSet.of(ReducerTraits.FIXED));
         }
       }
       MemoryMonitorInfo memoryMonitorInfo = joinDesc.getMemoryMonitorInfo();
@@ -792,14 +803,6 @@ public class ConvertJoinMapJoin implements SemanticNodeProcessor {
   }
 
   /**
-   * The ReduceSink that partitions the join's input at the position, or null: the big table ReduceSink of the
-   * dynamically partitioned hash join, or the ReduceSink of the reduce-side GROUP BY, that produced the input in its
-   * vertex. The input must reach that operator through operators of its vertex that keep a row in its task, its
-   * partition columns must trace back to all the join keys of one side or to all the GROUP BY keys, in order, and every
-   * other input must hash its keys as the ReduceSink does: Murmur3 over the same serialized key (UNIFORM), so equal keys
-   * meet in one task.
-   */
-  /**
    * The partition columns of the join's ReduceSink are columns of the big table input of a map join on the way: the
    * walk goes on along that input, and the map join's column map names the columns of its other inputs after those
    * inputs' columns, which the names of the big table input may match.
@@ -818,12 +821,30 @@ public class ConvertJoinMapJoin implements SemanticNodeProcessor {
     return true;
   }
 
-  private static ReduceSinkOperator coPartitioningReduceSink(JoinOperator joinOp, int pos) throws SemanticException {
+  /**
+   * The ReduceSink that partitions a join input, and, when it is a GROUP BY's whose keys include the join keys, the
+   * columns of its input that partition it on the join keys alone, by their values, or null.
+   */
+  private record CoPartitioning(ReduceSinkOperator partitioner, List<ExprNodeDesc> joinKeys) {
+  }
+
+  /**
+   * The partitioning of the join's input at the position, or null: the big table ReduceSink of the dynamically
+   * partitioned hash join, or the ReduceSink of the reduce-side GROUP BY, that produced the input in its vertex. The
+   * input must reach that operator through operators of its vertex that keep a row in its task, its partition columns
+   * must trace back to all the join keys of one side, to all the GROUP BY keys, in order, or to a subset of the GROUP
+   * BY keys (groupByJoinKeys), and every other input must hash its keys as the ReduceSink does, so equal keys meet in
+   * one task: Murmur3 over the same serialized key (UNIFORM), or the join keys' values by the version 2 bucketing hash.
+   */
+  private static CoPartitioning coPartitioningReduceSink(JoinOperator joinOp, int pos, HiveConf conf)
+      throws SemanticException {
     if (!(joinOp.getParentOperators().get(pos) instanceof ReduceSinkOperator bigTableRS)) {
       return null;
     }
     Operator<? extends OperatorDesc> below = bigTableRS;
     Operator<? extends OperatorDesc> op = bigTableRS.getParentOperators().get(0);
+    // a partitioned join on the way holds its other inputs in the partitions the partitioner hashes now
+    boolean partitionsUsed = false;
     while (!(op instanceof MapJoinOperator mapJoin && mapJoin.getConf().isDynamicPartitionHashJoin()
         || op instanceof GroupByOperator && op.getParentOperators().get(0) instanceof ReduceSinkOperator)) {
       Operator<? extends OperatorDesc> parent;
@@ -831,6 +852,7 @@ public class ConvertJoinMapJoin implements SemanticNodeProcessor {
         if (!keysFromBigTable(bigTableRS, below, mapJoin)) {
           return null;
         }
+        partitionsUsed |= mapJoin.getConf().isBucketMapJoin();
         parent = mapJoin.getParentOperators().get(mapJoin.getConf().getPosBigTable());
       } else if (op instanceof SelectOperator || op instanceof FilterOperator) {
         parent = op.getParentOperators().get(0);
@@ -853,12 +875,16 @@ public class ConvertJoinMapJoin implements SemanticNodeProcessor {
       return null;
     }
     ReduceSinkOperator partitioner;
+    List<ExprNodeDesc> joinKeys = null;
     if (op instanceof GroupByOperator groupBy) {
       GroupByDesc groupByDesc = groupBy.getConf();
-      if (!keyColumns.equals(groupByDesc.getOutputColumnNames().subList(0, groupByDesc.getKeys().size()))) {
-        return null;
-      }
       partitioner = (ReduceSinkOperator) groupBy.getParentOperators().get(0);
+      if (!keyColumns.equals(groupByDesc.getOutputColumnNames().subList(0, groupByDesc.getKeys().size()))) {
+        joinKeys = groupByJoinKeys(groupBy, partitioner, keyColumns, conf);
+        if (joinKeys == null) {
+          return null;
+        }
+      }
     } else {
       MapJoinOperator partitionedJoin = (MapJoinOperator) op;
       partitioner =
@@ -876,9 +902,18 @@ public class ConvertJoinMapJoin implements SemanticNodeProcessor {
       }
     }
     ReduceSinkDesc partitioning = partitioner.getConf();
-    if (!partitioning.getReducerTraits().contains(ReducerTraits.UNIFORM)) {
+    boolean uniform = partitioning.getReducerTraits().contains(ReducerTraits.UNIFORM);
+    if (joinKeys == null && !uniform) {
       return null;
     }
+    // the GROUP BY's input is partitioned on the join keys' values already, or can be: no partitioned join on the way
+    // holds its other inputs in the partitions of the serialized key
+    if (joinKeys != null && (!hashesByVersion2(partitioner)
+        || (uniform ? partitionsUsed : !ExprNodeDescUtils.isSame(partitioning.getPartitionCols(), joinKeys)))) {
+      return null;
+    }
+    // what the inputs hash: the partitioner's serialized key, or the values of the join keys
+    List<ExprNodeDesc> hashed = joinKeys == null ? partitioning.getKeyCols() : joinKeys;
     for (int i = 0; i < joinOp.getParentOperators().size(); i++) {
       if (i == pos) {
         continue;
@@ -887,19 +922,83 @@ public class ConvertJoinMapJoin implements SemanticNodeProcessor {
         return null;
       }
       ReduceSinkDesc small = smallTableRS.getConf();
-      if (small.getKeyCols().size() != partitioning.getKeyCols().size()
+      if (small.getKeyCols().size() != hashed.size()
           || !ExprNodeDescUtils.isSame(small.getKeyCols(), small.getPartitionCols())
-          || !small.getOrder().equals(partitioning.getOrder())
-          || !small.getNullOrder().equals(partitioning.getNullOrder())) {
+          || joinKeys == null && (!small.getOrder().equals(partitioning.getOrder())
+              || !small.getNullOrder().equals(partitioning.getNullOrder()))
+          || joinKeys != null && !hashesByVersion2(smallTableRS)) {
         return null;
       }
       for (int k = 0; k < small.getKeyCols().size(); k++) {
-        if (!small.getKeyCols().get(k).getTypeInfo().equals(partitioning.getKeyCols().get(k).getTypeInfo())) {
+        if (!small.getKeyCols().get(k).getTypeInfo().equals(hashed.get(k).getTypeInfo())) {
           return null;
         }
       }
     }
-    return partitioner;
+    return new CoPartitioning(partitioner, joinKeys);
+  }
+
+  /**
+   * The columns of the GROUP BY's input that partition it on the join keys, a subset of its keys, in the join's order,
+   * or null (Trino AddExchanges#useParentPreferredPartitioning): with hive.optimize.groupby.partition.join.keys, when
+   * every join key is a different grouping key, the GROUP BY has no grouping sets or distinct aggregates, and the join
+   * keys' fewest distinct values are more than 128 per partition, so that partitioning on them stays balanced. A
+   * group's rows share its join keys, so they still meet in one partition.
+   */
+  private static List<ExprNodeDesc> groupByJoinKeys(GroupByOperator groupBy, ReduceSinkOperator partitioner,
+      List<String> keyColumns, HiveConf conf) {
+    GroupByDesc groupByDesc = groupBy.getConf();
+    ReduceSinkDesc partitioning = partitioner.getConf();
+    List<String> groupKeys = groupByDesc.getOutputColumnNames().subList(0, groupByDesc.getKeys().size());
+    if (!conf.getBoolVar(HiveConf.ConfVars.HIVE_OPTIMIZE_GROUPBY_PARTITION_JOIN_KEYS)
+        || groupByDesc.isGroupingSetsPresent() || !partitioning.getDistinctColumnIndices().isEmpty()
+        || keyColumns.size() >= groupKeys.size() || new HashSet<>(keyColumns).size() < keyColumns.size()
+        || groupBy.getStatistics() == null) {
+      return null;
+    }
+    List<ExprNodeDesc> joinKeys = new ArrayList<>();
+    long fewestDistinct = Long.MAX_VALUE;
+    for (String keyColumn : keyColumns) {
+      int k = groupKeys.indexOf(keyColumn);
+      ColStatistics cs = groupBy.getStatistics().getColumnStatisticsFromColName(keyColumn);
+      // the grouping key reads a key of the ReduceSink: KEY.<its output key column>
+      if (k < 0 || cs == null || cs.getCountDistint() <= 0
+          || !(groupByDesc.getKeys().get(k) instanceof ExprNodeColumnDesc key)
+          || !key.getColumn().startsWith(Utilities.ReduceField.KEY + ".")) {
+        return null;
+      }
+      int rsKey = partitioning.getOutputKeyColumnNames().indexOf(
+          key.getColumn().substring(Utilities.ReduceField.KEY.toString().length() + 1));
+      if (rsKey < 0) {
+        return null;
+      }
+      joinKeys.add(partitioning.getKeyCols().get(rsKey));
+      fewestDistinct = Math.min(fewestDistinct, cs.getCountDistint());
+    }
+    return fewestDistinct > 128L * partitioning.getNumReducers() ? joinKeys : null;
+  }
+
+  /**
+   * Whether the ReduceSink hashes values with the version 2 bucketing hash: BucketVersionPopulator gives it the version
+   * of a bucketed table its vertex reads, and 2 otherwise.
+   */
+  private static boolean hashesByVersion2(ReduceSinkOperator rs) {
+    Deque<Operator<?>> upstream = new ArrayDeque<>(rs.getParentOperators());
+    Set<Operator<?>> seen = Sets.newIdentityHashSet();
+    while (!upstream.isEmpty()) {
+      Operator<?> op = upstream.poll();
+      if (!seen.add(op)) {
+        continue;
+      }
+      if (op instanceof TableScanOperator ts && ts.getConf().getNumBuckets() > 1
+          && ts.getConf().getTableMetadata().getBucketingVersion() != 2) {
+        return false;
+      }
+      if (!(op instanceof ReduceSinkOperator) && op.getParentOperators() != null) {
+        upstream.addAll(op.getParentOperators());
+      }
+    }
+    return true;
   }
 
   private boolean convertJoinBucketMapJoin(JoinOperator joinOp, OptimizeTezProcContext context,

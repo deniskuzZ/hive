@@ -4828,6 +4828,11 @@ public class HiveConf extends Configuration {
     HIVE_CONVERT_JOIN_BUCKET_MAPJOIN_TEZ("hive.convert.join.bucket.mapjoin.tez", true,
         "Whether joins can be automatically converted to bucket map joins in hive \n" +
         "when tez is used as the execution engine."),
+    HIVE_OPTIMIZE_GROUPBY_PARTITION_JOIN_KEYS("hive.optimize.groupby.partition.join.keys", false,
+        "Whether a reduce-side GROUP BY whose output a join consumes on a subset of its keys is partitioned on that\n"
+        + "subset, by the keys' values, so that the join runs in the GROUP BY's reducer instead of shuffling the\n"
+        + "output again (hive.convert.join.bucket.mapjoin.tez); only when the subset has more than 128 distinct\n"
+        + "values per partition. Trino's AddExchanges does this for an aggregation under a join."),
     HIVE_OPTIMIZE_JOIN_BUILD_AGGREGATE_FUSION("hive.optimize.join.build.aggregate.fusion", false,
         "Whether the final GROUP BY that only feeds the build input of a join partitioned on its keys runs in the join's\n" +
         "task: its partial aggregates are partitioned into the join's vertex and merged as the hash table is loaded,\n" +
