@@ -1817,6 +1817,10 @@ public class HiveConf extends Configuration {
     AGGR_JOIN_TRANSPOSE("hive.transpose.aggr.join", false, "push aggregates through join"),
     AGGR_JOIN_TRANSPOSE_UNIQUE("hive.transpose.aggr.join.unique", true, "push aggregates through join(s) in "
         + "case data is regrouped on a previously unique column"),
+    HIVE_OPTIMIZE_UNWRAP_CAST_IN_COMPARISON("hive.optimize.unwrap.cast.in.comparison", false,
+        "Whether CBO compares a DATE cast to TIMESTAMP with a TIMESTAMP literal as a DATE: CAST(d AS TIMESTAMP) < t\n"
+        + "becomes d < DATE, and CAST(d AS TIMESTAMP) BETWEEN t1 AND t2 becomes d BETWEEN DATE1 AND DATE2, so the\n"
+        + "column's statistics estimate it. d BETWEEN date AND date + N days compares timestamps otherwise."),
     HIVE_OPTIMIZE_JOIN_PUSH_THROUGH_OUTER_JOIN("hive.optimize.join.push.through.outer.join", false,
         "Whether CBO moves an inner join below the LEFT outer join that is its left input when the inner join's\n"
         + "condition references only the outer join's preserved side and does not increase its rows:\n"
