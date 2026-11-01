@@ -107,7 +107,7 @@ public class GenericUDAFBloomFilter implements GenericUDAFResolver2 {
 
     @Override
     public int estimate() {
-      long entries = Math.min(getExpectedEntries(), maxEntries);
+      long entries = getFilterEntries();
       long numBits = (long) (-entries * Math.log(BloomKFilter.DEFAULT_FPP) / (Math.log(2) * Math.log(2)));
       int nLongs = (int) Math.ceil((double) numBits / (double) Long.SIZE);
       // additional bits to pad long array to block size
@@ -122,12 +122,8 @@ public class GenericUDAFBloomFilter implements GenericUDAFResolver2 {
     static class BloomFilterBuf extends AbstractAggregationBuffer {
       BloomKFilter bloomFilter;
 
-      public BloomFilterBuf(long expectedEntries, long maxEntries) {
-        if (expectedEntries > maxEntries) {
-          bloomFilter = BloomKFilter.build(maxEntries);
-        } else {
-          bloomFilter = BloomKFilter.build(expectedEntries);
-        }
+      public BloomFilterBuf(long entries) {
+        bloomFilter = BloomKFilter.build(entries);
       }
 
       @Override
@@ -148,7 +144,7 @@ public class GenericUDAFBloomFilter implements GenericUDAFResolver2 {
         throw new IllegalStateException("BloomFilter expectedEntries not initialized");
       }
 
-      BloomFilterBuf buf = new BloomFilterBuf(expectedEntries, maxEntries);
+      BloomFilterBuf buf = new BloomFilterBuf(getFilterEntries());
       reset(buf);
       return buf;
     }
@@ -307,6 +303,14 @@ public class GenericUDAFBloomFilter implements GenericUDAFResolver2 {
     }
 
     /**
+     * The entries the filter is built for, by row mode and vectorized alike, whose partial filters merge only at the
+     * same size: the expected entries, at most hive.tez.max.bloom.filter.entries.
+     */
+    public long getFilterEntries() {
+      return Math.min(getExpectedEntries(), maxEntries);
+    }
+
+    /**
      * Returns the NDV of the bloom filter key, or -1 if a key column has no NDV. The source is SEL[c] for a
      * single-column semijoin and SEL[c1, ..., ck, hash(c1, ..., ck)] for a multi-column one, whose bloom filter
      * holds the hash of the composite key; its NDV is estimated as the product of the column NDVs.
@@ -343,6 +347,10 @@ public class GenericUDAFBloomFilter implements GenericUDAFResolver2 {
 
     public void setMaxEntries(long maxEntries) {
       this.maxEntries = maxEntries;
+    }
+
+    public long getMaxEntries() {
+      return maxEntries;
     }
 
     public void setMinEntries(long minEntries) {

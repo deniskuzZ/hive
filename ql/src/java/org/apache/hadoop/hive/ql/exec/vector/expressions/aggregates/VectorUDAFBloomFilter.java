@@ -119,7 +119,7 @@ public class VectorUDAFBloomFilter extends VectorAggregateExpression {
 
     GenericUDAFBloomFilterEvaluator udafBloomFilter =
         (GenericUDAFBloomFilterEvaluator) vecAggrDesc.getEvaluator();
-    expectedEntries = udafBloomFilter.getExpectedEntries();
+    expectedEntries = udafBloomFilter.getFilterEntries();
 
     bitSetSize = -1;
     byteStream = new ByteArrayOutputStream();

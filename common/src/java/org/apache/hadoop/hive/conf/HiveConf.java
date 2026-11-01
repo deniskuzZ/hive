@@ -4896,6 +4896,10 @@ public class HiveConf extends Configuration {
             "Bloom filter should be of at min certain size to be effective"),
     TEZ_MAX_BLOOM_FILTER_ENTRIES("hive.tez.max.bloom.filter.entries", 100000000L,
             "Bloom filter should be of at max certain size to be effective"),
+    HIVE_TEZ_BLOOM_FILTER_CAP("hive.tez.bloom.filter.cap", false,
+        "Whether a semijoin whose bloom filter's estimated entries exceed hive.tez.max.bloom.filter.entries keeps a\n"
+        + "filter of that size, its benefit counting the false positives the smaller filter lets through, instead of\n"
+        + "being removed. Impala sizes its runtime filters this way."),
     TEZ_BLOOM_FILTER_FACTOR("hive.tez.bloom.filter.factor", (float) 1.0,
             "Bloom filter should be a multiple of this factor with nDV"),
     TEZ_BLOOM_FILTER_MERGE_THREADS("hive.tez.bloom.filter.merge.threads", 1,

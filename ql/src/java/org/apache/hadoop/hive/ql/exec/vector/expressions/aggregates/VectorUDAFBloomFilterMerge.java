@@ -319,7 +319,7 @@ public class VectorUDAFBloomFilterMerge extends VectorAggregateExpression {
 
     GenericUDAFBloomFilterEvaluator udafBloomFilter =
         (GenericUDAFBloomFilterEvaluator) vecAggrDesc.getEvaluator();
-    expectedEntries = udafBloomFilter.getExpectedEntries();
+    expectedEntries = udafBloomFilter.getFilterEntries();
 
     aggBufferSize = -1;
   }
