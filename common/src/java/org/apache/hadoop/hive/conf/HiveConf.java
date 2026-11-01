@@ -2937,6 +2937,10 @@ public class HiveConf extends Configuration {
         "minimum and maximum values for that column are available, assume uniform distribution of values\n" +
         "across that range and scales number of rows proportionally. If this is set to false, default\n" +
         "selectivity value is used."),
+    HIVE_STATS_FILTER_BETWEEN_RANGE("hive.stats.filter.between.range", false,
+        "Whether a BETWEEN over a column with minimum and maximum values and no histogram is estimated from the\n"
+        + "overlap of its bounds with that range (hive.stats.filter.range.uniform), instead of as two comparisons\n"
+        + "estimated independently over the whole range and multiplied."),
     // in the absence of uncompressed/raw data size, total file size will be used for statistics
     // annotation. But the file may be compressed, encoded and serialized which may be lesser in size
     // than the actual uncompressed/raw data size. This factor will be multiplied to file size to estimate
