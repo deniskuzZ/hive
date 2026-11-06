@@ -304,7 +304,12 @@ public class TezProcessor extends AbstractLogicalIOProcessor {
       // If there are other speculative attempt execute canCommit first, then wait until the attempt is killed
       // or the committed task fails.
       while (!getContext().canCommit()) {
-        // If canCommit returns false, and we enter this loop, it means another task attempt has already committed.
+        // canCommit is false while another task attempt holds the commit, and once this attempt is no longer
+        // running. The kill aborts and then interrupts this attempt, and run() may consume the interrupt and
+        // return on the abort, so the abort ends the wait rather than the interrupt alone.
+        if (aborted.get()) {
+          throw new InterruptedException("Aborted while waiting to commit");
+        }
         // This task attempt only needs to sleep for a relatively long time while waiting to be killed.
         // However, we must avoid a low-probability scenario: a rare case where a task attempt fails after committing.
         // In that situation, the delay must not be excessively long so this attempt can still react in time.
