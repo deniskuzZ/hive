@@ -18,10 +18,12 @@
  */
 package org.apache.hadoop.hive.ql.exec.tez;
 
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.io.IOException;
+import java.util.Collections;
 
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapred.JobConf;
@@ -49,6 +51,24 @@ public class TestTezProcessor {
     tezProcessor.initialize();
     JobConf conf = tezProcessor.getConf();
     Assert.assertEquals(token, conf.getCredentials().getToken(tokenId));
+  }
+
+  @Test(timeout = 10000)
+  public void testKilledTaskStopsWaitingToCommit() throws Exception {
+    ProcessorContext processorContext = mockProcessorContext();
+    // a killed attempt is no longer running, so it may not commit
+    when(processorContext.canCommit()).thenReturn(false);
+    TezProcessor tezProcessor = new TezProcessor(processorContext);
+    tezProcessor.initialize();
+    // the kill arrives while the task runs: run() returns on the abort, and the interrupt is not seen
+    tezProcessor.rproc = mock(RecordProcessor.class);
+    doAnswer(invocation -> {
+      tezProcessor.abort();
+      return null;
+    }).when(tezProcessor.rproc).run();
+
+    Assert.assertThrows(InterruptedException.class,
+        () -> tezProcessor.initializeAndRunProcessor(Collections.emptyMap(), Collections.emptyMap()));
   }
 
   private ProcessorContext mockProcessorContext() throws IOException {
