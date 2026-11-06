@@ -1,0 +1,3162 @@
+PREHOOK: query: create table pc_date (d_date_sk int, d_year int, d_week_seq int, d_day_name string)
+PREHOOK: type: CREATETABLE
+PREHOOK: Output: database:default
+PREHOOK: Output: default@pc_date
+POSTHOOK: query: create table pc_date (d_date_sk int, d_year int, d_week_seq int, d_day_name string)
+POSTHOOK: type: CREATETABLE
+POSTHOOK: Output: database:default
+POSTHOOK: Output: default@pc_date
+PREHOOK: query: create table pc_store (s_store_sk int, s_store_id string, s_store_name string)
+PREHOOK: type: CREATETABLE
+PREHOOK: Output: database:default
+PREHOOK: Output: default@pc_store
+POSTHOOK: query: create table pc_store (s_store_sk int, s_store_id string, s_store_name string)
+POSTHOOK: type: CREATETABLE
+POSTHOOK: Output: database:default
+POSTHOOK: Output: default@pc_store
+PREHOOK: query: create table pc_sales (ss_sold_date_sk int, ss_store_sk int, ss_sales_price decimal(7,2), ss_quantity int)
+PREHOOK: type: CREATETABLE
+PREHOOK: Output: database:default
+PREHOOK: Output: default@pc_sales
+POSTHOOK: query: create table pc_sales (ss_sold_date_sk int, ss_store_sk int, ss_sales_price decimal(7,2), ss_quantity int)
+POSTHOOK: type: CREATETABLE
+POSTHOOK: Output: database:default
+POSTHOOK: Output: default@pc_sales
+PREHOOK: query: insert into pc_date select pos + 1, if(pos < 14, 2000, 2001), pos div 7 + 1,
+  elt(pos % 7 + 1, 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday')
+from (select posexplode(split(space(27), ' '))) t
+PREHOOK: type: QUERY
+PREHOOK: Input: _dummy_database@_dummy_table
+PREHOOK: Output: default@pc_date
+POSTHOOK: query: insert into pc_date select pos + 1, if(pos < 14, 2000, 2001), pos div 7 + 1,
+  elt(pos % 7 + 1, 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday')
+from (select posexplode(split(space(27), ' '))) t
+POSTHOOK: type: QUERY
+POSTHOOK: Input: _dummy_database@_dummy_table
+POSTHOOK: Output: default@pc_date
+POSTHOOK: Lineage: pc_date.d_date_sk SCRIPT []
+POSTHOOK: Lineage: pc_date.d_day_name SCRIPT []
+POSTHOOK: Lineage: pc_date.d_week_seq SCRIPT []
+POSTHOOK: Lineage: pc_date.d_year SCRIPT []
+PREHOOK: query: insert into pc_store select pos + 1, concat('S', pos % 3), concat('store', pos % 2)
+from (select posexplode(split(space(5), ' '))) t
+PREHOOK: type: QUERY
+PREHOOK: Input: _dummy_database@_dummy_table
+PREHOOK: Output: default@pc_store
+POSTHOOK: query: insert into pc_store select pos + 1, concat('S', pos % 3), concat('store', pos % 2)
+from (select posexplode(split(space(5), ' '))) t
+POSTHOOK: type: QUERY
+POSTHOOK: Input: _dummy_database@_dummy_table
+POSTHOOK: Output: default@pc_store
+POSTHOOK: Lineage: pc_store.s_store_id SCRIPT []
+POSTHOOK: Lineage: pc_store.s_store_name SCRIPT []
+POSTHOOK: Lineage: pc_store.s_store_sk SCRIPT []
+PREHOOK: query: insert into pc_sales select pos % 28 + 1, pos % 6 + 1,
+  if(pos % 17 = 0, null, cast(pos % 50 * 1.25 as decimal(7,2))), if(pos % 11 = 0, null, pos % 9)
+from (select posexplode(split(space(5999), ' '))) t
+PREHOOK: type: QUERY
+PREHOOK: Input: _dummy_database@_dummy_table
+PREHOOK: Output: default@pc_sales
+POSTHOOK: query: insert into pc_sales select pos % 28 + 1, pos % 6 + 1,
+  if(pos % 17 = 0, null, cast(pos % 50 * 1.25 as decimal(7,2))), if(pos % 11 = 0, null, pos % 9)
+from (select posexplode(split(space(5999), ' '))) t
+POSTHOOK: type: QUERY
+POSTHOOK: Input: _dummy_database@_dummy_table
+POSTHOOK: Output: default@pc_sales
+POSTHOOK: Lineage: pc_sales.ss_quantity SCRIPT []
+POSTHOOK: Lineage: pc_sales.ss_sales_price SCRIPT []
+POSTHOOK: Lineage: pc_sales.ss_sold_date_sk SCRIPT []
+POSTHOOK: Lineage: pc_sales.ss_store_sk SCRIPT []
+PREHOOK: query: analyze table pc_date compute statistics for columns
+PREHOOK: type: ANALYZE_TABLE
+PREHOOK: Input: default@pc_date
+PREHOOK: Output: default@pc_date
+#### A masked pattern was here ####
+POSTHOOK: query: analyze table pc_date compute statistics for columns
+POSTHOOK: type: ANALYZE_TABLE
+POSTHOOK: Input: default@pc_date
+POSTHOOK: Output: default@pc_date
+#### A masked pattern was here ####
+PREHOOK: query: analyze table pc_store compute statistics for columns
+PREHOOK: type: ANALYZE_TABLE
+PREHOOK: Input: default@pc_store
+PREHOOK: Output: default@pc_store
+#### A masked pattern was here ####
+POSTHOOK: query: analyze table pc_store compute statistics for columns
+POSTHOOK: type: ANALYZE_TABLE
+POSTHOOK: Input: default@pc_store
+POSTHOOK: Output: default@pc_store
+#### A masked pattern was here ####
+PREHOOK: query: analyze table pc_sales compute statistics for columns
+PREHOOK: type: ANALYZE_TABLE
+PREHOOK: Input: default@pc_sales
+PREHOOK: Output: default@pc_sales
+#### A masked pattern was here ####
+POSTHOOK: query: analyze table pc_sales compute statistics for columns
+POSTHOOK: type: ANALYZE_TABLE
+POSTHOOK: Input: default@pc_sales
+POSTHOOK: Output: default@pc_sales
+#### A masked pattern was here ####
+PREHOOK: query: explain
+select ss_store_sk,
+  sum(case when d_day_name = 'Sunday' then ss_sales_price else null end) sun,
+  sum(case when d_day_name = 'Monday' then ss_sales_price else null end) mon,
+  count(case when d_day_name = 'Tuesday' then ss_quantity end) tue_cnt,
+  min(case when d_day_name = 'Wednesday' then ss_sales_price end) wed_min,
+  max(case when d_day_name = 'Thursday' then ss_sales_price end) thu_max,
+  sum(case when d_day_name = 'Friday' then ss_sales_price * ss_quantity else 0 end) fri_amt
+from pc_sales join pc_date on ss_sold_date_sk = d_date_sk
+where d_year = 2000
+group by ss_store_sk
+PREHOOK: type: QUERY
+PREHOOK: Input: default@pc_date
+PREHOOK: Input: default@pc_sales
+#### A masked pattern was here ####
+POSTHOOK: query: explain
+select ss_store_sk,
+  sum(case when d_day_name = 'Sunday' then ss_sales_price else null end) sun,
+  sum(case when d_day_name = 'Monday' then ss_sales_price else null end) mon,
+  count(case when d_day_name = 'Tuesday' then ss_quantity end) tue_cnt,
+  min(case when d_day_name = 'Wednesday' then ss_sales_price end) wed_min,
+  max(case when d_day_name = 'Thursday' then ss_sales_price end) thu_max,
+  sum(case when d_day_name = 'Friday' then ss_sales_price * ss_quantity else 0 end) fri_amt
+from pc_sales join pc_date on ss_sold_date_sk = d_date_sk
+where d_year = 2000
+group by ss_store_sk
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@pc_date
+POSTHOOK: Input: default@pc_sales
+#### A masked pattern was here ####
+STAGE DEPENDENCIES:
+  Stage-1 is a root stage
+  Stage-0 depends on stages: Stage-1
+
+STAGE PLANS:
+  Stage: Stage-1
+    Tez
+#### A masked pattern was here ####
+      Edges:
+        Reducer 2 <- Map 1 (SIMPLE_EDGE), Map 4 (SIMPLE_EDGE)
+        Reducer 3 <- Reducer 2 (SIMPLE_EDGE)
+#### A masked pattern was here ####
+      Vertices:
+        Map 1 
+            Map Operator Tree:
+                TableScan
+                  alias: pc_sales
+                  filterExpr: ss_sold_date_sk is not null (type: boolean)
+                  Statistics: Num rows: 6000 Data size: 702396 Basic stats: COMPLETE Column stats: COMPLETE
+                  Filter Operator
+                    predicate: ss_sold_date_sk is not null (type: boolean)
+                    Statistics: Num rows: 6000 Data size: 702396 Basic stats: COMPLETE Column stats: COMPLETE
+                    Select Operator
+                      expressions: ss_sold_date_sk (type: int), ss_store_sk (type: int), ss_sales_price (type: decimal(7,2)), ss_quantity (type: int), (ss_sales_price * CAST( ss_quantity AS decimal(10,0))) (type: decimal(18,2))
+                      outputColumnNames: _col0, _col1, _col2, _col3, _col4
+                      Statistics: Num rows: 6000 Data size: 1374396 Basic stats: COMPLETE Column stats: COMPLETE
+                      Group By Operator
+                        aggregations: sum(_col2), sum(_col2), count(_col3), min(_col2), max(_col2), sum(_col4)
+                        keys: _col1 (type: int), _col0 (type: int)
+                        minReductionHashAggr: 0.8
+                        mode: partialhash
+                        outputColumnNames: _col0, _col1, _col2, _col3, _col4, _col5, _col6, _col7
+                        Statistics: Num rows: 6000 Data size: 3456000 Basic stats: COMPLETE Column stats: COMPLETE
+                        Reduce Output Operator
+                          key expressions: _col1 (type: int)
+                          null sort order: z
+                          sort order: +
+                          Map-reduce partition columns: _col1 (type: int)
+                          Statistics: Num rows: 6000 Data size: 3456000 Basic stats: COMPLETE Column stats: COMPLETE
+                          value expressions: _col0 (type: int), _col2 (type: decimal(17,2)), _col3 (type: decimal(17,2)), _col4 (type: bigint), _col5 (type: decimal(7,2)), _col6 (type: decimal(7,2)), _col7 (type: decimal(28,2))
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Map 4 
+            Map Operator Tree:
+                TableScan
+                  alias: pc_date
+                  filterExpr: ((d_year = 2000) and d_date_sk is not null) (type: boolean)
+                  Statistics: Num rows: 28 Data size: 2772 Basic stats: COMPLETE Column stats: COMPLETE
+                  Filter Operator
+                    predicate: ((d_year = 2000) and d_date_sk is not null) (type: boolean)
+                    Statistics: Num rows: 14 Data size: 1386 Basic stats: COMPLETE Column stats: COMPLETE
+                    Select Operator
+                      expressions: d_date_sk (type: int), (d_day_name = 'Sunday') (type: boolean), (d_day_name = 'Monday') (type: boolean), (d_day_name = 'Tuesday') (type: boolean), (d_day_name = 'Wednesday') (type: boolean), (d_day_name = 'Thursday') (type: boolean), (d_day_name = 'Friday') (type: boolean)
+                      outputColumnNames: _col0, _col1, _col2, _col3, _col4, _col5, _col6
+                      Statistics: Num rows: 14 Data size: 392 Basic stats: COMPLETE Column stats: COMPLETE
+                      Reduce Output Operator
+                        key expressions: _col0 (type: int)
+                        null sort order: z
+                        sort order: +
+                        Map-reduce partition columns: _col0 (type: int)
+                        Statistics: Num rows: 14 Data size: 392 Basic stats: COMPLETE Column stats: COMPLETE
+                        value expressions: _col1 (type: boolean), _col2 (type: boolean), _col3 (type: boolean), _col4 (type: boolean), _col5 (type: boolean), _col6 (type: boolean)
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Reducer 2 
+            Execution mode: llap
+            Reduce Operator Tree:
+              Merge Join Operator
+                condition map:
+                     Inner Join 0 to 1
+                keys:
+                  0 _col1 (type: int)
+                  1 _col0 (type: int)
+                outputColumnNames: _col0, _col1, _col2, _col3, _col4, _col5, _col12, _col6, _col7, _col8, _col9, _col10, _col11
+                Statistics: Num rows: 3000 Data size: 1788000 Basic stats: COMPLETE Column stats: COMPLETE
+                Group By Operator
+                  aggregations: sum(if(_col6, _col1, null)), sum(if(_col7, _col2, null)), count(if(_col8, _col3, 0L)), min(if(_col9, _col4, null)), max(if(_col10, _col5, null)), sum(if(_col11, _col12, 0))
+                  keys: _col0 (type: int)
+                  minReductionHashAggr: 0.99
+                  mode: hash
+                  outputColumnNames: _col0, _col1, _col2, _col3, _col4, _col5, _col6
+                  Statistics: Num rows: 3 Data size: 1716 Basic stats: COMPLETE Column stats: COMPLETE
+                  Reduce Output Operator
+                    key expressions: _col0 (type: int)
+                    null sort order: z
+                    sort order: +
+                    Map-reduce partition columns: _col0 (type: int)
+                    Statistics: Num rows: 3 Data size: 1716 Basic stats: COMPLETE Column stats: COMPLETE
+                    value expressions: _col1 (type: decimal(17,2)), _col2 (type: decimal(17,2)), _col3 (type: bigint), _col4 (type: decimal(7,2)), _col5 (type: decimal(7,2)), _col6 (type: decimal(28,2))
+        Reducer 3 
+            Execution mode: vectorized, llap
+            Reduce Operator Tree:
+              Group By Operator
+                aggregations: sum(VALUE._col0), sum(VALUE._col1), count(VALUE._col2), min(VALUE._col3), max(VALUE._col4), sum(VALUE._col5)
+                keys: KEY._col0 (type: int)
+                mode: mergepartial
+                outputColumnNames: _col0, _col1, _col2, _col3, _col4, _col5, _col6
+                Statistics: Num rows: 3 Data size: 1716 Basic stats: COMPLETE Column stats: COMPLETE
+                File Output Operator
+                  compressed: false
+                  Statistics: Num rows: 3 Data size: 1716 Basic stats: COMPLETE Column stats: COMPLETE
+                  table:
+                      input format: org.apache.hadoop.mapred.SequenceFileInputFormat
+                      output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
+                      serde: org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe
+
+  Stage: Stage-0
+    Fetch Operator
+      limit: -1
+      Processor Tree:
+        ListSink
+
+PREHOOK: query: select ss_store_sk,
+  sum(case when d_day_name = 'Sunday' then ss_sales_price else null end) sun,
+  sum(case when d_day_name = 'Monday' then ss_sales_price else null end) mon,
+  count(case when d_day_name = 'Tuesday' then ss_quantity end) tue_cnt,
+  min(case when d_day_name = 'Wednesday' then ss_sales_price end) wed_min,
+  max(case when d_day_name = 'Thursday' then ss_sales_price end) thu_max,
+  sum(case when d_day_name = 'Friday' then ss_sales_price * ss_quantity else 0 end) fri_amt
+from pc_sales join pc_date on ss_sold_date_sk = d_date_sk
+where d_year = 2000
+group by ss_store_sk
+PREHOOK: type: QUERY
+PREHOOK: Input: default@pc_date
+PREHOOK: Input: default@pc_sales
+#### A masked pattern was here ####
+POSTHOOK: query: select ss_store_sk,
+  sum(case when d_day_name = 'Sunday' then ss_sales_price else null end) sun,
+  sum(case when d_day_name = 'Monday' then ss_sales_price else null end) mon,
+  count(case when d_day_name = 'Tuesday' then ss_quantity end) tue_cnt,
+  min(case when d_day_name = 'Wednesday' then ss_sales_price end) wed_min,
+  max(case when d_day_name = 'Thursday' then ss_sales_price end) thu_max,
+  sum(case when d_day_name = 'Friday' then ss_sales_price * ss_quantity else 0 end) fri_amt
+from pc_sales join pc_date on ss_sold_date_sk = d_date_sk
+where d_year = 2000
+group by ss_store_sk
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@pc_date
+POSTHOOK: Input: default@pc_sales
+#### A masked pattern was here ####
+1	2030.00	2057.50	65	0.00	60.00	5535.00
+2	2137.50	2026.25	64	1.25	61.25	7636.25
+3	2055.00	2052.50	66	0.00	60.00	9352.50
+4	2076.25	2093.75	65	1.25	61.25	5868.75
+5	2055.00	1990.00	65	0.00	60.00	7752.50
+6	2123.75	2095.00	65	1.25	61.25	9628.75
+PREHOOK: query: select ss_store_sk,
+  sum(case when d_day_name = 'Sunday' then ss_sales_price else null end) sun,
+  sum(case when d_day_name = 'Monday' then ss_sales_price else null end) mon,
+  count(case when d_day_name = 'Tuesday' then ss_quantity end) tue_cnt,
+  min(case when d_day_name = 'Wednesday' then ss_sales_price end) wed_min,
+  max(case when d_day_name = 'Thursday' then ss_sales_price end) thu_max,
+  sum(case when d_day_name = 'Friday' then ss_sales_price * ss_quantity else 0 end) fri_amt
+from pc_sales join pc_date on ss_sold_date_sk = d_date_sk
+where d_year = 2000
+group by ss_store_sk
+PREHOOK: type: QUERY
+PREHOOK: Input: default@pc_date
+PREHOOK: Input: default@pc_sales
+#### A masked pattern was here ####
+POSTHOOK: query: select ss_store_sk,
+  sum(case when d_day_name = 'Sunday' then ss_sales_price else null end) sun,
+  sum(case when d_day_name = 'Monday' then ss_sales_price else null end) mon,
+  count(case when d_day_name = 'Tuesday' then ss_quantity end) tue_cnt,
+  min(case when d_day_name = 'Wednesday' then ss_sales_price end) wed_min,
+  max(case when d_day_name = 'Thursday' then ss_sales_price end) thu_max,
+  sum(case when d_day_name = 'Friday' then ss_sales_price * ss_quantity else 0 end) fri_amt
+from pc_sales join pc_date on ss_sold_date_sk = d_date_sk
+where d_year = 2000
+group by ss_store_sk
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@pc_date
+POSTHOOK: Input: default@pc_sales
+#### A masked pattern was here ####
+1	2030.00	2057.50	65	0.00	60.00	5535.00
+2	2137.50	2026.25	64	1.25	61.25	7636.25
+3	2055.00	2052.50	66	0.00	60.00	9352.50
+4	2076.25	2093.75	65	1.25	61.25	5868.75
+5	2055.00	1990.00	65	0.00	60.00	7752.50
+6	2123.75	2095.00	65	1.25	61.25	9628.75
+PREHOOK: query: select ss_store_sk,
+  sum(case when d_day_name = 'Sunday' then ss_sales_price else null end) sun,
+  sum(case when d_day_name = 'Monday' then ss_sales_price else null end) mon,
+  count(case when d_day_name = 'Tuesday' then ss_quantity end) tue_cnt,
+  min(case when d_day_name = 'Wednesday' then ss_sales_price end) wed_min,
+  max(case when d_day_name = 'Thursday' then ss_sales_price end) thu_max,
+  sum(case when d_day_name = 'Friday' then ss_sales_price * ss_quantity else 0 end) fri_amt
+from pc_sales join pc_date on ss_sold_date_sk = d_date_sk
+where d_year = 2000
+group by ss_store_sk
+PREHOOK: type: QUERY
+PREHOOK: Input: default@pc_date
+PREHOOK: Input: default@pc_sales
+#### A masked pattern was here ####
+POSTHOOK: query: select ss_store_sk,
+  sum(case when d_day_name = 'Sunday' then ss_sales_price else null end) sun,
+  sum(case when d_day_name = 'Monday' then ss_sales_price else null end) mon,
+  count(case when d_day_name = 'Tuesday' then ss_quantity end) tue_cnt,
+  min(case when d_day_name = 'Wednesday' then ss_sales_price end) wed_min,
+  max(case when d_day_name = 'Thursday' then ss_sales_price end) thu_max,
+  sum(case when d_day_name = 'Friday' then ss_sales_price * ss_quantity else 0 end) fri_amt
+from pc_sales join pc_date on ss_sold_date_sk = d_date_sk
+where d_year = 2000
+group by ss_store_sk
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@pc_date
+POSTHOOK: Input: default@pc_sales
+#### A masked pattern was here ####
+1	2030.00	2057.50	65	0.00	60.00	5535.00
+2	2137.50	2026.25	64	1.25	61.25	7636.25
+3	2055.00	2052.50	66	0.00	60.00	9352.50
+4	2076.25	2093.75	65	1.25	61.25	5868.75
+5	2055.00	1990.00	65	0.00	60.00	7752.50
+6	2123.75	2095.00	65	1.25	61.25	9628.75
+PREHOOK: query: explain vectorization detail
+select ss_store_sk,
+  sum(case when d_day_name = 'Sunday' then ss_sales_price else null end) sun,
+  count(case when d_day_name = 'Tuesday' then ss_quantity end) tue_cnt
+from pc_sales join pc_date on ss_sold_date_sk = d_date_sk
+where d_year = 2000
+group by ss_store_sk
+PREHOOK: type: QUERY
+PREHOOK: Input: default@pc_date
+PREHOOK: Input: default@pc_sales
+#### A masked pattern was here ####
+POSTHOOK: query: explain vectorization detail
+select ss_store_sk,
+  sum(case when d_day_name = 'Sunday' then ss_sales_price else null end) sun,
+  count(case when d_day_name = 'Tuesday' then ss_quantity end) tue_cnt
+from pc_sales join pc_date on ss_sold_date_sk = d_date_sk
+where d_year = 2000
+group by ss_store_sk
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@pc_date
+POSTHOOK: Input: default@pc_sales
+#### A masked pattern was here ####
+PLAN VECTORIZATION:
+  enabled: true
+  enabledConditionsMet: [hive.vectorized.execution.enabled IS true]
+
+STAGE DEPENDENCIES:
+  Stage-1 is a root stage
+  Stage-0 depends on stages: Stage-1
+
+STAGE PLANS:
+  Stage: Stage-1
+    Tez
+#### A masked pattern was here ####
+      Edges:
+        Reducer 2 <- Map 1 (SIMPLE_EDGE), Map 4 (SIMPLE_EDGE)
+        Reducer 3 <- Reducer 2 (SIMPLE_EDGE)
+#### A masked pattern was here ####
+      Vertices:
+        Map 1 
+            Map Operator Tree:
+                TableScan
+                  alias: pc_sales
+                  filterExpr: ss_sold_date_sk is not null (type: boolean)
+                  Statistics: Num rows: 6000 Data size: 702396 Basic stats: COMPLETE Column stats: COMPLETE
+                  TableScan Vectorization:
+                      native: true
+                      vectorizationSchemaColumns: [0:ss_sold_date_sk:int, 1:ss_store_sk:int, 2:ss_sales_price:decimal(7,2)/DECIMAL_64, 3:ss_quantity:int, 4:ROW__ID:struct<writeid:bigint,bucketid:int,rowid:bigint>, 5:ROW__IS__DELETED:boolean]
+                  Filter Operator
+                    Filter Vectorization:
+                        className: VectorFilterOperator
+                        native: true
+                        predicateExpression: SelectColumnIsNotNull(col 0:int)
+                    predicate: ss_sold_date_sk is not null (type: boolean)
+                    Statistics: Num rows: 6000 Data size: 702396 Basic stats: COMPLETE Column stats: COMPLETE
+                    Select Operator
+                      expressions: ss_sold_date_sk (type: int), ss_store_sk (type: int), ss_sales_price (type: decimal(7,2)), ss_quantity (type: int)
+                      outputColumnNames: _col0, _col1, _col2, _col3
+                      Select Vectorization:
+                          className: VectorSelectOperator
+                          native: true
+                          projectedOutputColumnNums: [0, 1, 2, 3]
+                      Statistics: Num rows: 6000 Data size: 702396 Basic stats: COMPLETE Column stats: COMPLETE
+                      Group By Operator
+                        aggregations: sum(_col2), count(_col3)
+                        Group By Vectorization:
+                            aggregators: VectorUDAFSumDecimal64(col 2:decimal(7,2)/DECIMAL_64) -> decimal(17,2)/DECIMAL_64, VectorUDAFCount(col 3:int) -> bigint
+                            className: VectorGroupByOperator
+                            groupByMode: PARTIAL_HASH
+                            keyExpressions: col 1:int, col 0:int
+                            native: false
+                            vectorProcessingMode: HASH
+                            projectedOutputColumnNums: [0, 1]
+                        keys: _col1 (type: int), _col0 (type: int)
+                        minReductionHashAggr: 0.8
+                        mode: partialhash
+                        outputColumnNames: _col0, _col1, _col2, _col3
+                        Statistics: Num rows: 6000 Data size: 768000 Basic stats: COMPLETE Column stats: COMPLETE
+                        Reduce Output Operator
+                          key expressions: _col1 (type: int)
+                          null sort order: z
+                          sort order: +
+                          Map-reduce partition columns: _col1 (type: int)
+                          Reduce Sink Vectorization:
+                              className: VectorReduceSinkLongOperator
+                              keyColumns: 1:int
+                              native: true
+                              nativeConditionsMet: hive.vectorized.execution.reducesink.new.enabled IS true, hive.execution.engine tez IN [tez] IS true, No PTF TopN IS true, No DISTINCT columns IS true, BinarySortableSerDe for keys IS true, LazyBinarySerDe for values IS true
+                              valueColumns: 0:int, 2:decimal(17,2), 3:bigint
+                          Statistics: Num rows: 6000 Data size: 768000 Basic stats: COMPLETE Column stats: COMPLETE
+                          value expressions: _col0 (type: int), _col2 (type: decimal(17,2)), _col3 (type: bigint)
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+            Map Vectorization:
+                enabled: true
+                enabledConditionsMet: hive.vectorized.use.vector.serde.deserialize IS true
+                inputFormatFeatureSupport: [DECIMAL_64]
+                featureSupportInUse: [DECIMAL_64]
+                inputFileFormats: org.apache.hadoop.mapred.TextInputFormat
+                allNative: false
+                usesVectorUDFAdaptor: false
+                vectorized: true
+                rowBatchContext:
+                    dataColumnCount: 4
+                    includeColumns: [0, 1, 2, 3]
+                    dataColumns: ss_sold_date_sk:int, ss_store_sk:int, ss_sales_price:decimal(7,2)/DECIMAL_64, ss_quantity:int
+                    partitionColumnCount: 0
+                    scratchColumnTypeNames: []
+        Map 4 
+            Map Operator Tree:
+                TableScan
+                  alias: pc_date
+                  filterExpr: ((d_year = 2000) and d_date_sk is not null) (type: boolean)
+                  Statistics: Num rows: 28 Data size: 2772 Basic stats: COMPLETE Column stats: COMPLETE
+                  TableScan Vectorization:
+                      native: true
+                      vectorizationSchemaColumns: [0:d_date_sk:int, 1:d_year:int, 2:d_week_seq:int, 3:d_day_name:string, 4:ROW__ID:struct<writeid:bigint,bucketid:int,rowid:bigint>, 5:ROW__IS__DELETED:boolean]
+                  Filter Operator
+                    Filter Vectorization:
+                        className: VectorFilterOperator
+                        native: true
+                        predicateExpression: FilterExprAndExpr(children: FilterLongColEqualLongScalar(col 1:int, val 2000), SelectColumnIsNotNull(col 0:int))
+                    predicate: ((d_year = 2000) and d_date_sk is not null) (type: boolean)
+                    Statistics: Num rows: 14 Data size: 1386 Basic stats: COMPLETE Column stats: COMPLETE
+                    Select Operator
+                      expressions: d_date_sk (type: int), (d_day_name = 'Sunday') (type: boolean), (d_day_name = 'Tuesday') (type: boolean)
+                      outputColumnNames: _col0, _col1, _col2
+                      Select Vectorization:
+                          className: VectorSelectOperator
+                          native: true
+                          projectedOutputColumnNums: [0, 6, 7]
+                          selectExpressions: StringGroupColEqualStringScalar(col 3:string, val Sunday) -> 6:boolean, StringGroupColEqualStringScalar(col 3:string, val Tuesday) -> 7:boolean
+                      Statistics: Num rows: 14 Data size: 168 Basic stats: COMPLETE Column stats: COMPLETE
+                      Reduce Output Operator
+                        key expressions: _col0 (type: int)
+                        null sort order: z
+                        sort order: +
+                        Map-reduce partition columns: _col0 (type: int)
+                        Reduce Sink Vectorization:
+                            className: VectorReduceSinkLongOperator
+                            keyColumns: 0:int
+                            native: true
+                            nativeConditionsMet: hive.vectorized.execution.reducesink.new.enabled IS true, hive.execution.engine tez IN [tez] IS true, No PTF TopN IS true, No DISTINCT columns IS true, BinarySortableSerDe for keys IS true, LazyBinarySerDe for values IS true
+                            valueColumns: 6:boolean, 7:boolean
+                        Statistics: Num rows: 14 Data size: 168 Basic stats: COMPLETE Column stats: COMPLETE
+                        value expressions: _col1 (type: boolean), _col2 (type: boolean)
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+            Map Vectorization:
+                enabled: true
+                enabledConditionsMet: hive.vectorized.use.vector.serde.deserialize IS true
+                inputFormatFeatureSupport: [DECIMAL_64]
+                featureSupportInUse: [DECIMAL_64]
+                inputFileFormats: org.apache.hadoop.mapred.TextInputFormat
+                allNative: true
+                usesVectorUDFAdaptor: false
+                vectorized: true
+                rowBatchContext:
+                    dataColumnCount: 4
+                    includeColumns: [0, 1, 3]
+                    dataColumns: d_date_sk:int, d_year:int, d_week_seq:int, d_day_name:string
+                    partitionColumnCount: 0
+                    scratchColumnTypeNames: [bigint, bigint]
+        Reducer 2 
+            Execution mode: llap
+            Reduce Operator Tree:
+              Merge Join Operator
+                condition map:
+                     Inner Join 0 to 1
+                keys:
+                  0 _col1 (type: int)
+                  1 _col0 (type: int)
+                outputColumnNames: _col0, _col1, _col2, _col5, _col6
+                Statistics: Num rows: 3000 Data size: 396000 Basic stats: COMPLETE Column stats: COMPLETE
+                Group By Operator
+                  aggregations: sum(if(_col5, _col1, null)), count(if(_col6, _col2, 0L))
+                  keys: _col0 (type: int)
+                  minReductionHashAggr: 0.99
+                  mode: hash
+                  outputColumnNames: _col0, _col1, _col2
+                  Statistics: Num rows: 3 Data size: 372 Basic stats: COMPLETE Column stats: COMPLETE
+                  Reduce Output Operator
+                    key expressions: _col0 (type: int)
+                    null sort order: z
+                    sort order: +
+                    Map-reduce partition columns: _col0 (type: int)
+                    Statistics: Num rows: 3 Data size: 372 Basic stats: COMPLETE Column stats: COMPLETE
+                    value expressions: _col1 (type: decimal(17,2)), _col2 (type: bigint)
+            MergeJoin Vectorization:
+                enabled: false
+                enableConditionsNotMet: Vectorizing MergeJoin Supported IS false
+        Reducer 3 
+            Execution mode: vectorized, llap
+            Reduce Vectorization:
+                enabled: true
+                enableConditionsMet: hive.vectorized.execution.reduce.enabled IS true, hive.execution.engine tez IN [tez] IS true
+                reduceColumnNullOrder: z
+                reduceColumnSortOrder: +
+                allNative: false
+                usesVectorUDFAdaptor: false
+                vectorized: true
+                rowBatchContext:
+                    dataColumnCount: 3
+                    dataColumns: KEY._col0:int, VALUE._col0:decimal(17,2)/DECIMAL_64, VALUE._col1:bigint
+                    partitionColumnCount: 0
+                    scratchColumnTypeNames: []
+            Reduce Operator Tree:
+              Group By Operator
+                aggregations: sum(VALUE._col0), count(VALUE._col1)
+                Group By Vectorization:
+                    aggregators: VectorUDAFSumDecimal64(col 1:decimal(17,2)/DECIMAL_64) -> decimal(17,2)/DECIMAL_64, VectorUDAFCountMerge(col 2:bigint) -> bigint
+                    className: VectorGroupByOperator
+                    groupByMode: MERGEPARTIAL
+                    keyExpressions: col 0:int
+                    native: false
+                    vectorProcessingMode: MERGE_PARTIAL
+                    projectedOutputColumnNums: [0, 1]
+                keys: KEY._col0 (type: int)
+                mode: mergepartial
+                outputColumnNames: _col0, _col1, _col2
+                Statistics: Num rows: 3 Data size: 372 Basic stats: COMPLETE Column stats: COMPLETE
+                File Output Operator
+                  compressed: false
+                  File Sink Vectorization:
+                      className: VectorFileSinkOperator
+                      native: false
+                  Statistics: Num rows: 3 Data size: 372 Basic stats: COMPLETE Column stats: COMPLETE
+                  table:
+                      input format: org.apache.hadoop.mapred.SequenceFileInputFormat
+                      output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
+                      serde: org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe
+
+  Stage: Stage-0
+    Fetch Operator
+      limit: -1
+      Processor Tree:
+        ListSink
+
+PREHOOK: query: explain
+select s_store_name, s_store_id,
+  sum(case when d_day_name = 'Sunday' then ss_sales_price else null end) sun,
+  sum(case when d_day_name = 'Monday' then ss_sales_price else null end) mon,
+  count(case when d_day_name = 'Tuesday' then ss_quantity end) tue_cnt,
+  sum(case when d_day_name = 'Friday' then ss_sales_price * ss_quantity else 0 end) fri_amt
+from pc_sales join pc_date on ss_sold_date_sk = d_date_sk join pc_store on ss_store_sk = s_store_sk
+where d_year = 2000
+group by s_store_name, s_store_id
+PREHOOK: type: QUERY
+PREHOOK: Input: default@pc_date
+PREHOOK: Input: default@pc_sales
+PREHOOK: Input: default@pc_store
+#### A masked pattern was here ####
+POSTHOOK: query: explain
+select s_store_name, s_store_id,
+  sum(case when d_day_name = 'Sunday' then ss_sales_price else null end) sun,
+  sum(case when d_day_name = 'Monday' then ss_sales_price else null end) mon,
+  count(case when d_day_name = 'Tuesday' then ss_quantity end) tue_cnt,
+  sum(case when d_day_name = 'Friday' then ss_sales_price * ss_quantity else 0 end) fri_amt
+from pc_sales join pc_date on ss_sold_date_sk = d_date_sk join pc_store on ss_store_sk = s_store_sk
+where d_year = 2000
+group by s_store_name, s_store_id
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@pc_date
+POSTHOOK: Input: default@pc_sales
+POSTHOOK: Input: default@pc_store
+#### A masked pattern was here ####
+STAGE DEPENDENCIES:
+  Stage-1 is a root stage
+  Stage-0 depends on stages: Stage-1
+
+STAGE PLANS:
+  Stage: Stage-1
+    Tez
+#### A masked pattern was here ####
+      Edges:
+        Reducer 2 <- Map 1 (SIMPLE_EDGE), Map 5 (SIMPLE_EDGE)
+        Reducer 3 <- Map 6 (SIMPLE_EDGE), Reducer 2 (SIMPLE_EDGE)
+        Reducer 4 <- Reducer 3 (SIMPLE_EDGE)
+#### A masked pattern was here ####
+      Vertices:
+        Map 1 
+            Map Operator Tree:
+                TableScan
+                  alias: pc_sales
+                  filterExpr: (ss_sold_date_sk is not null and ss_store_sk is not null) (type: boolean)
+                  Statistics: Num rows: 6000 Data size: 702396 Basic stats: COMPLETE Column stats: COMPLETE
+                  Filter Operator
+                    predicate: (ss_sold_date_sk is not null and ss_store_sk is not null) (type: boolean)
+                    Statistics: Num rows: 6000 Data size: 702396 Basic stats: COMPLETE Column stats: COMPLETE
+                    Select Operator
+                      expressions: ss_sold_date_sk (type: int), ss_store_sk (type: int), ss_sales_price (type: decimal(7,2)), ss_quantity (type: int), (ss_sales_price * CAST( ss_quantity AS decimal(10,0))) (type: decimal(18,2))
+                      outputColumnNames: _col0, _col1, _col2, _col3, _col4
+                      Statistics: Num rows: 6000 Data size: 1374396 Basic stats: COMPLETE Column stats: COMPLETE
+                      Group By Operator
+                        aggregations: sum(_col2), sum(_col2), count(_col3), sum(_col4)
+                        keys: _col1 (type: int), _col0 (type: int)
+                        minReductionHashAggr: 0.8
+                        mode: partialhash
+                        outputColumnNames: _col0, _col1, _col2, _col3, _col4, _col5
+                        Statistics: Num rows: 6000 Data size: 2112000 Basic stats: COMPLETE Column stats: COMPLETE
+                        Reduce Output Operator
+                          key expressions: _col1 (type: int)
+                          null sort order: z
+                          sort order: +
+                          Map-reduce partition columns: _col1 (type: int)
+                          Statistics: Num rows: 6000 Data size: 2112000 Basic stats: COMPLETE Column stats: COMPLETE
+                          value expressions: _col0 (type: int), _col2 (type: decimal(17,2)), _col3 (type: decimal(17,2)), _col4 (type: bigint), _col5 (type: decimal(28,2))
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Map 5 
+            Map Operator Tree:
+                TableScan
+                  alias: pc_date
+                  filterExpr: ((d_year = 2000) and d_date_sk is not null) (type: boolean)
+                  Statistics: Num rows: 28 Data size: 2772 Basic stats: COMPLETE Column stats: COMPLETE
+                  Filter Operator
+                    predicate: ((d_year = 2000) and d_date_sk is not null) (type: boolean)
+                    Statistics: Num rows: 14 Data size: 1386 Basic stats: COMPLETE Column stats: COMPLETE
+                    Select Operator
+                      expressions: d_date_sk (type: int), (d_day_name = 'Sunday') (type: boolean), (d_day_name = 'Monday') (type: boolean), (d_day_name = 'Tuesday') (type: boolean), (d_day_name = 'Friday') (type: boolean)
+                      outputColumnNames: _col0, _col1, _col2, _col3, _col4
+                      Statistics: Num rows: 14 Data size: 280 Basic stats: COMPLETE Column stats: COMPLETE
+                      Reduce Output Operator
+                        key expressions: _col0 (type: int)
+                        null sort order: z
+                        sort order: +
+                        Map-reduce partition columns: _col0 (type: int)
+                        Statistics: Num rows: 14 Data size: 280 Basic stats: COMPLETE Column stats: COMPLETE
+                        value expressions: _col1 (type: boolean), _col2 (type: boolean), _col3 (type: boolean), _col4 (type: boolean)
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Map 6 
+            Map Operator Tree:
+                TableScan
+                  alias: pc_store
+                  filterExpr: s_store_sk is not null (type: boolean)
+                  Statistics: Num rows: 6 Data size: 1080 Basic stats: COMPLETE Column stats: COMPLETE
+                  Filter Operator
+                    predicate: s_store_sk is not null (type: boolean)
+                    Statistics: Num rows: 6 Data size: 1080 Basic stats: COMPLETE Column stats: COMPLETE
+                    Select Operator
+                      expressions: s_store_sk (type: int), s_store_id (type: string), s_store_name (type: string)
+                      outputColumnNames: _col0, _col1, _col2
+                      Statistics: Num rows: 6 Data size: 1080 Basic stats: COMPLETE Column stats: COMPLETE
+                      Reduce Output Operator
+                        key expressions: _col0 (type: int)
+                        null sort order: z
+                        sort order: +
+                        Map-reduce partition columns: _col0 (type: int)
+                        Statistics: Num rows: 6 Data size: 1080 Basic stats: COMPLETE Column stats: COMPLETE
+                        value expressions: _col1 (type: string), _col2 (type: string)
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Reducer 2 
+            Execution mode: llap
+            Reduce Operator Tree:
+              Merge Join Operator
+                condition map:
+                     Inner Join 0 to 1
+                keys:
+                  0 _col1 (type: int)
+                  1 _col0 (type: int)
+                outputColumnNames: _col0, _col1, _col2, _col3, _col4, _col6, _col7, _col8, _col9
+                Statistics: Num rows: 3000 Data size: 1092000 Basic stats: COMPLETE Column stats: COMPLETE
+                Select Operator
+                  expressions: _col0 (type: int), if(_col6, _col1, null) (type: decimal(17,2)), if(_col7, _col2, null) (type: decimal(17,2)), if(_col8, _col3, 0L) (type: bigint), if(_col9, _col4, 0) (type: decimal(28,2))
+                  outputColumnNames: _col0, _col1, _col2, _col3, _col4
+                  Statistics: Num rows: 3000 Data size: 372224 Basic stats: COMPLETE Column stats: COMPLETE
+                  Reduce Output Operator
+                    key expressions: _col0 (type: int)
+                    null sort order: z
+                    sort order: +
+                    Map-reduce partition columns: _col0 (type: int)
+                    Statistics: Num rows: 3000 Data size: 372224 Basic stats: COMPLETE Column stats: COMPLETE
+                    value expressions: _col1 (type: decimal(17,2)), _col2 (type: decimal(17,2)), _col3 (type: bigint), _col4 (type: decimal(28,2))
+        Reducer 3 
+            Execution mode: llap
+            Reduce Operator Tree:
+              Merge Join Operator
+                condition map:
+                     Inner Join 0 to 1
+                keys:
+                  0 _col0 (type: int)
+                  1 _col0 (type: int)
+                outputColumnNames: _col0, _col1, _col2, _col3, _col11, _col12
+                Statistics: Num rows: 3000 Data size: 888224 Basic stats: COMPLETE Column stats: COMPLETE
+                Group By Operator
+                  aggregations: sum(_col0), sum(_col1), count(_col2), sum(_col3)
+                  keys: _col12 (type: string), _col11 (type: string)
+                  minReductionHashAggr: 0.99
+                  mode: hash
+                  outputColumnNames: _col0, _col1, _col2, _col3, _col4, _col5
+                  Statistics: Num rows: 6 Data size: 3120 Basic stats: COMPLETE Column stats: COMPLETE
+                  Reduce Output Operator
+                    key expressions: _col0 (type: string), _col1 (type: string)
+                    null sort order: zz
+                    sort order: ++
+                    Map-reduce partition columns: _col0 (type: string), _col1 (type: string)
+                    Statistics: Num rows: 6 Data size: 3120 Basic stats: COMPLETE Column stats: COMPLETE
+                    value expressions: _col2 (type: decimal(17,2)), _col3 (type: decimal(17,2)), _col4 (type: bigint), _col5 (type: decimal(28,2))
+        Reducer 4 
+            Execution mode: vectorized, llap
+            Reduce Operator Tree:
+              Group By Operator
+                aggregations: sum(VALUE._col0), sum(VALUE._col1), count(VALUE._col2), sum(VALUE._col3)
+                keys: KEY._col0 (type: string), KEY._col1 (type: string)
+                mode: mergepartial
+                outputColumnNames: _col0, _col1, _col2, _col3, _col4, _col5
+                Statistics: Num rows: 6 Data size: 3120 Basic stats: COMPLETE Column stats: COMPLETE
+                File Output Operator
+                  compressed: false
+                  Statistics: Num rows: 6 Data size: 3120 Basic stats: COMPLETE Column stats: COMPLETE
+                  table:
+                      input format: org.apache.hadoop.mapred.SequenceFileInputFormat
+                      output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
+                      serde: org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe
+
+  Stage: Stage-0
+    Fetch Operator
+      limit: -1
+      Processor Tree:
+        ListSink
+
+PREHOOK: query: select s_store_name, s_store_id,
+  sum(case when d_day_name = 'Sunday' then ss_sales_price else null end) sun,
+  sum(case when d_day_name = 'Monday' then ss_sales_price else null end) mon,
+  count(case when d_day_name = 'Tuesday' then ss_quantity end) tue_cnt,
+  sum(case when d_day_name = 'Friday' then ss_sales_price * ss_quantity else 0 end) fri_amt
+from pc_sales join pc_date on ss_sold_date_sk = d_date_sk join pc_store on ss_store_sk = s_store_sk
+where d_year = 2000
+group by s_store_name, s_store_id
+PREHOOK: type: QUERY
+PREHOOK: Input: default@pc_date
+PREHOOK: Input: default@pc_sales
+PREHOOK: Input: default@pc_store
+#### A masked pattern was here ####
+POSTHOOK: query: select s_store_name, s_store_id,
+  sum(case when d_day_name = 'Sunday' then ss_sales_price else null end) sun,
+  sum(case when d_day_name = 'Monday' then ss_sales_price else null end) mon,
+  count(case when d_day_name = 'Tuesday' then ss_quantity end) tue_cnt,
+  sum(case when d_day_name = 'Friday' then ss_sales_price * ss_quantity else 0 end) fri_amt
+from pc_sales join pc_date on ss_sold_date_sk = d_date_sk join pc_store on ss_store_sk = s_store_sk
+where d_year = 2000
+group by s_store_name, s_store_id
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@pc_date
+POSTHOOK: Input: default@pc_sales
+POSTHOOK: Input: default@pc_store
+#### A masked pattern was here ####
+store0	S0	2030.00	2057.50	65	5535.00
+store0	S1	2055.00	1990.00	65	7752.50
+store0	S2	2055.00	2052.50	66	9352.50
+store1	S0	2076.25	2093.75	65	5868.75
+store1	S1	2137.50	2026.25	64	7636.25
+store1	S2	2123.75	2095.00	65	9628.75
+PREHOOK: query: select s_store_name, s_store_id,
+  sum(case when d_day_name = 'Sunday' then ss_sales_price else null end) sun,
+  sum(case when d_day_name = 'Monday' then ss_sales_price else null end) mon,
+  count(case when d_day_name = 'Tuesday' then ss_quantity end) tue_cnt,
+  sum(case when d_day_name = 'Friday' then ss_sales_price * ss_quantity else 0 end) fri_amt
+from pc_sales join pc_date on ss_sold_date_sk = d_date_sk join pc_store on ss_store_sk = s_store_sk
+where d_year = 2000
+group by s_store_name, s_store_id
+PREHOOK: type: QUERY
+PREHOOK: Input: default@pc_date
+PREHOOK: Input: default@pc_sales
+PREHOOK: Input: default@pc_store
+#### A masked pattern was here ####
+POSTHOOK: query: select s_store_name, s_store_id,
+  sum(case when d_day_name = 'Sunday' then ss_sales_price else null end) sun,
+  sum(case when d_day_name = 'Monday' then ss_sales_price else null end) mon,
+  count(case when d_day_name = 'Tuesday' then ss_quantity end) tue_cnt,
+  sum(case when d_day_name = 'Friday' then ss_sales_price * ss_quantity else 0 end) fri_amt
+from pc_sales join pc_date on ss_sold_date_sk = d_date_sk join pc_store on ss_store_sk = s_store_sk
+where d_year = 2000
+group by s_store_name, s_store_id
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@pc_date
+POSTHOOK: Input: default@pc_sales
+POSTHOOK: Input: default@pc_store
+#### A masked pattern was here ####
+store0	S0	2030.00	2057.50	65	5535.00
+store0	S1	2055.00	1990.00	65	7752.50
+store0	S2	2055.00	2052.50	66	9352.50
+store1	S0	2076.25	2093.75	65	5868.75
+store1	S1	2137.50	2026.25	64	7636.25
+store1	S2	2123.75	2095.00	65	9628.75
+PREHOOK: query: select s_store_name, s_store_id,
+  sum(case when d_day_name = 'Sunday' then ss_sales_price else null end) sun,
+  sum(case when d_day_name = 'Monday' then ss_sales_price else null end) mon,
+  count(case when d_day_name = 'Tuesday' then ss_quantity end) tue_cnt,
+  sum(case when d_day_name = 'Friday' then ss_sales_price * ss_quantity else 0 end) fri_amt
+from pc_sales join pc_date on ss_sold_date_sk = d_date_sk join pc_store on ss_store_sk = s_store_sk
+where d_year = 2000
+group by s_store_name, s_store_id
+PREHOOK: type: QUERY
+PREHOOK: Input: default@pc_date
+PREHOOK: Input: default@pc_sales
+PREHOOK: Input: default@pc_store
+#### A masked pattern was here ####
+POSTHOOK: query: select s_store_name, s_store_id,
+  sum(case when d_day_name = 'Sunday' then ss_sales_price else null end) sun,
+  sum(case when d_day_name = 'Monday' then ss_sales_price else null end) mon,
+  count(case when d_day_name = 'Tuesday' then ss_quantity end) tue_cnt,
+  sum(case when d_day_name = 'Friday' then ss_sales_price * ss_quantity else 0 end) fri_amt
+from pc_sales join pc_date on ss_sold_date_sk = d_date_sk join pc_store on ss_store_sk = s_store_sk
+where d_year = 2000
+group by s_store_name, s_store_id
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@pc_date
+POSTHOOK: Input: default@pc_sales
+POSTHOOK: Input: default@pc_store
+#### A masked pattern was here ####
+store0	S0	2030.00	2057.50	65	5535.00
+store0	S1	2055.00	1990.00	65	7752.50
+store0	S2	2055.00	2052.50	66	9352.50
+store1	S0	2076.25	2093.75	65	5868.75
+store1	S1	2137.50	2026.25	64	7636.25
+store1	S2	2123.75	2095.00	65	9628.75
+PREHOOK: query: explain
+select ss_store_sk, sum(case when d_day_name = 'Sunday' then ss_sales_price else 1 end) sun
+from pc_sales join pc_date on ss_sold_date_sk = d_date_sk
+group by ss_store_sk
+PREHOOK: type: QUERY
+PREHOOK: Input: default@pc_date
+PREHOOK: Input: default@pc_sales
+#### A masked pattern was here ####
+POSTHOOK: query: explain
+select ss_store_sk, sum(case when d_day_name = 'Sunday' then ss_sales_price else 1 end) sun
+from pc_sales join pc_date on ss_sold_date_sk = d_date_sk
+group by ss_store_sk
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@pc_date
+POSTHOOK: Input: default@pc_sales
+#### A masked pattern was here ####
+STAGE DEPENDENCIES:
+  Stage-1 is a root stage
+  Stage-0 depends on stages: Stage-1
+
+STAGE PLANS:
+  Stage: Stage-1
+    Tez
+#### A masked pattern was here ####
+      Edges:
+        Reducer 2 <- Map 1 (SIMPLE_EDGE), Map 4 (SIMPLE_EDGE)
+        Reducer 3 <- Reducer 2 (SIMPLE_EDGE)
+#### A masked pattern was here ####
+      Vertices:
+        Map 1 
+            Map Operator Tree:
+                TableScan
+                  alias: pc_sales
+                  filterExpr: ss_sold_date_sk is not null (type: boolean)
+                  Statistics: Num rows: 6000 Data size: 680576 Basic stats: COMPLETE Column stats: COMPLETE
+                  Filter Operator
+                    predicate: ss_sold_date_sk is not null (type: boolean)
+                    Statistics: Num rows: 6000 Data size: 680576 Basic stats: COMPLETE Column stats: COMPLETE
+                    Select Operator
+                      expressions: ss_sold_date_sk (type: int), ss_store_sk (type: int), ss_sales_price (type: decimal(7,2))
+                      outputColumnNames: _col0, _col1, _col2
+                      Statistics: Num rows: 6000 Data size: 680576 Basic stats: COMPLETE Column stats: COMPLETE
+                      Reduce Output Operator
+                        key expressions: _col0 (type: int)
+                        null sort order: z
+                        sort order: +
+                        Map-reduce partition columns: _col0 (type: int)
+                        Statistics: Num rows: 6000 Data size: 680576 Basic stats: COMPLETE Column stats: COMPLETE
+                        value expressions: _col1 (type: int), _col2 (type: decimal(7,2))
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Map 4 
+            Map Operator Tree:
+                TableScan
+                  alias: pc_date
+                  filterExpr: d_date_sk is not null (type: boolean)
+                  Statistics: Num rows: 28 Data size: 2660 Basic stats: COMPLETE Column stats: COMPLETE
+                  Filter Operator
+                    predicate: d_date_sk is not null (type: boolean)
+                    Statistics: Num rows: 28 Data size: 2660 Basic stats: COMPLETE Column stats: COMPLETE
+                    Select Operator
+                      expressions: d_date_sk (type: int), (d_day_name = 'Sunday') (type: boolean)
+                      outputColumnNames: _col0, _col1
+                      Statistics: Num rows: 28 Data size: 224 Basic stats: COMPLETE Column stats: COMPLETE
+                      Reduce Output Operator
+                        key expressions: _col0 (type: int)
+                        null sort order: z
+                        sort order: +
+                        Map-reduce partition columns: _col0 (type: int)
+                        Statistics: Num rows: 28 Data size: 224 Basic stats: COMPLETE Column stats: COMPLETE
+                        value expressions: _col1 (type: boolean)
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Reducer 2 
+            Execution mode: llap
+            Reduce Operator Tree:
+              Merge Join Operator
+                condition map:
+                     Inner Join 0 to 1
+                keys:
+                  0 _col0 (type: int)
+                  1 _col0 (type: int)
+                outputColumnNames: _col1, _col2, _col4
+                Statistics: Num rows: 6000 Data size: 680576 Basic stats: COMPLETE Column stats: COMPLETE
+                Select Operator
+                  expressions: _col1 (type: int), if(_col4, _col2, 1) (type: decimal(7,2))
+                  outputColumnNames: _col0, _col1
+                  Statistics: Num rows: 6000 Data size: 680576 Basic stats: COMPLETE Column stats: COMPLETE
+                  Group By Operator
+                    aggregations: sum(_col1)
+                    keys: _col0 (type: int)
+                    minReductionHashAggr: 0.99
+                    mode: hash
+                    outputColumnNames: _col0, _col1
+                    Statistics: Num rows: 6 Data size: 696 Basic stats: COMPLETE Column stats: COMPLETE
+                    Reduce Output Operator
+                      key expressions: _col0 (type: int)
+                      null sort order: z
+                      sort order: +
+                      Map-reduce partition columns: _col0 (type: int)
+                      Statistics: Num rows: 6 Data size: 696 Basic stats: COMPLETE Column stats: COMPLETE
+                      value expressions: _col1 (type: decimal(17,2))
+        Reducer 3 
+            Execution mode: vectorized, llap
+            Reduce Operator Tree:
+              Group By Operator
+                aggregations: sum(VALUE._col0)
+                keys: KEY._col0 (type: int)
+                mode: mergepartial
+                outputColumnNames: _col0, _col1
+                Statistics: Num rows: 6 Data size: 696 Basic stats: COMPLETE Column stats: COMPLETE
+                File Output Operator
+                  compressed: false
+                  Statistics: Num rows: 6 Data size: 696 Basic stats: COMPLETE Column stats: COMPLETE
+                  table:
+                      input format: org.apache.hadoop.mapred.SequenceFileInputFormat
+                      output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
+                      serde: org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe
+
+  Stage: Stage-0
+    Fetch Operator
+      limit: -1
+      Processor Tree:
+        ListSink
+
+PREHOOK: query: explain
+select d_week_seq, sum(case when d_day_name = 'Sunday' then ss_sales_price end) sun,
+  sum(case when d_day_name = 'Saturday' then ss_sales_price end) sat
+from pc_sales join pc_date on ss_sold_date_sk = d_date_sk
+group by d_week_seq
+PREHOOK: type: QUERY
+PREHOOK: Input: default@pc_date
+PREHOOK: Input: default@pc_sales
+#### A masked pattern was here ####
+POSTHOOK: query: explain
+select d_week_seq, sum(case when d_day_name = 'Sunday' then ss_sales_price end) sun,
+  sum(case when d_day_name = 'Saturday' then ss_sales_price end) sat
+from pc_sales join pc_date on ss_sold_date_sk = d_date_sk
+group by d_week_seq
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@pc_date
+POSTHOOK: Input: default@pc_sales
+#### A masked pattern was here ####
+STAGE DEPENDENCIES:
+  Stage-1 is a root stage
+  Stage-0 depends on stages: Stage-1
+
+STAGE PLANS:
+  Stage: Stage-1
+    Tez
+#### A masked pattern was here ####
+      Edges:
+        Reducer 2 <- Map 1 (SIMPLE_EDGE), Map 4 (SIMPLE_EDGE)
+        Reducer 3 <- Reducer 2 (SIMPLE_EDGE)
+#### A masked pattern was here ####
+      Vertices:
+        Map 1 
+            Map Operator Tree:
+                TableScan
+                  alias: pc_sales
+                  filterExpr: ss_sold_date_sk is not null (type: boolean)
+                  Statistics: Num rows: 6000 Data size: 656576 Basic stats: COMPLETE Column stats: COMPLETE
+                  Filter Operator
+                    predicate: ss_sold_date_sk is not null (type: boolean)
+                    Statistics: Num rows: 6000 Data size: 656576 Basic stats: COMPLETE Column stats: COMPLETE
+                    Select Operator
+                      expressions: ss_sold_date_sk (type: int), ss_sales_price (type: decimal(7,2))
+                      outputColumnNames: _col0, _col1
+                      Statistics: Num rows: 6000 Data size: 656576 Basic stats: COMPLETE Column stats: COMPLETE
+                      Group By Operator
+                        aggregations: sum(_col1), sum(_col1)
+                        keys: _col0 (type: int)
+                        minReductionHashAggr: 0.8
+                        mode: partialhash
+                        outputColumnNames: _col0, _col1, _col2
+                        Statistics: Num rows: 6000 Data size: 1368000 Basic stats: COMPLETE Column stats: COMPLETE
+                        Reduce Output Operator
+                          key expressions: _col0 (type: int)
+                          null sort order: z
+                          sort order: +
+                          Map-reduce partition columns: _col0 (type: int)
+                          Statistics: Num rows: 6000 Data size: 1368000 Basic stats: COMPLETE Column stats: COMPLETE
+                          value expressions: _col1 (type: decimal(17,2)), _col2 (type: decimal(17,2))
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Map 4 
+            Map Operator Tree:
+                TableScan
+                  alias: pc_date
+                  filterExpr: d_date_sk is not null (type: boolean)
+                  Statistics: Num rows: 28 Data size: 2772 Basic stats: COMPLETE Column stats: COMPLETE
+                  Filter Operator
+                    predicate: d_date_sk is not null (type: boolean)
+                    Statistics: Num rows: 28 Data size: 2772 Basic stats: COMPLETE Column stats: COMPLETE
+                    Select Operator
+                      expressions: d_date_sk (type: int), d_week_seq (type: int), (d_day_name = 'Sunday') (type: boolean), (d_day_name = 'Saturday') (type: boolean)
+                      outputColumnNames: _col0, _col1, _col2, _col3
+                      Statistics: Num rows: 28 Data size: 448 Basic stats: COMPLETE Column stats: COMPLETE
+                      Reduce Output Operator
+                        key expressions: _col0 (type: int)
+                        null sort order: z
+                        sort order: +
+                        Map-reduce partition columns: _col0 (type: int)
+                        Statistics: Num rows: 28 Data size: 448 Basic stats: COMPLETE Column stats: COMPLETE
+                        value expressions: _col1 (type: int), _col2 (type: boolean), _col3 (type: boolean)
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Reducer 2 
+            Execution mode: llap
+            Reduce Operator Tree:
+              Merge Join Operator
+                condition map:
+                     Inner Join 0 to 1
+                keys:
+                  0 _col0 (type: int)
+                  1 _col0 (type: int)
+                outputColumnNames: _col0, _col1, _col3, _col4, _col5
+                Statistics: Num rows: 6000 Data size: 1416000 Basic stats: COMPLETE Column stats: COMPLETE
+                Group By Operator
+                  aggregations: sum(if(_col4, _col0, null)), sum(if(_col5, _col1, null))
+                  keys: _col3 (type: int)
+                  minReductionHashAggr: 0.99
+                  mode: hash
+                  outputColumnNames: _col0, _col1, _col2
+                  Statistics: Num rows: 4 Data size: 912 Basic stats: COMPLETE Column stats: COMPLETE
+                  Reduce Output Operator
+                    key expressions: _col0 (type: int)
+                    null sort order: z
+                    sort order: +
+                    Map-reduce partition columns: _col0 (type: int)
+                    Statistics: Num rows: 4 Data size: 912 Basic stats: COMPLETE Column stats: COMPLETE
+                    value expressions: _col1 (type: decimal(17,2)), _col2 (type: decimal(17,2))
+        Reducer 3 
+            Execution mode: vectorized, llap
+            Reduce Operator Tree:
+              Group By Operator
+                aggregations: sum(VALUE._col0), sum(VALUE._col1)
+                keys: KEY._col0 (type: int)
+                mode: mergepartial
+                outputColumnNames: _col0, _col1, _col2
+                Statistics: Num rows: 4 Data size: 912 Basic stats: COMPLETE Column stats: COMPLETE
+                File Output Operator
+                  compressed: false
+                  Statistics: Num rows: 4 Data size: 912 Basic stats: COMPLETE Column stats: COMPLETE
+                  table:
+                      input format: org.apache.hadoop.mapred.SequenceFileInputFormat
+                      output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
+                      serde: org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe
+
+  Stage: Stage-0
+    Fetch Operator
+      limit: -1
+      Processor Tree:
+        ListSink
+
+PREHOOK: query: select d_week_seq, sum(case when d_day_name = 'Sunday' then ss_sales_price end) sun,
+  sum(case when d_day_name = 'Saturday' then ss_sales_price end) sat
+from pc_sales join pc_date on ss_sold_date_sk = d_date_sk
+group by d_week_seq
+PREHOOK: type: QUERY
+PREHOOK: Input: default@pc_date
+PREHOOK: Input: default@pc_sales
+#### A masked pattern was here ####
+POSTHOOK: query: select d_week_seq, sum(case when d_day_name = 'Sunday' then ss_sales_price end) sun,
+  sum(case when d_day_name = 'Saturday' then ss_sales_price end) sat
+from pc_sales join pc_date on ss_sold_date_sk = d_date_sk
+group by d_week_seq
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@pc_date
+POSTHOOK: Input: default@pc_sales
+#### A masked pattern was here ####
+1	6140.00	6012.50
+2	6337.50	6391.25
+3	5965.00	6080.00
+4	6302.50	6210.00
+PREHOOK: query: select d_week_seq, sum(case when d_day_name = 'Sunday' then ss_sales_price end) sun,
+  sum(case when d_day_name = 'Saturday' then ss_sales_price end) sat
+from pc_sales join pc_date on ss_sold_date_sk = d_date_sk
+group by d_week_seq
+PREHOOK: type: QUERY
+PREHOOK: Input: default@pc_date
+PREHOOK: Input: default@pc_sales
+#### A masked pattern was here ####
+POSTHOOK: query: select d_week_seq, sum(case when d_day_name = 'Sunday' then ss_sales_price end) sun,
+  sum(case when d_day_name = 'Saturday' then ss_sales_price end) sat
+from pc_sales join pc_date on ss_sold_date_sk = d_date_sk
+group by d_week_seq
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@pc_date
+POSTHOOK: Input: default@pc_sales
+#### A masked pattern was here ####
+1	6140.00	6012.50
+2	6337.50	6391.25
+3	5965.00	6080.00
+4	6302.50	6210.00
+PREHOOK: query: explain
+select ss_store_sk, sum(case when d_day_name = 'Sunday' then ss_sales_price / ss_quantity end) sun
+from pc_sales join pc_date on ss_sold_date_sk = d_date_sk
+group by ss_store_sk
+PREHOOK: type: QUERY
+PREHOOK: Input: default@pc_date
+PREHOOK: Input: default@pc_sales
+#### A masked pattern was here ####
+POSTHOOK: query: explain
+select ss_store_sk, sum(case when d_day_name = 'Sunday' then ss_sales_price / ss_quantity end) sun
+from pc_sales join pc_date on ss_sold_date_sk = d_date_sk
+group by ss_store_sk
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@pc_date
+POSTHOOK: Input: default@pc_sales
+#### A masked pattern was here ####
+STAGE DEPENDENCIES:
+  Stage-1 is a root stage
+  Stage-0 depends on stages: Stage-1
+
+STAGE PLANS:
+  Stage: Stage-1
+    Tez
+#### A masked pattern was here ####
+      Edges:
+        Reducer 2 <- Map 1 (SIMPLE_EDGE), Map 4 (SIMPLE_EDGE)
+        Reducer 3 <- Reducer 2 (SIMPLE_EDGE)
+#### A masked pattern was here ####
+      Vertices:
+        Map 1 
+            Map Operator Tree:
+                TableScan
+                  alias: pc_sales
+                  filterExpr: ss_sold_date_sk is not null (type: boolean)
+                  Statistics: Num rows: 6000 Data size: 702396 Basic stats: COMPLETE Column stats: COMPLETE
+                  Filter Operator
+                    predicate: ss_sold_date_sk is not null (type: boolean)
+                    Statistics: Num rows: 6000 Data size: 702396 Basic stats: COMPLETE Column stats: COMPLETE
+                    Select Operator
+                      expressions: ss_sold_date_sk (type: int), ss_store_sk (type: int), (ss_sales_price / CAST( ss_quantity AS decimal(10,0))) (type: decimal(18,13))
+                      outputColumnNames: _col0, _col1, _col2
+                      Statistics: Num rows: 6000 Data size: 720000 Basic stats: COMPLETE Column stats: COMPLETE
+                      Group By Operator
+                        aggregations: sum(_col2)
+                        keys: _col1 (type: int), _col0 (type: int)
+                        minReductionHashAggr: 0.8
+                        mode: partialhash
+                        outputColumnNames: _col0, _col1, _col2
+                        Statistics: Num rows: 6000 Data size: 720000 Basic stats: COMPLETE Column stats: COMPLETE
+                        Reduce Output Operator
+                          key expressions: _col1 (type: int)
+                          null sort order: z
+                          sort order: +
+                          Map-reduce partition columns: _col1 (type: int)
+                          Statistics: Num rows: 6000 Data size: 720000 Basic stats: COMPLETE Column stats: COMPLETE
+                          value expressions: _col0 (type: int), _col2 (type: decimal(28,13))
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Map 4 
+            Map Operator Tree:
+                TableScan
+                  alias: pc_date
+                  filterExpr: d_date_sk is not null (type: boolean)
+                  Statistics: Num rows: 28 Data size: 2660 Basic stats: COMPLETE Column stats: COMPLETE
+                  Filter Operator
+                    predicate: d_date_sk is not null (type: boolean)
+                    Statistics: Num rows: 28 Data size: 2660 Basic stats: COMPLETE Column stats: COMPLETE
+                    Select Operator
+                      expressions: d_date_sk (type: int), (d_day_name = 'Sunday') (type: boolean)
+                      outputColumnNames: _col0, _col1
+                      Statistics: Num rows: 28 Data size: 224 Basic stats: COMPLETE Column stats: COMPLETE
+                      Reduce Output Operator
+                        key expressions: _col0 (type: int)
+                        null sort order: z
+                        sort order: +
+                        Map-reduce partition columns: _col0 (type: int)
+                        Statistics: Num rows: 28 Data size: 224 Basic stats: COMPLETE Column stats: COMPLETE
+                        value expressions: _col1 (type: boolean)
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Reducer 2 
+            Execution mode: llap
+            Reduce Operator Tree:
+              Merge Join Operator
+                condition map:
+                     Inner Join 0 to 1
+                keys:
+                  0 _col1 (type: int)
+                  1 _col0 (type: int)
+                outputColumnNames: _col0, _col1, _col4
+                Statistics: Num rows: 6000 Data size: 720000 Basic stats: COMPLETE Column stats: COMPLETE
+                Group By Operator
+                  aggregations: sum(if(_col4, _col1, null))
+                  keys: _col0 (type: int)
+                  minReductionHashAggr: 0.99
+                  mode: hash
+                  outputColumnNames: _col0, _col1
+                  Statistics: Num rows: 6 Data size: 696 Basic stats: COMPLETE Column stats: COMPLETE
+                  Reduce Output Operator
+                    key expressions: _col0 (type: int)
+                    null sort order: z
+                    sort order: +
+                    Map-reduce partition columns: _col0 (type: int)
+                    Statistics: Num rows: 6 Data size: 696 Basic stats: COMPLETE Column stats: COMPLETE
+                    value expressions: _col1 (type: decimal(28,13))
+        Reducer 3 
+            Execution mode: vectorized, llap
+            Reduce Operator Tree:
+              Group By Operator
+                aggregations: sum(VALUE._col0)
+                keys: KEY._col0 (type: int)
+                mode: mergepartial
+                outputColumnNames: _col0, _col1
+                Statistics: Num rows: 6 Data size: 696 Basic stats: COMPLETE Column stats: COMPLETE
+                File Output Operator
+                  compressed: false
+                  Statistics: Num rows: 6 Data size: 696 Basic stats: COMPLETE Column stats: COMPLETE
+                  table:
+                      input format: org.apache.hadoop.mapred.SequenceFileInputFormat
+                      output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
+                      serde: org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe
+
+  Stage: Stage-0
+    Fetch Operator
+      limit: -1
+      Processor Tree:
+        ListSink
+
+PREHOOK: query: explain
+select ss_store_sk, count(case when d_day_name = 'Sunday' then ss_quantity else 0 end) sun
+from pc_sales join pc_date on ss_sold_date_sk = d_date_sk
+group by ss_store_sk
+PREHOOK: type: QUERY
+PREHOOK: Input: default@pc_date
+PREHOOK: Input: default@pc_sales
+#### A masked pattern was here ####
+POSTHOOK: query: explain
+select ss_store_sk, count(case when d_day_name = 'Sunday' then ss_quantity else 0 end) sun
+from pc_sales join pc_date on ss_sold_date_sk = d_date_sk
+group by ss_store_sk
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@pc_date
+POSTHOOK: Input: default@pc_sales
+#### A masked pattern was here ####
+STAGE DEPENDENCIES:
+  Stage-1 is a root stage
+  Stage-0 depends on stages: Stage-1
+
+STAGE PLANS:
+  Stage: Stage-1
+    Tez
+#### A masked pattern was here ####
+      Edges:
+        Reducer 2 <- Map 1 (SIMPLE_EDGE), Map 4 (SIMPLE_EDGE)
+        Reducer 3 <- Reducer 2 (SIMPLE_EDGE)
+#### A masked pattern was here ####
+      Vertices:
+        Map 1 
+            Map Operator Tree:
+                TableScan
+                  alias: pc_sales
+                  filterExpr: ss_sold_date_sk is not null (type: boolean)
+                  Statistics: Num rows: 6000 Data size: 69820 Basic stats: COMPLETE Column stats: COMPLETE
+                  Filter Operator
+                    predicate: ss_sold_date_sk is not null (type: boolean)
+                    Statistics: Num rows: 6000 Data size: 69820 Basic stats: COMPLETE Column stats: COMPLETE
+                    Select Operator
+                      expressions: ss_sold_date_sk (type: int), ss_store_sk (type: int), ss_quantity (type: int)
+                      outputColumnNames: _col0, _col1, _col2
+                      Statistics: Num rows: 6000 Data size: 69820 Basic stats: COMPLETE Column stats: COMPLETE
+                      Reduce Output Operator
+                        key expressions: _col0 (type: int)
+                        null sort order: z
+                        sort order: +
+                        Map-reduce partition columns: _col0 (type: int)
+                        Statistics: Num rows: 6000 Data size: 69820 Basic stats: COMPLETE Column stats: COMPLETE
+                        value expressions: _col1 (type: int), _col2 (type: int)
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Map 4 
+            Map Operator Tree:
+                TableScan
+                  alias: pc_date
+                  filterExpr: d_date_sk is not null (type: boolean)
+                  Statistics: Num rows: 28 Data size: 2660 Basic stats: COMPLETE Column stats: COMPLETE
+                  Filter Operator
+                    predicate: d_date_sk is not null (type: boolean)
+                    Statistics: Num rows: 28 Data size: 2660 Basic stats: COMPLETE Column stats: COMPLETE
+                    Select Operator
+                      expressions: d_date_sk (type: int), (d_day_name = 'Sunday') (type: boolean)
+                      outputColumnNames: _col0, _col1
+                      Statistics: Num rows: 28 Data size: 224 Basic stats: COMPLETE Column stats: COMPLETE
+                      Reduce Output Operator
+                        key expressions: _col0 (type: int)
+                        null sort order: z
+                        sort order: +
+                        Map-reduce partition columns: _col0 (type: int)
+                        Statistics: Num rows: 28 Data size: 224 Basic stats: COMPLETE Column stats: COMPLETE
+                        value expressions: _col1 (type: boolean)
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Reducer 2 
+            Execution mode: llap
+            Reduce Operator Tree:
+              Merge Join Operator
+                condition map:
+                     Inner Join 0 to 1
+                keys:
+                  0 _col0 (type: int)
+                  1 _col0 (type: int)
+                outputColumnNames: _col1, _col2, _col4
+                Statistics: Num rows: 6000 Data size: 69820 Basic stats: COMPLETE Column stats: COMPLETE
+                Select Operator
+                  expressions: _col1 (type: int), if(_col4, _col2, 0) (type: int)
+                  outputColumnNames: _col0, _col1
+                  Statistics: Num rows: 6000 Data size: 69820 Basic stats: COMPLETE Column stats: COMPLETE
+                  Group By Operator
+                    aggregations: count(_col1)
+                    keys: _col0 (type: int)
+                    minReductionHashAggr: 0.99
+                    mode: hash
+                    outputColumnNames: _col0, _col1
+                    Statistics: Num rows: 6 Data size: 72 Basic stats: COMPLETE Column stats: COMPLETE
+                    Reduce Output Operator
+                      key expressions: _col0 (type: int)
+                      null sort order: z
+                      sort order: +
+                      Map-reduce partition columns: _col0 (type: int)
+                      Statistics: Num rows: 6 Data size: 72 Basic stats: COMPLETE Column stats: COMPLETE
+                      value expressions: _col1 (type: bigint)
+        Reducer 3 
+            Execution mode: vectorized, llap
+            Reduce Operator Tree:
+              Group By Operator
+                aggregations: count(VALUE._col0)
+                keys: KEY._col0 (type: int)
+                mode: mergepartial
+                outputColumnNames: _col0, _col1
+                Statistics: Num rows: 6 Data size: 72 Basic stats: COMPLETE Column stats: COMPLETE
+                File Output Operator
+                  compressed: false
+                  Statistics: Num rows: 6 Data size: 72 Basic stats: COMPLETE Column stats: COMPLETE
+                  table:
+                      input format: org.apache.hadoop.mapred.SequenceFileInputFormat
+                      output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
+                      serde: org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe
+
+  Stage: Stage-0
+    Fetch Operator
+      limit: -1
+      Processor Tree:
+        ListSink
+
+PREHOOK: query: select ss_store_sk, count(case when d_day_name = 'Sunday' then ss_quantity else 0 end) sun
+from pc_sales join pc_date on ss_sold_date_sk = d_date_sk
+group by ss_store_sk
+PREHOOK: type: QUERY
+PREHOOK: Input: default@pc_date
+PREHOOK: Input: default@pc_sales
+#### A masked pattern was here ####
+POSTHOOK: query: select ss_store_sk, count(case when d_day_name = 'Sunday' then ss_quantity else 0 end) sun
+from pc_sales join pc_date on ss_sold_date_sk = d_date_sk
+group by ss_store_sk
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@pc_date
+POSTHOOK: Input: default@pc_sales
+#### A masked pattern was here ####
+1	987
+2	987
+3	987
+4	987
+5	987
+6	987
+PREHOOK: query: select ss_store_sk, count(case when d_day_name = 'Sunday' then ss_quantity else 0 end) sun
+from pc_sales join pc_date on ss_sold_date_sk = d_date_sk
+group by ss_store_sk
+PREHOOK: type: QUERY
+PREHOOK: Input: default@pc_date
+PREHOOK: Input: default@pc_sales
+#### A masked pattern was here ####
+POSTHOOK: query: select ss_store_sk, count(case when d_day_name = 'Sunday' then ss_quantity else 0 end) sun
+from pc_sales join pc_date on ss_sold_date_sk = d_date_sk
+group by ss_store_sk
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@pc_date
+POSTHOOK: Input: default@pc_sales
+#### A masked pattern was here ####
+1	987
+2	987
+3	987
+4	987
+5	987
+6	987
+PREHOOK: query: explain vectorization detail
+select ss_store_sk,
+  sum(case when d_day_name = 'Sunday' then ss_sales_price else null end) sun,
+  count(case when d_day_name = 'Tuesday' then ss_quantity end) tue_cnt,
+  min(case when d_day_name = 'Wednesday' then ss_sales_price end) wed_min,
+  max(case when d_day_name = 'Thursday' then ss_sales_price end) thu_max,
+  sum(case when d_day_name = 'Friday' then ss_sales_price * ss_quantity else 0 end) fri_amt
+from pc_sales join pc_date on ss_sold_date_sk = d_date_sk
+where d_year = 2000
+group by ss_store_sk
+PREHOOK: type: QUERY
+PREHOOK: Input: default@pc_date
+PREHOOK: Input: default@pc_sales
+#### A masked pattern was here ####
+POSTHOOK: query: explain vectorization detail
+select ss_store_sk,
+  sum(case when d_day_name = 'Sunday' then ss_sales_price else null end) sun,
+  count(case when d_day_name = 'Tuesday' then ss_quantity end) tue_cnt,
+  min(case when d_day_name = 'Wednesday' then ss_sales_price end) wed_min,
+  max(case when d_day_name = 'Thursday' then ss_sales_price end) thu_max,
+  sum(case when d_day_name = 'Friday' then ss_sales_price * ss_quantity else 0 end) fri_amt
+from pc_sales join pc_date on ss_sold_date_sk = d_date_sk
+where d_year = 2000
+group by ss_store_sk
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@pc_date
+POSTHOOK: Input: default@pc_sales
+#### A masked pattern was here ####
+PLAN VECTORIZATION:
+  enabled: true
+  enabledConditionsMet: [hive.vectorized.execution.enabled IS true]
+
+STAGE DEPENDENCIES:
+  Stage-1 is a root stage
+  Stage-0 depends on stages: Stage-1
+
+STAGE PLANS:
+  Stage: Stage-1
+    Tez
+#### A masked pattern was here ####
+      Edges:
+        Map 1 <- Map 3 (BROADCAST_EDGE)
+        Reducer 2 <- Map 1 (SIMPLE_EDGE)
+#### A masked pattern was here ####
+      Vertices:
+        Map 1 
+            Map Operator Tree:
+                TableScan
+                  alias: pc_sales
+                  filterExpr: ss_sold_date_sk is not null (type: boolean)
+                  probeDecodeDetails: cacheKey:HASH_MAP_MAPJOIN_31_container, bigKeyColName:ss_sold_date_sk, smallTablePos:1, keyRatio:0.5
+                  Statistics: Num rows: 6000 Data size: 702396 Basic stats: COMPLETE Column stats: COMPLETE
+                  TableScan Vectorization:
+                      native: true
+                      vectorizationSchemaColumns: [0:ss_sold_date_sk:int, 1:ss_store_sk:int, 2:ss_sales_price:decimal(7,2)/DECIMAL_64, 3:ss_quantity:int, 4:ROW__ID:struct<writeid:bigint,bucketid:int,rowid:bigint>, 5:ROW__IS__DELETED:boolean]
+                  Filter Operator
+                    Filter Vectorization:
+                        className: VectorFilterOperator
+                        native: true
+                        predicateExpression: SelectColumnIsNotNull(col 0:int)
+                    predicate: ss_sold_date_sk is not null (type: boolean)
+                    Statistics: Num rows: 6000 Data size: 702396 Basic stats: COMPLETE Column stats: COMPLETE
+                    Select Operator
+                      expressions: ss_sold_date_sk (type: int), ss_store_sk (type: int), ss_sales_price (type: decimal(7,2)), ss_quantity (type: int), (ss_sales_price * CAST( ss_quantity AS decimal(10,0))) (type: decimal(18,2))
+                      outputColumnNames: _col0, _col1, _col2, _col3, _col4
+                      Select Vectorization:
+                          className: VectorSelectOperator
+                          native: true
+                          projectedOutputColumnNums: [0, 1, 2, 3, 7]
+                          selectExpressions: Decimal64ColMultiplyDecimal64Column(col 2:decimal(7,2)/DECIMAL_64, col 6:decimal(10,0)/DECIMAL_64)(children: CastLongToDecimal64(col 3:int) -> 6:decimal(10,0)/DECIMAL_64) -> 7:decimal(18,2)/DECIMAL_64
+                      Statistics: Num rows: 6000 Data size: 1374396 Basic stats: COMPLETE Column stats: COMPLETE
+                      Group By Operator
+                        aggregations: sum(_col2), count(_col3), min(_col2), max(_col2), sum(_col4)
+                        Group By Vectorization:
+                            aggregators: VectorUDAFSumDecimal64(col 2:decimal(7,2)/DECIMAL_64) -> decimal(17,2)/DECIMAL_64, VectorUDAFCount(col 3:int) -> bigint, VectorUDAFMinDecimal64(col 2:decimal(7,2)/DECIMAL_64) -> decimal(7,2)/DECIMAL_64, VectorUDAFMaxDecimal64(col 2:decimal(7,2)/DECIMAL_64) -> decimal(7,2)/DECIMAL_64, VectorUDAFSumDecimal64ToDecimal(col 7:decimal(18,2)/DECIMAL_64) -> decimal(28,2)
+                            className: VectorGroupByOperator
+                            groupByMode: PARTIAL_HASH
+                            keyExpressions: col 1:int, col 0:int
+                            native: false
+                            vectorProcessingMode: HASH
+                            projectedOutputColumnNums: [0, 1, 2, 3, 4]
+                        keys: _col1 (type: int), _col0 (type: int)
+                        minReductionHashAggr: 0.8
+                        mode: partialhash
+                        outputColumnNames: _col0, _col1, _col2, _col3, _col4, _col5, _col6
+                        Statistics: Num rows: 6000 Data size: 2784000 Basic stats: COMPLETE Column stats: COMPLETE
+                        Map Join Operator
+                          condition map:
+                               Inner Join 0 to 1
+                          keys:
+                            0 _col1 (type: int)
+                            1 _col0 (type: int)
+                          Map Join Vectorization:
+                              bigTableKeyColumns: 1:int
+                              bigTableRetainColumnNums: [0, 2, 3, 4, 5, 6]
+                              bigTableValueColumns: 0:int, 2:decimal(17,2), 3:bigint, 4:decimal(7,2), 5:decimal(7,2), 6:decimal(28,2)
+                              className: VectorMapJoinInnerLongOperator
+                              native: true
+                              nativeConditionsMet: hive.mapjoin.optimized.hashtable IS true, hive.vectorized.execution.mapjoin.native.enabled IS true, hive.execution.engine tez IN [tez] IS true, One MapJoin Condition IS true, No nullsafe IS true, Small table vectorizes IS true, Optimized Table and Supports Key Types IS true
+                              nonOuterSmallTableKeyMapping: []
+                              projectedOutput: 0:int, 2:decimal(17,2), 3:bigint, 4:decimal(7,2), 5:decimal(7,2), 6:decimal(28,2), 7:boolean, 8:boolean, 9:boolean, 10:boolean, 11:boolean
+                              smallTableValueMapping: 7:boolean, 8:boolean, 9:boolean, 10:boolean, 11:boolean
+                              hashTableImplementationType: OPTIMIZED
+                          outputColumnNames: _col0, _col1, _col2, _col3, _col4, _col5, _col6, _col7, _col8, _col9, _col10
+                          input vertices:
+                            1 Map 3
+                          Statistics: Num rows: 3000 Data size: 1440000 Basic stats: COMPLETE Column stats: COMPLETE
+                          Group By Operator
+                            aggregations: sum(if(_col6, _col1, null)), count(if(_col7, _col2, 0L)), min(if(_col8, _col3, null)), max(if(_col9, _col4, null)), sum(if(_col10, _col5, 0))
+                            Group By Vectorization:
+                                aggregators: VectorUDAFSumDecimal64(IfExprColumnNull(col 7:boolean, col 2:decimal(17,2)/DECIMAL_64, null)(children: col 7:boolean, col 2:decimal(17,2)/DECIMAL_64) -> 12:decimal(17,2)/DECIMAL_64) -> decimal(17,2)/DECIMAL_64, VectorUDAFCountMerge(IfExprLongColumnLongScalar(col 8:boolean, col 3:bigint, val 0) -> 13:bigint) -> bigint, VectorUDAFMinDecimal64(IfExprColumnNull(col 9:boolean, col 4:decimal(7,2)/DECIMAL_64, null)(children: col 9:boolean, col 4:decimal(7,2)/DECIMAL_64) -> 14:decimal(7,2)/DECIMAL_64) -> decimal(7,2)/DECIMAL_64, VectorUDAFMaxDecimal64(IfExprColumnNull(col 10:boolean, col 5:decimal(7,2)/DECIMAL_64, null)(children: col 10:boolean, col 5:decimal(7,2)/DECIMAL_64) -> 15:decimal(7,2)/DECIMAL_64) -> decimal(7,2)/DECIMAL_64, VectorUDAFSumDecimal(IfExprDecimalColumnScalar(col 11:boolean, col 6:decimal(28,2), val 0) -> 16:decimal(28,2)) -> decimal(28,2)
+                                className: VectorGroupByOperator
+                                groupByMode: HASH
+                                keyExpressions: col 0:int
+                                native: false
+                                vectorProcessingMode: HASH
+                                projectedOutputColumnNums: [0, 1, 2, 3, 4]
+                            keys: _col0 (type: int)
+                            minReductionHashAggr: 0.99
+                            mode: hash
+                            outputColumnNames: _col0, _col1, _col2, _col3, _col4, _col5
+                            Statistics: Num rows: 3 Data size: 1380 Basic stats: COMPLETE Column stats: COMPLETE
+                            Reduce Output Operator
+                              key expressions: _col0 (type: int)
+                              null sort order: z
+                              sort order: +
+                              Map-reduce partition columns: _col0 (type: int)
+                              Reduce Sink Vectorization:
+                                  className: VectorReduceSinkLongOperator
+                                  keyColumns: 0:int
+                                  native: true
+                                  nativeConditionsMet: hive.vectorized.execution.reducesink.new.enabled IS true, hive.execution.engine tez IN [tez] IS true, No PTF TopN IS true, No DISTINCT columns IS true, BinarySortableSerDe for keys IS true, LazyBinarySerDe for values IS true
+                                  valueColumns: 1:decimal(17,2), 2:bigint, 3:decimal(7,2), 4:decimal(7,2), 5:decimal(28,2)
+                              Statistics: Num rows: 3 Data size: 1380 Basic stats: COMPLETE Column stats: COMPLETE
+                              value expressions: _col1 (type: decimal(17,2)), _col2 (type: bigint), _col3 (type: decimal(7,2)), _col4 (type: decimal(7,2)), _col5 (type: decimal(28,2))
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+            Map Vectorization:
+                enabled: true
+                enabledConditionsMet: hive.vectorized.use.vector.serde.deserialize IS true
+                inputFormatFeatureSupport: [DECIMAL_64]
+                featureSupportInUse: [DECIMAL_64]
+                inputFileFormats: org.apache.hadoop.mapred.TextInputFormat
+                allNative: false
+                usesVectorUDFAdaptor: false
+                vectorized: true
+                rowBatchContext:
+                    dataColumnCount: 4
+                    includeColumns: [0, 1, 2, 3]
+                    dataColumns: ss_sold_date_sk:int, ss_store_sk:int, ss_sales_price:decimal(7,2)/DECIMAL_64, ss_quantity:int
+                    partitionColumnCount: 0
+                    scratchColumnTypeNames: [decimal(10,0)/DECIMAL_64, decimal(18,2)/DECIMAL_64]
+        Map 3 
+            Map Operator Tree:
+                TableScan
+                  alias: pc_date
+                  filterExpr: ((d_year = 2000) and d_date_sk is not null) (type: boolean)
+                  Statistics: Num rows: 28 Data size: 2772 Basic stats: COMPLETE Column stats: COMPLETE
+                  TableScan Vectorization:
+                      native: true
+                      vectorizationSchemaColumns: [0:d_date_sk:int, 1:d_year:int, 2:d_week_seq:int, 3:d_day_name:string, 4:ROW__ID:struct<writeid:bigint,bucketid:int,rowid:bigint>, 5:ROW__IS__DELETED:boolean]
+                  Filter Operator
+                    Filter Vectorization:
+                        className: VectorFilterOperator
+                        native: true
+                        predicateExpression: FilterExprAndExpr(children: FilterLongColEqualLongScalar(col 1:int, val 2000), SelectColumnIsNotNull(col 0:int))
+                    predicate: ((d_year = 2000) and d_date_sk is not null) (type: boolean)
+                    Statistics: Num rows: 14 Data size: 1386 Basic stats: COMPLETE Column stats: COMPLETE
+                    Select Operator
+                      expressions: d_date_sk (type: int), (d_day_name = 'Sunday') (type: boolean), (d_day_name = 'Tuesday') (type: boolean), (d_day_name = 'Wednesday') (type: boolean), (d_day_name = 'Thursday') (type: boolean), (d_day_name = 'Friday') (type: boolean)
+                      outputColumnNames: _col0, _col1, _col2, _col3, _col4, _col5
+                      Select Vectorization:
+                          className: VectorSelectOperator
+                          native: true
+                          projectedOutputColumnNums: [0, 6, 7, 8, 9, 10]
+                          selectExpressions: StringGroupColEqualStringScalar(col 3:string, val Sunday) -> 6:boolean, StringGroupColEqualStringScalar(col 3:string, val Tuesday) -> 7:boolean, StringGroupColEqualStringScalar(col 3:string, val Wednesday) -> 8:boolean, StringGroupColEqualStringScalar(col 3:string, val Thursday) -> 9:boolean, StringGroupColEqualStringScalar(col 3:string, val Friday) -> 10:boolean
+                      Statistics: Num rows: 14 Data size: 336 Basic stats: COMPLETE Column stats: COMPLETE
+                      Reduce Output Operator
+                        key expressions: _col0 (type: int)
+                        null sort order: z
+                        sort order: +
+                        Map-reduce partition columns: _col0 (type: int)
+                        Reduce Sink Vectorization:
+                            className: VectorReduceSinkLongOperator
+                            keyColumns: 0:int
+                            native: true
+                            nativeConditionsMet: hive.vectorized.execution.reducesink.new.enabled IS true, hive.execution.engine tez IN [tez] IS true, No PTF TopN IS true, No DISTINCT columns IS true, BinarySortableSerDe for keys IS true, LazyBinarySerDe for values IS true
+                            valueColumns: 6:boolean, 7:boolean, 8:boolean, 9:boolean, 10:boolean
+                        Statistics: Num rows: 14 Data size: 336 Basic stats: COMPLETE Column stats: COMPLETE
+                        value expressions: _col1 (type: boolean), _col2 (type: boolean), _col3 (type: boolean), _col4 (type: boolean), _col5 (type: boolean)
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+            Map Vectorization:
+                enabled: true
+                enabledConditionsMet: hive.vectorized.use.vector.serde.deserialize IS true
+                inputFormatFeatureSupport: [DECIMAL_64]
+                featureSupportInUse: [DECIMAL_64]
+                inputFileFormats: org.apache.hadoop.mapred.TextInputFormat
+                allNative: true
+                usesVectorUDFAdaptor: false
+                vectorized: true
+                rowBatchContext:
+                    dataColumnCount: 4
+                    includeColumns: [0, 1, 3]
+                    dataColumns: d_date_sk:int, d_year:int, d_week_seq:int, d_day_name:string
+                    partitionColumnCount: 0
+                    scratchColumnTypeNames: [bigint, bigint, bigint, bigint, bigint]
+        Reducer 2 
+            Execution mode: vectorized, llap
+            Reduce Vectorization:
+                enabled: true
+                enableConditionsMet: hive.vectorized.execution.reduce.enabled IS true, hive.execution.engine tez IN [tez] IS true
+                reduceColumnNullOrder: z
+                reduceColumnSortOrder: +
+                allNative: false
+                usesVectorUDFAdaptor: false
+                vectorized: true
+                rowBatchContext:
+                    dataColumnCount: 6
+                    dataColumns: KEY._col0:int, VALUE._col0:decimal(17,2)/DECIMAL_64, VALUE._col1:bigint, VALUE._col2:decimal(7,2)/DECIMAL_64, VALUE._col3:decimal(7,2)/DECIMAL_64, VALUE._col4:decimal(28,2)
+                    partitionColumnCount: 0
+                    scratchColumnTypeNames: []
+            Reduce Operator Tree:
+              Group By Operator
+                aggregations: sum(VALUE._col0), count(VALUE._col1), min(VALUE._col2), max(VALUE._col3), sum(VALUE._col4)
+                Group By Vectorization:
+                    aggregators: VectorUDAFSumDecimal64(col 1:decimal(17,2)/DECIMAL_64) -> decimal(17,2)/DECIMAL_64, VectorUDAFCountMerge(col 2:bigint) -> bigint, VectorUDAFMinDecimal64(col 3:decimal(7,2)/DECIMAL_64) -> decimal(7,2)/DECIMAL_64, VectorUDAFMaxDecimal64(col 4:decimal(7,2)/DECIMAL_64) -> decimal(7,2)/DECIMAL_64, VectorUDAFSumDecimal(col 5:decimal(28,2)) -> decimal(28,2)
+                    className: VectorGroupByOperator
+                    groupByMode: MERGEPARTIAL
+                    keyExpressions: col 0:int
+                    native: false
+                    vectorProcessingMode: MERGE_PARTIAL
+                    projectedOutputColumnNums: [0, 1, 2, 3, 4]
+                keys: KEY._col0 (type: int)
+                mode: mergepartial
+                outputColumnNames: _col0, _col1, _col2, _col3, _col4, _col5
+                Statistics: Num rows: 3 Data size: 1380 Basic stats: COMPLETE Column stats: COMPLETE
+                File Output Operator
+                  compressed: false
+                  File Sink Vectorization:
+                      className: VectorFileSinkOperator
+                      native: false
+                  Statistics: Num rows: 3 Data size: 1380 Basic stats: COMPLETE Column stats: COMPLETE
+                  table:
+                      input format: org.apache.hadoop.mapred.SequenceFileInputFormat
+                      output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
+                      serde: org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe
+
+  Stage: Stage-0
+    Fetch Operator
+      limit: -1
+      Processor Tree:
+        ListSink
+
+PREHOOK: query: explain
+select s_store_name, s_store_id,
+  sum(case when d_day_name = 'Sunday' then ss_sales_price else null end) sun,
+  count(case when d_day_name = 'Saturday' then ss_quantity end) sat_cnt
+from pc_date, pc_sales, pc_store
+where d_date_sk = ss_sold_date_sk and s_store_sk = ss_store_sk and d_year = 2000
+group by s_store_name, s_store_id
+PREHOOK: type: QUERY
+PREHOOK: Input: default@pc_date
+PREHOOK: Input: default@pc_sales
+PREHOOK: Input: default@pc_store
+#### A masked pattern was here ####
+POSTHOOK: query: explain
+select s_store_name, s_store_id,
+  sum(case when d_day_name = 'Sunday' then ss_sales_price else null end) sun,
+  count(case when d_day_name = 'Saturday' then ss_quantity end) sat_cnt
+from pc_date, pc_sales, pc_store
+where d_date_sk = ss_sold_date_sk and s_store_sk = ss_store_sk and d_year = 2000
+group by s_store_name, s_store_id
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@pc_date
+POSTHOOK: Input: default@pc_sales
+POSTHOOK: Input: default@pc_store
+#### A masked pattern was here ####
+STAGE DEPENDENCIES:
+  Stage-1 is a root stage
+  Stage-0 depends on stages: Stage-1
+
+STAGE PLANS:
+  Stage: Stage-1
+    Tez
+#### A masked pattern was here ####
+      Edges:
+        Map 1 <- Map 3 (BROADCAST_EDGE), Map 4 (BROADCAST_EDGE)
+        Reducer 2 <- Map 1 (SIMPLE_EDGE)
+#### A masked pattern was here ####
+      Vertices:
+        Map 1 
+            Map Operator Tree:
+                TableScan
+                  alias: pc_sales
+                  filterExpr: (ss_sold_date_sk is not null and ss_store_sk is not null) (type: boolean)
+                  probeDecodeDetails: cacheKey:HASH_MAP_MAPJOIN_53_container, bigKeyColName:ss_sold_date_sk, smallTablePos:1, keyRatio:0.5
+                  Statistics: Num rows: 6000 Data size: 702396 Basic stats: COMPLETE Column stats: COMPLETE
+                  Filter Operator
+                    predicate: (ss_sold_date_sk is not null and ss_store_sk is not null) (type: boolean)
+                    Statistics: Num rows: 6000 Data size: 702396 Basic stats: COMPLETE Column stats: COMPLETE
+                    Select Operator
+                      expressions: ss_sold_date_sk (type: int), ss_store_sk (type: int), ss_sales_price (type: decimal(7,2)), ss_quantity (type: int)
+                      outputColumnNames: _col0, _col1, _col2, _col3
+                      Statistics: Num rows: 6000 Data size: 702396 Basic stats: COMPLETE Column stats: COMPLETE
+                      Group By Operator
+                        aggregations: sum(_col2), count(_col3)
+                        keys: _col1 (type: int), _col0 (type: int)
+                        minReductionHashAggr: 0.8
+                        mode: partialhash
+                        outputColumnNames: _col0, _col1, _col2, _col3
+                        Statistics: Num rows: 6000 Data size: 768000 Basic stats: COMPLETE Column stats: COMPLETE
+                        Map Join Operator
+                          condition map:
+                               Inner Join 0 to 1
+                          keys:
+                            0 _col1 (type: int)
+                            1 _col0 (type: int)
+                          outputColumnNames: _col0, _col1, _col2, _col5, _col6
+                          input vertices:
+                            1 Map 3
+                          Statistics: Num rows: 3000 Data size: 396000 Basic stats: COMPLETE Column stats: COMPLETE
+                          Select Operator
+                            expressions: _col0 (type: int), if(_col5, _col1, null) (type: decimal(17,2)), if(_col6, _col2, 0L) (type: bigint)
+                            outputColumnNames: _col0, _col1, _col2
+                            Statistics: Num rows: 3000 Data size: 36112 Basic stats: COMPLETE Column stats: COMPLETE
+                            Map Join Operator
+                              condition map:
+                                   Inner Join 0 to 1
+                              keys:
+                                0 _col0 (type: int)
+                                1 _col0 (type: int)
+                              outputColumnNames: _col0, _col1, _col8, _col9
+                              input vertices:
+                                1 Map 4
+                              Statistics: Num rows: 3000 Data size: 552112 Basic stats: COMPLETE Column stats: COMPLETE
+                              Group By Operator
+                                aggregations: sum(_col0), count(_col1)
+                                keys: _col9 (type: string), _col8 (type: string)
+                                minReductionHashAggr: 0.99
+                                mode: hash
+                                outputColumnNames: _col0, _col1, _col2, _col3
+                                Statistics: Num rows: 6 Data size: 1776 Basic stats: COMPLETE Column stats: COMPLETE
+                                Reduce Output Operator
+                                  key expressions: _col0 (type: string), _col1 (type: string)
+                                  null sort order: zz
+                                  sort order: ++
+                                  Map-reduce partition columns: _col0 (type: string), _col1 (type: string)
+                                  Statistics: Num rows: 6 Data size: 1776 Basic stats: COMPLETE Column stats: COMPLETE
+                                  value expressions: _col2 (type: decimal(17,2)), _col3 (type: bigint)
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Map 3 
+            Map Operator Tree:
+                TableScan
+                  alias: pc_date
+                  filterExpr: ((d_year = 2000) and d_date_sk is not null) (type: boolean)
+                  Statistics: Num rows: 28 Data size: 2772 Basic stats: COMPLETE Column stats: COMPLETE
+                  Filter Operator
+                    predicate: ((d_year = 2000) and d_date_sk is not null) (type: boolean)
+                    Statistics: Num rows: 14 Data size: 1386 Basic stats: COMPLETE Column stats: COMPLETE
+                    Select Operator
+                      expressions: d_date_sk (type: int), (d_day_name = 'Sunday') (type: boolean), (d_day_name = 'Saturday') (type: boolean)
+                      outputColumnNames: _col0, _col1, _col2
+                      Statistics: Num rows: 14 Data size: 168 Basic stats: COMPLETE Column stats: COMPLETE
+                      Reduce Output Operator
+                        key expressions: _col0 (type: int)
+                        null sort order: z
+                        sort order: +
+                        Map-reduce partition columns: _col0 (type: int)
+                        Statistics: Num rows: 14 Data size: 168 Basic stats: COMPLETE Column stats: COMPLETE
+                        value expressions: _col1 (type: boolean), _col2 (type: boolean)
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Map 4 
+            Map Operator Tree:
+                TableScan
+                  alias: pc_store
+                  filterExpr: s_store_sk is not null (type: boolean)
+                  Statistics: Num rows: 6 Data size: 1080 Basic stats: COMPLETE Column stats: COMPLETE
+                  Filter Operator
+                    predicate: s_store_sk is not null (type: boolean)
+                    Statistics: Num rows: 6 Data size: 1080 Basic stats: COMPLETE Column stats: COMPLETE
+                    Select Operator
+                      expressions: s_store_sk (type: int), s_store_id (type: string), s_store_name (type: string)
+                      outputColumnNames: _col0, _col1, _col2
+                      Statistics: Num rows: 6 Data size: 1080 Basic stats: COMPLETE Column stats: COMPLETE
+                      Reduce Output Operator
+                        key expressions: _col0 (type: int)
+                        null sort order: z
+                        sort order: +
+                        Map-reduce partition columns: _col0 (type: int)
+                        Statistics: Num rows: 6 Data size: 1080 Basic stats: COMPLETE Column stats: COMPLETE
+                        value expressions: _col1 (type: string), _col2 (type: string)
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Reducer 2 
+            Execution mode: vectorized, llap
+            Reduce Operator Tree:
+              Group By Operator
+                aggregations: sum(VALUE._col0), count(VALUE._col1)
+                keys: KEY._col0 (type: string), KEY._col1 (type: string)
+                mode: mergepartial
+                outputColumnNames: _col0, _col1, _col2, _col3
+                Statistics: Num rows: 6 Data size: 1776 Basic stats: COMPLETE Column stats: COMPLETE
+                File Output Operator
+                  compressed: false
+                  Statistics: Num rows: 6 Data size: 1776 Basic stats: COMPLETE Column stats: COMPLETE
+                  table:
+                      input format: org.apache.hadoop.mapred.SequenceFileInputFormat
+                      output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
+                      serde: org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe
+
+  Stage: Stage-0
+    Fetch Operator
+      limit: -1
+      Processor Tree:
+        ListSink
+
+PREHOOK: query: select ss_store_sk,
+  sum(case when d_day_name = 'Sunday' then ss_sales_price else null end) sun,
+  count(case when d_day_name = 'Tuesday' then ss_quantity end) tue_cnt,
+  min(case when d_day_name = 'Wednesday' then ss_sales_price end) wed_min,
+  max(case when d_day_name = 'Thursday' then ss_sales_price end) thu_max,
+  sum(case when d_day_name = 'Friday' then ss_sales_price * ss_quantity else 0 end) fri_amt
+from pc_sales join pc_date on ss_sold_date_sk = d_date_sk
+where d_year = 2000
+group by ss_store_sk
+PREHOOK: type: QUERY
+PREHOOK: Input: default@pc_date
+PREHOOK: Input: default@pc_sales
+#### A masked pattern was here ####
+POSTHOOK: query: select ss_store_sk,
+  sum(case when d_day_name = 'Sunday' then ss_sales_price else null end) sun,
+  count(case when d_day_name = 'Tuesday' then ss_quantity end) tue_cnt,
+  min(case when d_day_name = 'Wednesday' then ss_sales_price end) wed_min,
+  max(case when d_day_name = 'Thursday' then ss_sales_price end) thu_max,
+  sum(case when d_day_name = 'Friday' then ss_sales_price * ss_quantity else 0 end) fri_amt
+from pc_sales join pc_date on ss_sold_date_sk = d_date_sk
+where d_year = 2000
+group by ss_store_sk
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@pc_date
+POSTHOOK: Input: default@pc_sales
+#### A masked pattern was here ####
+1	2030.00	65	0.00	60.00	5535.00
+2	2137.50	64	1.25	61.25	7636.25
+3	2055.00	66	0.00	60.00	9352.50
+4	2076.25	65	1.25	61.25	5868.75
+5	2055.00	65	0.00	60.00	7752.50
+6	2123.75	65	1.25	61.25	9628.75
+PREHOOK: query: select ss_store_sk,
+  sum(case when d_day_name = 'Sunday' then ss_sales_price else null end) sun,
+  count(case when d_day_name = 'Tuesday' then ss_quantity end) tue_cnt,
+  min(case when d_day_name = 'Wednesday' then ss_sales_price end) wed_min,
+  max(case when d_day_name = 'Thursday' then ss_sales_price end) thu_max,
+  sum(case when d_day_name = 'Friday' then ss_sales_price * ss_quantity else 0 end) fri_amt
+from pc_sales join pc_date on ss_sold_date_sk = d_date_sk
+where d_year = 2000
+group by ss_store_sk
+PREHOOK: type: QUERY
+PREHOOK: Input: default@pc_date
+PREHOOK: Input: default@pc_sales
+#### A masked pattern was here ####
+POSTHOOK: query: select ss_store_sk,
+  sum(case when d_day_name = 'Sunday' then ss_sales_price else null end) sun,
+  count(case when d_day_name = 'Tuesday' then ss_quantity end) tue_cnt,
+  min(case when d_day_name = 'Wednesday' then ss_sales_price end) wed_min,
+  max(case when d_day_name = 'Thursday' then ss_sales_price end) thu_max,
+  sum(case when d_day_name = 'Friday' then ss_sales_price * ss_quantity else 0 end) fri_amt
+from pc_sales join pc_date on ss_sold_date_sk = d_date_sk
+where d_year = 2000
+group by ss_store_sk
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@pc_date
+POSTHOOK: Input: default@pc_sales
+#### A masked pattern was here ####
+1	2030.00	65	0.00	60.00	5535.00
+2	2137.50	64	1.25	61.25	7636.25
+3	2055.00	66	0.00	60.00	9352.50
+4	2076.25	65	1.25	61.25	5868.75
+5	2055.00	65	0.00	60.00	7752.50
+6	2123.75	65	1.25	61.25	9628.75
+PREHOOK: query: select ss_store_sk,
+  sum(case when d_day_name = 'Sunday' then ss_sales_price else null end) sun,
+  count(case when d_day_name = 'Tuesday' then ss_quantity end) tue_cnt,
+  min(case when d_day_name = 'Wednesday' then ss_sales_price end) wed_min,
+  max(case when d_day_name = 'Thursday' then ss_sales_price end) thu_max,
+  sum(case when d_day_name = 'Friday' then ss_sales_price * ss_quantity else 0 end) fri_amt
+from pc_sales join pc_date on ss_sold_date_sk = d_date_sk
+where d_year = 2000
+group by ss_store_sk
+PREHOOK: type: QUERY
+PREHOOK: Input: default@pc_date
+PREHOOK: Input: default@pc_sales
+#### A masked pattern was here ####
+POSTHOOK: query: select ss_store_sk,
+  sum(case when d_day_name = 'Sunday' then ss_sales_price else null end) sun,
+  count(case when d_day_name = 'Tuesday' then ss_quantity end) tue_cnt,
+  min(case when d_day_name = 'Wednesday' then ss_sales_price end) wed_min,
+  max(case when d_day_name = 'Thursday' then ss_sales_price end) thu_max,
+  sum(case when d_day_name = 'Friday' then ss_sales_price * ss_quantity else 0 end) fri_amt
+from pc_sales join pc_date on ss_sold_date_sk = d_date_sk
+where d_year = 2000
+group by ss_store_sk
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@pc_date
+POSTHOOK: Input: default@pc_sales
+#### A masked pattern was here ####
+1	2030.00	65	0.00	60.00	5535.00
+2	2137.50	64	1.25	61.25	7636.25
+3	2055.00	66	0.00	60.00	9352.50
+4	2076.25	65	1.25	61.25	5868.75
+5	2055.00	65	0.00	60.00	7752.50
+6	2123.75	65	1.25	61.25	9628.75
+PREHOOK: query: select ss_store_sk,
+  sum(case when d_day_name = 'Sunday' then ss_sales_price else null end) sun,
+  count(case when d_day_name = 'Tuesday' then ss_quantity end) tue_cnt,
+  min(case when d_day_name = 'Wednesday' then ss_sales_price end) wed_min,
+  max(case when d_day_name = 'Thursday' then ss_sales_price end) thu_max,
+  sum(case when d_day_name = 'Friday' then ss_sales_price * ss_quantity else 0 end) fri_amt
+from pc_sales join pc_date on ss_sold_date_sk = d_date_sk
+where d_year = 2000
+group by ss_store_sk
+PREHOOK: type: QUERY
+PREHOOK: Input: default@pc_date
+PREHOOK: Input: default@pc_sales
+#### A masked pattern was here ####
+POSTHOOK: query: select ss_store_sk,
+  sum(case when d_day_name = 'Sunday' then ss_sales_price else null end) sun,
+  count(case when d_day_name = 'Tuesday' then ss_quantity end) tue_cnt,
+  min(case when d_day_name = 'Wednesday' then ss_sales_price end) wed_min,
+  max(case when d_day_name = 'Thursday' then ss_sales_price end) thu_max,
+  sum(case when d_day_name = 'Friday' then ss_sales_price * ss_quantity else 0 end) fri_amt
+from pc_sales join pc_date on ss_sold_date_sk = d_date_sk
+where d_year = 2000
+group by ss_store_sk
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@pc_date
+POSTHOOK: Input: default@pc_sales
+#### A masked pattern was here ####
+1	2030.00	65	0.00	60.00	5535.00
+2	2137.50	64	1.25	61.25	7636.25
+3	2055.00	66	0.00	60.00	9352.50
+4	2076.25	65	1.25	61.25	5868.75
+5	2055.00	65	0.00	60.00	7752.50
+6	2123.75	65	1.25	61.25	9628.75
+PREHOOK: query: select s_store_name, s_store_id,
+  sum(case when d_day_name = 'Sunday' then ss_sales_price else null end) sun,
+  count(case when d_day_name = 'Saturday' then ss_quantity end) sat_cnt
+from pc_date, pc_sales, pc_store
+where d_date_sk = ss_sold_date_sk and s_store_sk = ss_store_sk and d_year = 2000
+group by s_store_name, s_store_id
+PREHOOK: type: QUERY
+PREHOOK: Input: default@pc_date
+PREHOOK: Input: default@pc_sales
+PREHOOK: Input: default@pc_store
+#### A masked pattern was here ####
+POSTHOOK: query: select s_store_name, s_store_id,
+  sum(case when d_day_name = 'Sunday' then ss_sales_price else null end) sun,
+  count(case when d_day_name = 'Saturday' then ss_quantity end) sat_cnt
+from pc_date, pc_sales, pc_store
+where d_date_sk = ss_sold_date_sk and s_store_sk = ss_store_sk and d_year = 2000
+group by s_store_name, s_store_id
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@pc_date
+POSTHOOK: Input: default@pc_sales
+POSTHOOK: Input: default@pc_store
+#### A masked pattern was here ####
+store0	S0	2030.00	66
+store0	S1	2055.00	65
+store0	S2	2055.00	65
+store1	S0	2076.25	65
+store1	S1	2137.50	66
+store1	S2	2123.75	64
+PREHOOK: query: select s_store_name, s_store_id,
+  sum(case when d_day_name = 'Sunday' then ss_sales_price else null end) sun,
+  count(case when d_day_name = 'Saturday' then ss_quantity end) sat_cnt
+from pc_date, pc_sales, pc_store
+where d_date_sk = ss_sold_date_sk and s_store_sk = ss_store_sk and d_year = 2000
+group by s_store_name, s_store_id
+PREHOOK: type: QUERY
+PREHOOK: Input: default@pc_date
+PREHOOK: Input: default@pc_sales
+PREHOOK: Input: default@pc_store
+#### A masked pattern was here ####
+POSTHOOK: query: select s_store_name, s_store_id,
+  sum(case when d_day_name = 'Sunday' then ss_sales_price else null end) sun,
+  count(case when d_day_name = 'Saturday' then ss_quantity end) sat_cnt
+from pc_date, pc_sales, pc_store
+where d_date_sk = ss_sold_date_sk and s_store_sk = ss_store_sk and d_year = 2000
+group by s_store_name, s_store_id
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@pc_date
+POSTHOOK: Input: default@pc_sales
+POSTHOOK: Input: default@pc_store
+#### A masked pattern was here ####
+store0	S0	2030.00	66
+store0	S1	2055.00	65
+store0	S2	2055.00	65
+store1	S0	2076.25	65
+store1	S1	2137.50	66
+store1	S2	2123.75	64
+PREHOOK: query: create table pc_date_dup (d_date_sk int, d_day_name string)
+PREHOOK: type: CREATETABLE
+PREHOOK: Output: database:default
+PREHOOK: Output: default@pc_date_dup
+POSTHOOK: query: create table pc_date_dup (d_date_sk int, d_day_name string)
+POSTHOOK: type: CREATETABLE
+POSTHOOK: Output: database:default
+POSTHOOK: Output: default@pc_date_dup
+PREHOOK: query: insert into pc_date_dup select d_date_sk, d_day_name from pc_date
+PREHOOK: type: QUERY
+PREHOOK: Input: default@pc_date
+PREHOOK: Output: default@pc_date_dup
+POSTHOOK: query: insert into pc_date_dup select d_date_sk, d_day_name from pc_date
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@pc_date
+POSTHOOK: Output: default@pc_date_dup
+POSTHOOK: Lineage: pc_date_dup.d_date_sk SIMPLE [(pc_date)pc_date.FieldSchema(name:d_date_sk, type:int, comment:null), ]
+POSTHOOK: Lineage: pc_date_dup.d_day_name SIMPLE [(pc_date)pc_date.FieldSchema(name:d_day_name, type:string, comment:null), ]
+PREHOOK: query: insert into pc_date_dup select d_date_sk, if(d_day_name = 'Sunday', 'Monday', 'Sunday') from pc_date where d_date_sk % 3 = 0
+PREHOOK: type: QUERY
+PREHOOK: Input: default@pc_date
+PREHOOK: Output: default@pc_date_dup
+POSTHOOK: query: insert into pc_date_dup select d_date_sk, if(d_day_name = 'Sunday', 'Monday', 'Sunday') from pc_date where d_date_sk % 3 = 0
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@pc_date
+POSTHOOK: Output: default@pc_date_dup
+POSTHOOK: Lineage: pc_date_dup.d_date_sk SIMPLE [(pc_date)pc_date.FieldSchema(name:d_date_sk, type:int, comment:null), ]
+POSTHOOK: Lineage: pc_date_dup.d_day_name EXPRESSION [(pc_date)pc_date.FieldSchema(name:d_day_name, type:string, comment:null), ]
+PREHOOK: query: insert into pc_date_dup select d_date_sk, null from pc_date where d_date_sk % 4 = 0
+PREHOOK: type: QUERY
+PREHOOK: Input: default@pc_date
+PREHOOK: Output: default@pc_date_dup
+POSTHOOK: query: insert into pc_date_dup select d_date_sk, null from pc_date where d_date_sk % 4 = 0
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@pc_date
+POSTHOOK: Output: default@pc_date_dup
+POSTHOOK: Lineage: pc_date_dup.d_date_sk SIMPLE [(pc_date)pc_date.FieldSchema(name:d_date_sk, type:int, comment:null), ]
+POSTHOOK: Lineage: pc_date_dup.d_day_name EXPRESSION []
+PREHOOK: query: create table pc_flag (f_date_sk int, f_holiday boolean)
+PREHOOK: type: CREATETABLE
+PREHOOK: Output: database:default
+PREHOOK: Output: default@pc_flag
+POSTHOOK: query: create table pc_flag (f_date_sk int, f_holiday boolean)
+POSTHOOK: type: CREATETABLE
+POSTHOOK: Output: database:default
+POSTHOOK: Output: default@pc_flag
+PREHOOK: query: insert into pc_flag select d_date_sk, d_date_sk % 5 = 0 from pc_date
+PREHOOK: type: QUERY
+PREHOOK: Input: default@pc_date
+PREHOOK: Output: default@pc_flag
+POSTHOOK: query: insert into pc_flag select d_date_sk, d_date_sk % 5 = 0 from pc_date
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@pc_date
+POSTHOOK: Output: default@pc_flag
+POSTHOOK: Lineage: pc_flag.f_date_sk SIMPLE [(pc_date)pc_date.FieldSchema(name:d_date_sk, type:int, comment:null), ]
+POSTHOOK: Lineage: pc_flag.f_holiday EXPRESSION [(pc_date)pc_date.FieldSchema(name:d_date_sk, type:int, comment:null), ]
+PREHOOK: query: insert into pc_sales select pos % 28 + 1, 7, null, null from (select posexplode(split(space(99), ' '))) t
+PREHOOK: type: QUERY
+PREHOOK: Input: _dummy_database@_dummy_table
+PREHOOK: Output: default@pc_sales
+POSTHOOK: query: insert into pc_sales select pos % 28 + 1, 7, null, null from (select posexplode(split(space(99), ' '))) t
+POSTHOOK: type: QUERY
+POSTHOOK: Input: _dummy_database@_dummy_table
+POSTHOOK: Output: default@pc_sales
+POSTHOOK: Lineage: pc_sales.ss_quantity EXPRESSION []
+POSTHOOK: Lineage: pc_sales.ss_sales_price EXPRESSION []
+POSTHOOK: Lineage: pc_sales.ss_sold_date_sk SCRIPT []
+POSTHOOK: Lineage: pc_sales.ss_store_sk SIMPLE []
+PREHOOK: query: insert into pc_sales select 5, 8, cast(pos as decimal(7,2)), pos from (select posexplode(split(space(49), ' '))) t
+PREHOOK: type: QUERY
+PREHOOK: Input: _dummy_database@_dummy_table
+PREHOOK: Output: default@pc_sales
+POSTHOOK: query: insert into pc_sales select 5, 8, cast(pos as decimal(7,2)), pos from (select posexplode(split(space(49), ' '))) t
+POSTHOOK: type: QUERY
+POSTHOOK: Input: _dummy_database@_dummy_table
+POSTHOOK: Output: default@pc_sales
+POSTHOOK: Lineage: pc_sales.ss_quantity SCRIPT []
+POSTHOOK: Lineage: pc_sales.ss_sales_price SCRIPT []
+POSTHOOK: Lineage: pc_sales.ss_sold_date_sk SIMPLE []
+POSTHOOK: Lineage: pc_sales.ss_store_sk SIMPLE []
+PREHOOK: query: analyze table pc_date_dup compute statistics for columns
+PREHOOK: type: ANALYZE_TABLE
+PREHOOK: Input: default@pc_date_dup
+PREHOOK: Output: default@pc_date_dup
+#### A masked pattern was here ####
+POSTHOOK: query: analyze table pc_date_dup compute statistics for columns
+POSTHOOK: type: ANALYZE_TABLE
+POSTHOOK: Input: default@pc_date_dup
+POSTHOOK: Output: default@pc_date_dup
+#### A masked pattern was here ####
+PREHOOK: query: analyze table pc_flag compute statistics for columns
+PREHOOK: type: ANALYZE_TABLE
+PREHOOK: Input: default@pc_flag
+PREHOOK: Output: default@pc_flag
+#### A masked pattern was here ####
+POSTHOOK: query: analyze table pc_flag compute statistics for columns
+POSTHOOK: type: ANALYZE_TABLE
+POSTHOOK: Input: default@pc_flag
+POSTHOOK: Output: default@pc_flag
+#### A masked pattern was here ####
+PREHOOK: query: analyze table pc_sales compute statistics for columns
+PREHOOK: type: ANALYZE_TABLE
+PREHOOK: Input: default@pc_sales
+PREHOOK: Output: default@pc_sales
+#### A masked pattern was here ####
+POSTHOOK: query: analyze table pc_sales compute statistics for columns
+POSTHOOK: type: ANALYZE_TABLE
+POSTHOOK: Input: default@pc_sales
+POSTHOOK: Output: default@pc_sales
+#### A masked pattern was here ####
+PREHOOK: query: explain
+select ss_store_sk,
+  sum(case when d_day_name = 'Sunday' then ss_sales_price end) sun,
+  sum(case when d_day_name = 'Monday' then ss_sales_price else 0 end) mon,
+  count(case when d_day_name = 'Sunday' then ss_quantity end) sun_cnt,
+  min(case when d_day_name = 'Monday' then ss_sales_price end) mon_min
+from pc_sales join pc_date_dup on ss_sold_date_sk = d_date_sk
+group by ss_store_sk
+PREHOOK: type: QUERY
+PREHOOK: Input: default@pc_date_dup
+PREHOOK: Input: default@pc_sales
+#### A masked pattern was here ####
+POSTHOOK: query: explain
+select ss_store_sk,
+  sum(case when d_day_name = 'Sunday' then ss_sales_price end) sun,
+  sum(case when d_day_name = 'Monday' then ss_sales_price else 0 end) mon,
+  count(case when d_day_name = 'Sunday' then ss_quantity end) sun_cnt,
+  min(case when d_day_name = 'Monday' then ss_sales_price end) mon_min
+from pc_sales join pc_date_dup on ss_sold_date_sk = d_date_sk
+group by ss_store_sk
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@pc_date_dup
+POSTHOOK: Input: default@pc_sales
+#### A masked pattern was here ####
+STAGE DEPENDENCIES:
+  Stage-1 is a root stage
+  Stage-0 depends on stages: Stage-1
+
+STAGE PLANS:
+  Stage: Stage-1
+    Tez
+#### A masked pattern was here ####
+      Edges:
+        Reducer 2 <- Map 1 (SIMPLE_EDGE), Map 4 (SIMPLE_EDGE)
+        Reducer 3 <- Reducer 2 (SIMPLE_EDGE)
+#### A masked pattern was here ####
+      Vertices:
+        Map 1 
+            Map Operator Tree:
+                TableScan
+                  alias: pc_sales
+                  filterExpr: ss_sold_date_sk is not null (type: boolean)
+                  Statistics: Num rows: 6150 Data size: 709396 Basic stats: COMPLETE Column stats: COMPLETE
+                  Filter Operator
+                    predicate: ss_sold_date_sk is not null (type: boolean)
+                    Statistics: Num rows: 6150 Data size: 709396 Basic stats: COMPLETE Column stats: COMPLETE
+                    Select Operator
+                      expressions: ss_sold_date_sk (type: int), ss_store_sk (type: int), ss_sales_price (type: decimal(7,2)), ss_quantity (type: int)
+                      outputColumnNames: _col0, _col1, _col2, _col3
+                      Statistics: Num rows: 6150 Data size: 709396 Basic stats: COMPLETE Column stats: COMPLETE
+                      Group By Operator
+                        aggregations: sum(_col2), sum(_col2), count(_col3), min(_col2)
+                        keys: _col1 (type: int), _col0 (type: int)
+                        minReductionHashAggr: 0.8
+                        mode: partialhash
+                        outputColumnNames: _col0, _col1, _col2, _col3, _col4, _col5
+                        Statistics: Num rows: 6150 Data size: 2164800 Basic stats: COMPLETE Column stats: COMPLETE
+                        Reduce Output Operator
+                          key expressions: _col1 (type: int)
+                          null sort order: z
+                          sort order: +
+                          Map-reduce partition columns: _col1 (type: int)
+                          Statistics: Num rows: 6150 Data size: 2164800 Basic stats: COMPLETE Column stats: COMPLETE
+                          value expressions: _col0 (type: int), _col2 (type: decimal(17,2)), _col3 (type: decimal(17,2)), _col4 (type: bigint), _col5 (type: decimal(7,2))
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Map 4 
+            Map Operator Tree:
+                TableScan
+                  alias: pc_date_dup
+                  filterExpr: d_date_sk is not null (type: boolean)
+                  Statistics: Num rows: 44 Data size: 3596 Basic stats: COMPLETE Column stats: COMPLETE
+                  Filter Operator
+                    predicate: d_date_sk is not null (type: boolean)
+                    Statistics: Num rows: 44 Data size: 3596 Basic stats: COMPLETE Column stats: COMPLETE
+                    Select Operator
+                      expressions: d_date_sk (type: int), (d_day_name = 'Sunday') (type: boolean), (d_day_name = 'Monday') (type: boolean)
+                      outputColumnNames: _col0, _col1, _col2
+                      Statistics: Num rows: 44 Data size: 528 Basic stats: COMPLETE Column stats: COMPLETE
+                      Reduce Output Operator
+                        key expressions: _col0 (type: int)
+                        null sort order: z
+                        sort order: +
+                        Map-reduce partition columns: _col0 (type: int)
+                        Statistics: Num rows: 44 Data size: 528 Basic stats: COMPLETE Column stats: COMPLETE
+                        value expressions: _col1 (type: boolean), _col2 (type: boolean)
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Reducer 2 
+            Execution mode: llap
+            Reduce Operator Tree:
+              Merge Join Operator
+                condition map:
+                     Inner Join 0 to 1
+                keys:
+                  0 _col1 (type: int)
+                  1 _col0 (type: int)
+                outputColumnNames: _col0, _col1, _col2, _col3, _col4, _col5, _col6
+                Statistics: Num rows: 9664 Data size: 3440384 Basic stats: COMPLETE Column stats: COMPLETE
+                Group By Operator
+                  aggregations: sum(if(_col5, _col1, null)), sum(if(_col6, _col2, 0)), count(if(_col5, _col3, 0L)), min(if(_col6, _col4, null))
+                  keys: _col0 (type: int)
+                  minReductionHashAggr: 0.99
+                  mode: hash
+                  outputColumnNames: _col0, _col1, _col2, _col3, _col4
+                  Statistics: Num rows: 8 Data size: 2784 Basic stats: COMPLETE Column stats: COMPLETE
+                  Reduce Output Operator
+                    key expressions: _col0 (type: int)
+                    null sort order: z
+                    sort order: +
+                    Map-reduce partition columns: _col0 (type: int)
+                    Statistics: Num rows: 8 Data size: 2784 Basic stats: COMPLETE Column stats: COMPLETE
+                    value expressions: _col1 (type: decimal(17,2)), _col2 (type: decimal(17,2)), _col3 (type: bigint), _col4 (type: decimal(7,2))
+        Reducer 3 
+            Execution mode: vectorized, llap
+            Reduce Operator Tree:
+              Group By Operator
+                aggregations: sum(VALUE._col0), sum(VALUE._col1), count(VALUE._col2), min(VALUE._col3)
+                keys: KEY._col0 (type: int)
+                mode: mergepartial
+                outputColumnNames: _col0, _col1, _col2, _col3, _col4
+                Statistics: Num rows: 8 Data size: 2784 Basic stats: COMPLETE Column stats: COMPLETE
+                File Output Operator
+                  compressed: false
+                  Statistics: Num rows: 8 Data size: 2784 Basic stats: COMPLETE Column stats: COMPLETE
+                  table:
+                      input format: org.apache.hadoop.mapred.SequenceFileInputFormat
+                      output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
+                      serde: org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe
+
+  Stage: Stage-0
+    Fetch Operator
+      limit: -1
+      Processor Tree:
+        ListSink
+
+PREHOOK: query: select ss_store_sk,
+  sum(case when d_day_name = 'Sunday' then ss_sales_price end) sun,
+  sum(case when d_day_name = 'Monday' then ss_sales_price else 0 end) mon,
+  count(case when d_day_name = 'Sunday' then ss_quantity end) sun_cnt,
+  min(case when d_day_name = 'Monday' then ss_sales_price end) mon_min
+from pc_sales join pc_date_dup on ss_sold_date_sk = d_date_sk
+group by ss_store_sk
+PREHOOK: type: QUERY
+PREHOOK: Input: default@pc_date_dup
+PREHOOK: Input: default@pc_sales
+#### A masked pattern was here ####
+POSTHOOK: query: select ss_store_sk,
+  sum(case when d_day_name = 'Sunday' then ss_sales_price end) sun,
+  sum(case when d_day_name = 'Monday' then ss_sales_price else 0 end) mon,
+  count(case when d_day_name = 'Sunday' then ss_quantity end) sun_cnt,
+  min(case when d_day_name = 'Monday' then ss_sales_price end) mon_min
+from pc_sales join pc_date_dup on ss_sold_date_sk = d_date_sk
+group by ss_store_sk
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@pc_date_dup
+POSTHOOK: Input: default@pc_sales
+#### A masked pattern was here ####
+1	12240.00	6040.00	389	0.00
+2	12513.75	4125.00	389	1.25
+3	12215.00	6027.50	391	0.00
+4	12696.25	4238.75	389	1.25
+5	11962.50	5980.00	389	0.00
+6	12733.75	4246.25	391	1.25
+7	NULL	0.00	0	NULL
+8	NULL	0.00	0	NULL
+PREHOOK: query: select ss_store_sk,
+  sum(case when d_day_name = 'Sunday' then ss_sales_price end) sun,
+  sum(case when d_day_name = 'Monday' then ss_sales_price else 0 end) mon,
+  count(case when d_day_name = 'Sunday' then ss_quantity end) sun_cnt,
+  min(case when d_day_name = 'Monday' then ss_sales_price end) mon_min
+from pc_sales join pc_date_dup on ss_sold_date_sk = d_date_sk
+group by ss_store_sk
+PREHOOK: type: QUERY
+PREHOOK: Input: default@pc_date_dup
+PREHOOK: Input: default@pc_sales
+#### A masked pattern was here ####
+POSTHOOK: query: select ss_store_sk,
+  sum(case when d_day_name = 'Sunday' then ss_sales_price end) sun,
+  sum(case when d_day_name = 'Monday' then ss_sales_price else 0 end) mon,
+  count(case when d_day_name = 'Sunday' then ss_quantity end) sun_cnt,
+  min(case when d_day_name = 'Monday' then ss_sales_price end) mon_min
+from pc_sales join pc_date_dup on ss_sold_date_sk = d_date_sk
+group by ss_store_sk
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@pc_date_dup
+POSTHOOK: Input: default@pc_sales
+#### A masked pattern was here ####
+1	12240.00	6040.00	389	0.00
+2	12513.75	4125.00	389	1.25
+3	12215.00	6027.50	391	0.00
+4	12696.25	4238.75	389	1.25
+5	11962.50	5980.00	389	0.00
+6	12733.75	4246.25	391	1.25
+7	NULL	0.00	0	NULL
+8	NULL	0.00	0	NULL
+PREHOOK: query: select ss_store_sk,
+  sum(case when d_day_name = 'Sunday' then ss_sales_price end) sun,
+  sum(case when d_day_name = 'Monday' then ss_sales_price else 0 end) mon,
+  count(case when d_day_name = 'Sunday' then ss_quantity end) sun_cnt,
+  min(case when d_day_name = 'Monday' then ss_sales_price end) mon_min
+from pc_sales join pc_date_dup on ss_sold_date_sk = d_date_sk
+group by ss_store_sk
+PREHOOK: type: QUERY
+PREHOOK: Input: default@pc_date_dup
+PREHOOK: Input: default@pc_sales
+#### A masked pattern was here ####
+POSTHOOK: query: select ss_store_sk,
+  sum(case when d_day_name = 'Sunday' then ss_sales_price end) sun,
+  sum(case when d_day_name = 'Monday' then ss_sales_price else 0 end) mon,
+  count(case when d_day_name = 'Sunday' then ss_quantity end) sun_cnt,
+  min(case when d_day_name = 'Monday' then ss_sales_price end) mon_min
+from pc_sales join pc_date_dup on ss_sold_date_sk = d_date_sk
+group by ss_store_sk
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@pc_date_dup
+POSTHOOK: Input: default@pc_sales
+#### A masked pattern was here ####
+1	12240.00	6040.00	389	0.00
+2	12513.75	4125.00	389	1.25
+3	12215.00	6027.50	391	0.00
+4	12696.25	4238.75	389	1.25
+5	11962.50	5980.00	389	0.00
+6	12733.75	4246.25	391	1.25
+7	NULL	0.00	0	NULL
+8	NULL	0.00	0	NULL
+PREHOOK: query: explain
+select ss_store_sk, sum(case when f_holiday then ss_sales_price end) holiday,
+  count(case when f_holiday then ss_quantity end) holiday_cnt
+from pc_sales join pc_date on ss_sold_date_sk = d_date_sk join pc_flag on ss_sold_date_sk = f_date_sk
+where d_year = 2001
+group by ss_store_sk
+PREHOOK: type: QUERY
+PREHOOK: Input: default@pc_date
+PREHOOK: Input: default@pc_flag
+PREHOOK: Input: default@pc_sales
+#### A masked pattern was here ####
+POSTHOOK: query: explain
+select ss_store_sk, sum(case when f_holiday then ss_sales_price end) holiday,
+  count(case when f_holiday then ss_quantity end) holiday_cnt
+from pc_sales join pc_date on ss_sold_date_sk = d_date_sk join pc_flag on ss_sold_date_sk = f_date_sk
+where d_year = 2001
+group by ss_store_sk
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@pc_date
+POSTHOOK: Input: default@pc_flag
+POSTHOOK: Input: default@pc_sales
+#### A masked pattern was here ####
+STAGE DEPENDENCIES:
+  Stage-1 is a root stage
+  Stage-0 depends on stages: Stage-1
+
+STAGE PLANS:
+  Stage: Stage-1
+    Tez
+#### A masked pattern was here ####
+      Edges:
+        Reducer 2 <- Map 1 (SIMPLE_EDGE), Map 5 (SIMPLE_EDGE)
+        Reducer 3 <- Map 6 (SIMPLE_EDGE), Reducer 2 (SIMPLE_EDGE)
+        Reducer 4 <- Reducer 3 (SIMPLE_EDGE)
+#### A masked pattern was here ####
+      Vertices:
+        Map 1 
+            Map Operator Tree:
+                TableScan
+                  alias: pc_sales
+                  filterExpr: ss_sold_date_sk is not null (type: boolean)
+                  Statistics: Num rows: 6150 Data size: 709396 Basic stats: COMPLETE Column stats: COMPLETE
+                  Filter Operator
+                    predicate: ss_sold_date_sk is not null (type: boolean)
+                    Statistics: Num rows: 6150 Data size: 709396 Basic stats: COMPLETE Column stats: COMPLETE
+                    Select Operator
+                      expressions: ss_sold_date_sk (type: int), ss_store_sk (type: int), ss_sales_price (type: decimal(7,2)), ss_quantity (type: int)
+                      outputColumnNames: _col0, _col1, _col2, _col3
+                      Statistics: Num rows: 6150 Data size: 709396 Basic stats: COMPLETE Column stats: COMPLETE
+                      Group By Operator
+                        aggregations: sum(_col2), count(_col3)
+                        keys: _col1 (type: int), _col0 (type: int)
+                        minReductionHashAggr: 0.8
+                        mode: partialhash
+                        outputColumnNames: _col0, _col1, _col2, _col3
+                        Statistics: Num rows: 6150 Data size: 787200 Basic stats: COMPLETE Column stats: COMPLETE
+                        Reduce Output Operator
+                          key expressions: _col1 (type: int)
+                          null sort order: z
+                          sort order: +
+                          Map-reduce partition columns: _col1 (type: int)
+                          Statistics: Num rows: 6150 Data size: 787200 Basic stats: COMPLETE Column stats: COMPLETE
+                          value expressions: _col0 (type: int), _col2 (type: decimal(17,2)), _col3 (type: bigint)
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Map 5 
+            Map Operator Tree:
+                TableScan
+                  alias: pc_date
+                  filterExpr: ((d_year = 2001) and d_date_sk is not null) (type: boolean)
+                  Statistics: Num rows: 28 Data size: 224 Basic stats: COMPLETE Column stats: COMPLETE
+                  Filter Operator
+                    predicate: ((d_year = 2001) and d_date_sk is not null) (type: boolean)
+                    Statistics: Num rows: 14 Data size: 112 Basic stats: COMPLETE Column stats: COMPLETE
+                    Select Operator
+                      expressions: d_date_sk (type: int)
+                      outputColumnNames: _col0
+                      Statistics: Num rows: 14 Data size: 56 Basic stats: COMPLETE Column stats: COMPLETE
+                      Reduce Output Operator
+                        key expressions: _col0 (type: int)
+                        null sort order: z
+                        sort order: +
+                        Map-reduce partition columns: _col0 (type: int)
+                        Statistics: Num rows: 14 Data size: 56 Basic stats: COMPLETE Column stats: COMPLETE
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Map 6 
+            Map Operator Tree:
+                TableScan
+                  alias: pc_flag
+                  filterExpr: f_date_sk is not null (type: boolean)
+                  Statistics: Num rows: 28 Data size: 224 Basic stats: COMPLETE Column stats: COMPLETE
+                  Filter Operator
+                    predicate: f_date_sk is not null (type: boolean)
+                    Statistics: Num rows: 28 Data size: 224 Basic stats: COMPLETE Column stats: COMPLETE
+                    Select Operator
+                      expressions: f_date_sk (type: int), f_holiday (type: boolean)
+                      outputColumnNames: _col0, _col1
+                      Statistics: Num rows: 28 Data size: 224 Basic stats: COMPLETE Column stats: COMPLETE
+                      Reduce Output Operator
+                        key expressions: _col0 (type: int)
+                        null sort order: z
+                        sort order: +
+                        Map-reduce partition columns: _col0 (type: int)
+                        Statistics: Num rows: 28 Data size: 224 Basic stats: COMPLETE Column stats: COMPLETE
+                        value expressions: _col1 (type: boolean)
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Reducer 2 
+            Execution mode: llap
+            Reduce Operator Tree:
+              Merge Join Operator
+                condition map:
+                     Inner Join 0 to 1
+                keys:
+                  0 _col1 (type: int)
+                  1 _col0 (type: int)
+                outputColumnNames: _col0, _col1, _col2, _col3
+                Statistics: Num rows: 3075 Data size: 393600 Basic stats: COMPLETE Column stats: COMPLETE
+                Select Operator
+                  expressions: _col0 (type: int), _col1 (type: int), _col2 (type: decimal(17,2)), _col3 (type: bigint)
+                  outputColumnNames: _col0, _col1, _col2, _col3
+                  Statistics: Num rows: 3075 Data size: 393600 Basic stats: COMPLETE Column stats: COMPLETE
+                  Reduce Output Operator
+                    key expressions: _col1 (type: int)
+                    null sort order: z
+                    sort order: +
+                    Map-reduce partition columns: _col1 (type: int)
+                    Statistics: Num rows: 3075 Data size: 393600 Basic stats: COMPLETE Column stats: COMPLETE
+                    value expressions: _col0 (type: int), _col2 (type: decimal(17,2)), _col3 (type: bigint)
+        Reducer 3 
+            Execution mode: llap
+            Reduce Operator Tree:
+              Merge Join Operator
+                condition map:
+                     Inner Join 0 to 1
+                keys:
+                  0 _col1 (type: int)
+                  1 _col0 (type: int)
+                outputColumnNames: _col0, _col1, _col2, _col6
+                Statistics: Num rows: 3075 Data size: 393600 Basic stats: COMPLETE Column stats: COMPLETE
+                Group By Operator
+                  aggregations: sum(if(_col6, _col1, null)), count(if(_col6, _col2, 0L))
+                  keys: _col0 (type: int)
+                  minReductionHashAggr: 0.99
+                  mode: hash
+                  outputColumnNames: _col0, _col1, _col2
+                  Statistics: Num rows: 4 Data size: 496 Basic stats: COMPLETE Column stats: COMPLETE
+                  Reduce Output Operator
+                    key expressions: _col0 (type: int)
+                    null sort order: z
+                    sort order: +
+                    Map-reduce partition columns: _col0 (type: int)
+                    Statistics: Num rows: 4 Data size: 496 Basic stats: COMPLETE Column stats: COMPLETE
+                    value expressions: _col1 (type: decimal(17,2)), _col2 (type: bigint)
+        Reducer 4 
+            Execution mode: vectorized, llap
+            Reduce Operator Tree:
+              Group By Operator
+                aggregations: sum(VALUE._col0), count(VALUE._col1)
+                keys: KEY._col0 (type: int)
+                mode: mergepartial
+                outputColumnNames: _col0, _col1, _col2
+                Statistics: Num rows: 4 Data size: 496 Basic stats: COMPLETE Column stats: COMPLETE
+                File Output Operator
+                  compressed: false
+                  Statistics: Num rows: 4 Data size: 496 Basic stats: COMPLETE Column stats: COMPLETE
+                  table:
+                      input format: org.apache.hadoop.mapred.SequenceFileInputFormat
+                      output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
+                      serde: org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe
+
+  Stage: Stage-0
+    Fetch Operator
+      limit: -1
+      Processor Tree:
+        ListSink
+
+PREHOOK: query: select ss_store_sk, sum(case when f_holiday then ss_sales_price end) holiday,
+  count(case when f_holiday then ss_quantity end) holiday_cnt
+from pc_sales join pc_date on ss_sold_date_sk = d_date_sk join pc_flag on ss_sold_date_sk = f_date_sk
+where d_year = 2001
+group by ss_store_sk
+PREHOOK: type: QUERY
+PREHOOK: Input: default@pc_date
+PREHOOK: Input: default@pc_flag
+PREHOOK: Input: default@pc_sales
+#### A masked pattern was here ####
+POSTHOOK: query: select ss_store_sk, sum(case when f_holiday then ss_sales_price end) holiday,
+  count(case when f_holiday then ss_quantity end) holiday_cnt
+from pc_sales join pc_date on ss_sold_date_sk = d_date_sk join pc_flag on ss_sold_date_sk = f_date_sk
+where d_year = 2001
+group by ss_store_sk
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@pc_date
+POSTHOOK: Input: default@pc_flag
+POSTHOOK: Input: default@pc_sales
+#### A masked pattern was here ####
+1	4017.50	131
+2	2071.25	65
+3	3917.50	131
+4	2056.25	65
+5	3952.50	128
+6	2066.25	65
+7	NULL	0
+PREHOOK: query: select ss_store_sk, sum(case when f_holiday then ss_sales_price end) holiday,
+  count(case when f_holiday then ss_quantity end) holiday_cnt
+from pc_sales join pc_date on ss_sold_date_sk = d_date_sk join pc_flag on ss_sold_date_sk = f_date_sk
+where d_year = 2001
+group by ss_store_sk
+PREHOOK: type: QUERY
+PREHOOK: Input: default@pc_date
+PREHOOK: Input: default@pc_flag
+PREHOOK: Input: default@pc_sales
+#### A masked pattern was here ####
+POSTHOOK: query: select ss_store_sk, sum(case when f_holiday then ss_sales_price end) holiday,
+  count(case when f_holiday then ss_quantity end) holiday_cnt
+from pc_sales join pc_date on ss_sold_date_sk = d_date_sk join pc_flag on ss_sold_date_sk = f_date_sk
+where d_year = 2001
+group by ss_store_sk
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@pc_date
+POSTHOOK: Input: default@pc_flag
+POSTHOOK: Input: default@pc_sales
+#### A masked pattern was here ####
+1	4017.50	131
+2	2071.25	65
+3	3917.50	131
+4	2056.25	65
+5	3952.50	128
+6	2066.25	65
+7	NULL	0
+PREHOOK: query: explain
+select ss_store_sk,
+  sum(case when d_day_name = 'Sunday' then ss_sales_price when d_day_name = 'Monday' then ss_quantity end) s
+from pc_sales join pc_date on ss_sold_date_sk = d_date_sk
+group by ss_store_sk
+PREHOOK: type: QUERY
+PREHOOK: Input: default@pc_date
+PREHOOK: Input: default@pc_sales
+#### A masked pattern was here ####
+POSTHOOK: query: explain
+select ss_store_sk,
+  sum(case when d_day_name = 'Sunday' then ss_sales_price when d_day_name = 'Monday' then ss_quantity end) s
+from pc_sales join pc_date on ss_sold_date_sk = d_date_sk
+group by ss_store_sk
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@pc_date
+POSTHOOK: Input: default@pc_sales
+#### A masked pattern was here ####
+STAGE DEPENDENCIES:
+  Stage-1 is a root stage
+  Stage-0 depends on stages: Stage-1
+
+STAGE PLANS:
+  Stage: Stage-1
+    Tez
+#### A masked pattern was here ####
+      Edges:
+        Reducer 2 <- Map 1 (SIMPLE_EDGE), Map 4 (SIMPLE_EDGE)
+        Reducer 3 <- Reducer 2 (SIMPLE_EDGE)
+#### A masked pattern was here ####
+      Vertices:
+        Map 1 
+            Map Operator Tree:
+                TableScan
+                  alias: pc_sales
+                  filterExpr: ss_sold_date_sk is not null (type: boolean)
+                  Statistics: Num rows: 6150 Data size: 709396 Basic stats: COMPLETE Column stats: COMPLETE
+                  Filter Operator
+                    predicate: ss_sold_date_sk is not null (type: boolean)
+                    Statistics: Num rows: 6150 Data size: 709396 Basic stats: COMPLETE Column stats: COMPLETE
+                    Select Operator
+                      expressions: ss_sold_date_sk (type: int), ss_store_sk (type: int), ss_sales_price (type: decimal(7,2)), CAST( ss_quantity AS decimal(12,2)) (type: decimal(12,2))
+                      outputColumnNames: _col0, _col1, _col2, _col3
+                      Statistics: Num rows: 6150 Data size: 1303936 Basic stats: COMPLETE Column stats: COMPLETE
+                      Reduce Output Operator
+                        key expressions: _col0 (type: int)
+                        null sort order: z
+                        sort order: +
+                        Map-reduce partition columns: _col0 (type: int)
+                        Statistics: Num rows: 6150 Data size: 1303936 Basic stats: COMPLETE Column stats: COMPLETE
+                        value expressions: _col1 (type: int), _col2 (type: decimal(7,2)), _col3 (type: decimal(12,2))
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Map 4 
+            Map Operator Tree:
+                TableScan
+                  alias: pc_date
+                  filterExpr: d_date_sk is not null (type: boolean)
+                  Statistics: Num rows: 28 Data size: 2660 Basic stats: COMPLETE Column stats: COMPLETE
+                  Filter Operator
+                    predicate: d_date_sk is not null (type: boolean)
+                    Statistics: Num rows: 28 Data size: 2660 Basic stats: COMPLETE Column stats: COMPLETE
+                    Select Operator
+                      expressions: d_date_sk (type: int), (d_day_name = 'Sunday') (type: boolean), (d_day_name = 'Monday') (type: boolean)
+                      outputColumnNames: _col0, _col1, _col2
+                      Statistics: Num rows: 28 Data size: 336 Basic stats: COMPLETE Column stats: COMPLETE
+                      Reduce Output Operator
+                        key expressions: _col0 (type: int)
+                        null sort order: z
+                        sort order: +
+                        Map-reduce partition columns: _col0 (type: int)
+                        Statistics: Num rows: 28 Data size: 336 Basic stats: COMPLETE Column stats: COMPLETE
+                        value expressions: _col1 (type: boolean), _col2 (type: boolean)
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Reducer 2 
+            Execution mode: llap
+            Reduce Operator Tree:
+              Merge Join Operator
+                condition map:
+                     Inner Join 0 to 1
+                keys:
+                  0 _col0 (type: int)
+                  1 _col0 (type: int)
+                outputColumnNames: _col1, _col2, _col3, _col5, _col6
+                Statistics: Num rows: 6150 Data size: 1328536 Basic stats: COMPLETE Column stats: COMPLETE
+                Select Operator
+                  expressions: _col1 (type: int), CASE WHEN (_col5) THEN (_col2) WHEN (_col6) THEN (_col3) ELSE (null) END (type: decimal(12,2))
+                  outputColumnNames: _col0, _col1
+                  Statistics: Num rows: 6150 Data size: 1328536 Basic stats: COMPLETE Column stats: COMPLETE
+                  Group By Operator
+                    aggregations: sum(_col1)
+                    keys: _col0 (type: int)
+                    minReductionHashAggr: 0.99
+                    mode: hash
+                    outputColumnNames: _col0, _col1
+                    Statistics: Num rows: 8 Data size: 928 Basic stats: COMPLETE Column stats: COMPLETE
+                    Reduce Output Operator
+                      key expressions: _col0 (type: int)
+                      null sort order: z
+                      sort order: +
+                      Map-reduce partition columns: _col0 (type: int)
+                      Statistics: Num rows: 8 Data size: 928 Basic stats: COMPLETE Column stats: COMPLETE
+                      value expressions: _col1 (type: decimal(22,2))
+        Reducer 3 
+            Execution mode: vectorized, llap
+            Reduce Operator Tree:
+              Group By Operator
+                aggregations: sum(VALUE._col0)
+                keys: KEY._col0 (type: int)
+                mode: mergepartial
+                outputColumnNames: _col0, _col1
+                Statistics: Num rows: 8 Data size: 928 Basic stats: COMPLETE Column stats: COMPLETE
+                File Output Operator
+                  compressed: false
+                  Statistics: Num rows: 8 Data size: 928 Basic stats: COMPLETE Column stats: COMPLETE
+                  table:
+                      input format: org.apache.hadoop.mapred.SequenceFileInputFormat
+                      output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
+                      serde: org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe
+
+  Stage: Stage-0
+    Fetch Operator
+      limit: -1
+      Processor Tree:
+        ListSink
+
+PREHOOK: query: explain
+select ss_store_sk, sum(case when d_week_seq > ss_quantity then ss_sales_price end) s
+from pc_sales join pc_date on ss_sold_date_sk = d_date_sk
+group by ss_store_sk
+PREHOOK: type: QUERY
+PREHOOK: Input: default@pc_date
+PREHOOK: Input: default@pc_sales
+#### A masked pattern was here ####
+POSTHOOK: query: explain
+select ss_store_sk, sum(case when d_week_seq > ss_quantity then ss_sales_price end) s
+from pc_sales join pc_date on ss_sold_date_sk = d_date_sk
+group by ss_store_sk
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@pc_date
+POSTHOOK: Input: default@pc_sales
+#### A masked pattern was here ####
+STAGE DEPENDENCIES:
+  Stage-1 is a root stage
+  Stage-0 depends on stages: Stage-1
+
+STAGE PLANS:
+  Stage: Stage-1
+    Tez
+#### A masked pattern was here ####
+      Edges:
+        Reducer 2 <- Map 1 (SIMPLE_EDGE), Map 4 (SIMPLE_EDGE)
+        Reducer 3 <- Reducer 2 (SIMPLE_EDGE)
+#### A masked pattern was here ####
+      Vertices:
+        Map 1 
+            Map Operator Tree:
+                TableScan
+                  alias: pc_sales
+                  filterExpr: ss_sold_date_sk is not null (type: boolean)
+                  Statistics: Num rows: 6150 Data size: 709396 Basic stats: COMPLETE Column stats: COMPLETE
+                  Filter Operator
+                    predicate: ss_sold_date_sk is not null (type: boolean)
+                    Statistics: Num rows: 6150 Data size: 709396 Basic stats: COMPLETE Column stats: COMPLETE
+                    Select Operator
+                      expressions: ss_sold_date_sk (type: int), ss_store_sk (type: int), ss_sales_price (type: decimal(7,2)), ss_quantity (type: int)
+                      outputColumnNames: _col0, _col1, _col2, _col3
+                      Statistics: Num rows: 6150 Data size: 709396 Basic stats: COMPLETE Column stats: COMPLETE
+                      Reduce Output Operator
+                        key expressions: _col0 (type: int)
+                        null sort order: z
+                        sort order: +
+                        Map-reduce partition columns: _col0 (type: int)
+                        Statistics: Num rows: 6150 Data size: 709396 Basic stats: COMPLETE Column stats: COMPLETE
+                        value expressions: _col1 (type: int), _col2 (type: decimal(7,2)), _col3 (type: int)
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Map 4 
+            Map Operator Tree:
+                TableScan
+                  alias: pc_date
+                  filterExpr: d_date_sk is not null (type: boolean)
+                  Statistics: Num rows: 28 Data size: 224 Basic stats: COMPLETE Column stats: COMPLETE
+                  Filter Operator
+                    predicate: d_date_sk is not null (type: boolean)
+                    Statistics: Num rows: 28 Data size: 224 Basic stats: COMPLETE Column stats: COMPLETE
+                    Select Operator
+                      expressions: d_date_sk (type: int), d_week_seq (type: int)
+                      outputColumnNames: _col0, _col1
+                      Statistics: Num rows: 28 Data size: 224 Basic stats: COMPLETE Column stats: COMPLETE
+                      Reduce Output Operator
+                        key expressions: _col0 (type: int)
+                        null sort order: z
+                        sort order: +
+                        Map-reduce partition columns: _col0 (type: int)
+                        Statistics: Num rows: 28 Data size: 224 Basic stats: COMPLETE Column stats: COMPLETE
+                        value expressions: _col1 (type: int)
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Reducer 2 
+            Execution mode: llap
+            Reduce Operator Tree:
+              Merge Join Operator
+                condition map:
+                     Inner Join 0 to 1
+                keys:
+                  0 _col0 (type: int)
+                  1 _col0 (type: int)
+                outputColumnNames: _col1, _col2, _col3, _col5
+                Statistics: Num rows: 6150 Data size: 709396 Basic stats: COMPLETE Column stats: COMPLETE
+                Select Operator
+                  expressions: _col1 (type: int), if((_col5 > _col3), _col2, null) (type: decimal(7,2))
+                  outputColumnNames: _col0, _col1
+                  Statistics: Num rows: 6150 Data size: 709396 Basic stats: COMPLETE Column stats: COMPLETE
+                  Group By Operator
+                    aggregations: sum(_col1)
+                    keys: _col0 (type: int)
+                    minReductionHashAggr: 0.99
+                    mode: hash
+                    outputColumnNames: _col0, _col1
+                    Statistics: Num rows: 8 Data size: 928 Basic stats: COMPLETE Column stats: COMPLETE
+                    Reduce Output Operator
+                      key expressions: _col0 (type: int)
+                      null sort order: z
+                      sort order: +
+                      Map-reduce partition columns: _col0 (type: int)
+                      Statistics: Num rows: 8 Data size: 928 Basic stats: COMPLETE Column stats: COMPLETE
+                      value expressions: _col1 (type: decimal(17,2))
+        Reducer 3 
+            Execution mode: vectorized, llap
+            Reduce Operator Tree:
+              Group By Operator
+                aggregations: sum(VALUE._col0)
+                keys: KEY._col0 (type: int)
+                mode: mergepartial
+                outputColumnNames: _col0, _col1
+                Statistics: Num rows: 8 Data size: 928 Basic stats: COMPLETE Column stats: COMPLETE
+                File Output Operator
+                  compressed: false
+                  Statistics: Num rows: 8 Data size: 928 Basic stats: COMPLETE Column stats: COMPLETE
+                  table:
+                      input format: org.apache.hadoop.mapred.SequenceFileInputFormat
+                      output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
+                      serde: org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe
+
+  Stage: Stage-0
+    Fetch Operator
+      limit: -1
+      Processor Tree:
+        ListSink
+
+PREHOOK: query: explain
+select ss_store_sk, min(case when d_day_name = 'Sunday' then ss_sales_price else 0 end) s
+from pc_sales join pc_date on ss_sold_date_sk = d_date_sk
+group by ss_store_sk
+PREHOOK: type: QUERY
+PREHOOK: Input: default@pc_date
+PREHOOK: Input: default@pc_sales
+#### A masked pattern was here ####
+POSTHOOK: query: explain
+select ss_store_sk, min(case when d_day_name = 'Sunday' then ss_sales_price else 0 end) s
+from pc_sales join pc_date on ss_sold_date_sk = d_date_sk
+group by ss_store_sk
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@pc_date
+POSTHOOK: Input: default@pc_sales
+#### A masked pattern was here ####
+STAGE DEPENDENCIES:
+  Stage-1 is a root stage
+  Stage-0 depends on stages: Stage-1
+
+STAGE PLANS:
+  Stage: Stage-1
+    Tez
+#### A masked pattern was here ####
+      Edges:
+        Reducer 2 <- Map 1 (SIMPLE_EDGE), Map 4 (SIMPLE_EDGE)
+        Reducer 3 <- Reducer 2 (SIMPLE_EDGE)
+#### A masked pattern was here ####
+      Vertices:
+        Map 1 
+            Map Operator Tree:
+                TableScan
+                  alias: pc_sales
+                  filterExpr: ss_sold_date_sk is not null (type: boolean)
+                  Statistics: Num rows: 6150 Data size: 687376 Basic stats: COMPLETE Column stats: COMPLETE
+                  Filter Operator
+                    predicate: ss_sold_date_sk is not null (type: boolean)
+                    Statistics: Num rows: 6150 Data size: 687376 Basic stats: COMPLETE Column stats: COMPLETE
+                    Select Operator
+                      expressions: ss_sold_date_sk (type: int), ss_store_sk (type: int), ss_sales_price (type: decimal(7,2))
+                      outputColumnNames: _col0, _col1, _col2
+                      Statistics: Num rows: 6150 Data size: 687376 Basic stats: COMPLETE Column stats: COMPLETE
+                      Reduce Output Operator
+                        key expressions: _col0 (type: int)
+                        null sort order: z
+                        sort order: +
+                        Map-reduce partition columns: _col0 (type: int)
+                        Statistics: Num rows: 6150 Data size: 687376 Basic stats: COMPLETE Column stats: COMPLETE
+                        value expressions: _col1 (type: int), _col2 (type: decimal(7,2))
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Map 4 
+            Map Operator Tree:
+                TableScan
+                  alias: pc_date
+                  filterExpr: d_date_sk is not null (type: boolean)
+                  Statistics: Num rows: 28 Data size: 2660 Basic stats: COMPLETE Column stats: COMPLETE
+                  Filter Operator
+                    predicate: d_date_sk is not null (type: boolean)
+                    Statistics: Num rows: 28 Data size: 2660 Basic stats: COMPLETE Column stats: COMPLETE
+                    Select Operator
+                      expressions: d_date_sk (type: int), (d_day_name = 'Sunday') (type: boolean)
+                      outputColumnNames: _col0, _col1
+                      Statistics: Num rows: 28 Data size: 224 Basic stats: COMPLETE Column stats: COMPLETE
+                      Reduce Output Operator
+                        key expressions: _col0 (type: int)
+                        null sort order: z
+                        sort order: +
+                        Map-reduce partition columns: _col0 (type: int)
+                        Statistics: Num rows: 28 Data size: 224 Basic stats: COMPLETE Column stats: COMPLETE
+                        value expressions: _col1 (type: boolean)
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Reducer 2 
+            Execution mode: llap
+            Reduce Operator Tree:
+              Merge Join Operator
+                condition map:
+                     Inner Join 0 to 1
+                keys:
+                  0 _col0 (type: int)
+                  1 _col0 (type: int)
+                outputColumnNames: _col1, _col2, _col4
+                Statistics: Num rows: 6150 Data size: 687376 Basic stats: COMPLETE Column stats: COMPLETE
+                Select Operator
+                  expressions: _col1 (type: int), if(_col4, _col2, 0) (type: decimal(7,2))
+                  outputColumnNames: _col0, _col1
+                  Statistics: Num rows: 6150 Data size: 687376 Basic stats: COMPLETE Column stats: COMPLETE
+                  Group By Operator
+                    aggregations: min(_col1)
+                    keys: _col0 (type: int)
+                    minReductionHashAggr: 0.99
+                    mode: hash
+                    outputColumnNames: _col0, _col1
+                    Statistics: Num rows: 8 Data size: 928 Basic stats: COMPLETE Column stats: COMPLETE
+                    Reduce Output Operator
+                      key expressions: _col0 (type: int)
+                      null sort order: z
+                      sort order: +
+                      Map-reduce partition columns: _col0 (type: int)
+                      Statistics: Num rows: 8 Data size: 928 Basic stats: COMPLETE Column stats: COMPLETE
+                      value expressions: _col1 (type: decimal(7,2))
+        Reducer 3 
+            Execution mode: vectorized, llap
+            Reduce Operator Tree:
+              Group By Operator
+                aggregations: min(VALUE._col0)
+                keys: KEY._col0 (type: int)
+                mode: mergepartial
+                outputColumnNames: _col0, _col1
+                Statistics: Num rows: 8 Data size: 928 Basic stats: COMPLETE Column stats: COMPLETE
+                File Output Operator
+                  compressed: false
+                  Statistics: Num rows: 8 Data size: 928 Basic stats: COMPLETE Column stats: COMPLETE
+                  table:
+                      input format: org.apache.hadoop.mapred.SequenceFileInputFormat
+                      output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
+                      serde: org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe
+
+  Stage: Stage-0
+    Fetch Operator
+      limit: -1
+      Processor Tree:
+        ListSink
+
+PREHOOK: query: explain
+select ss_store_sk, sum(case when d_day_name = 'Sunday' then ss_quantity else 0.0 end) s
+from pc_sales join pc_date on ss_sold_date_sk = d_date_sk
+group by ss_store_sk
+PREHOOK: type: QUERY
+PREHOOK: Input: default@pc_date
+PREHOOK: Input: default@pc_sales
+#### A masked pattern was here ####
+POSTHOOK: query: explain
+select ss_store_sk, sum(case when d_day_name = 'Sunday' then ss_quantity else 0.0 end) s
+from pc_sales join pc_date on ss_sold_date_sk = d_date_sk
+group by ss_store_sk
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@pc_date
+POSTHOOK: Input: default@pc_sales
+#### A masked pattern was here ####
+STAGE DEPENDENCIES:
+  Stage-1 is a root stage
+  Stage-0 depends on stages: Stage-1
+
+STAGE PLANS:
+  Stage: Stage-1
+    Tez
+#### A masked pattern was here ####
+      Edges:
+        Reducer 2 <- Map 1 (SIMPLE_EDGE), Map 4 (SIMPLE_EDGE)
+        Reducer 3 <- Reducer 2 (SIMPLE_EDGE)
+#### A masked pattern was here ####
+      Vertices:
+        Map 1 
+            Map Operator Tree:
+                TableScan
+                  alias: pc_sales
+                  filterExpr: ss_sold_date_sk is not null (type: boolean)
+                  Statistics: Num rows: 6150 Data size: 71220 Basic stats: COMPLETE Column stats: COMPLETE
+                  Filter Operator
+                    predicate: ss_sold_date_sk is not null (type: boolean)
+                    Statistics: Num rows: 6150 Data size: 71220 Basic stats: COMPLETE Column stats: COMPLETE
+                    Group By Operator
+                      aggregations: sum(CAST( ss_quantity AS decimal(10,0)))
+                      keys: ss_store_sk (type: int), ss_sold_date_sk (type: int)
+                      minReductionHashAggr: 0.8
+                      mode: partialhash
+                      outputColumnNames: _col0, _col1, _col2
+                      Statistics: Num rows: 6150 Data size: 738000 Basic stats: COMPLETE Column stats: COMPLETE
+                      Reduce Output Operator
+                        key expressions: _col1 (type: int)
+                        null sort order: z
+                        sort order: +
+                        Map-reduce partition columns: _col1 (type: int)
+                        Statistics: Num rows: 6150 Data size: 738000 Basic stats: COMPLETE Column stats: COMPLETE
+                        value expressions: _col0 (type: int), _col2 (type: decimal(20,0))
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Map 4 
+            Map Operator Tree:
+                TableScan
+                  alias: pc_date
+                  filterExpr: d_date_sk is not null (type: boolean)
+                  Statistics: Num rows: 28 Data size: 2660 Basic stats: COMPLETE Column stats: COMPLETE
+                  Filter Operator
+                    predicate: d_date_sk is not null (type: boolean)
+                    Statistics: Num rows: 28 Data size: 2660 Basic stats: COMPLETE Column stats: COMPLETE
+                    Reduce Output Operator
+                      key expressions: d_date_sk (type: int)
+                      null sort order: z
+                      sort order: +
+                      Map-reduce partition columns: d_date_sk (type: int)
+                      Statistics: Num rows: 28 Data size: 2660 Basic stats: COMPLETE Column stats: COMPLETE
+                      value expressions: d_day_name (type: string)
+            Execution mode: vectorized, llap
+            LLAP IO: all inputs
+        Reducer 2 
+            Execution mode: llap
+            Reduce Operator Tree:
+              Merge Join Operator
+                condition map:
+                     Inner Join 0 to 1
+                keys:
+                  0 _col1 (type: int)
+                  1 d_date_sk (type: int)
+                outputColumnNames: _col0, _col1, _col11
+                Statistics: Num rows: 6150 Data size: 1273050 Basic stats: COMPLETE Column stats: COMPLETE
+                Group By Operator
+                  aggregations: sum(if((_col11 = 'Sunday'), _col1, 0))
+                  keys: _col0 (type: int)
+                  minReductionHashAggr: 0.99
+                  mode: hash
+                  outputColumnNames: _col0, _col1
+                  Statistics: Num rows: 8 Data size: 928 Basic stats: COMPLETE Column stats: COMPLETE
+                  Reduce Output Operator
+                    key expressions: _col0 (type: int)
+                    null sort order: z
+                    sort order: +
+                    Map-reduce partition columns: _col0 (type: int)
+                    Statistics: Num rows: 8 Data size: 928 Basic stats: COMPLETE Column stats: COMPLETE
+                    value expressions: _col1 (type: decimal(20,0))
+        Reducer 3 
+            Execution mode: vectorized, llap
+            Reduce Operator Tree:
+              Group By Operator
+                aggregations: sum(VALUE._col0)
+                keys: KEY._col0 (type: int)
+                mode: mergepartial
+                outputColumnNames: _col0, _col1
+                Statistics: Num rows: 8 Data size: 928 Basic stats: COMPLETE Column stats: COMPLETE
+                File Output Operator
+                  compressed: false
+                  Statistics: Num rows: 8 Data size: 928 Basic stats: COMPLETE Column stats: COMPLETE
+                  table:
+                      input format: org.apache.hadoop.mapred.SequenceFileInputFormat
+                      output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
+                      serde: org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe
+
+  Stage: Stage-0
+    Fetch Operator
+      limit: -1
+      Processor Tree:
+        ListSink
+
+PREHOOK: query: select ss_store_sk, sum(case when d_day_name = 'Sunday' then ss_quantity else 0.0 end) s
+from pc_sales join pc_date on ss_sold_date_sk = d_date_sk
+group by ss_store_sk
+PREHOOK: type: QUERY
+PREHOOK: Input: default@pc_date
+PREHOOK: Input: default@pc_sales
+#### A masked pattern was here ####
+POSTHOOK: query: select ss_store_sk, sum(case when d_day_name = 'Sunday' then ss_quantity else 0.0 end) s
+from pc_sales join pc_date on ss_sold_date_sk = d_date_sk
+group by ss_store_sk
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@pc_date
+POSTHOOK: Input: default@pc_sales
+#### A masked pattern was here ####
+1	393
+2	520
+3	650
+4	384
+5	523
+6	653
+7	0
+8	0
+PREHOOK: query: select ss_store_sk, sum(case when d_day_name = 'Sunday' then ss_quantity else 0.0 end) s
+from pc_sales join pc_date on ss_sold_date_sk = d_date_sk
+group by ss_store_sk
+PREHOOK: type: QUERY
+PREHOOK: Input: default@pc_date
+PREHOOK: Input: default@pc_sales
+#### A masked pattern was here ####
+POSTHOOK: query: select ss_store_sk, sum(case when d_day_name = 'Sunday' then ss_quantity else 0.0 end) s
+from pc_sales join pc_date on ss_sold_date_sk = d_date_sk
+group by ss_store_sk
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@pc_date
+POSTHOOK: Input: default@pc_sales
+#### A masked pattern was here ####
+1	393
+2	520
+3	650
+4	384
+5	523
+6	653
+7	0
+8	0

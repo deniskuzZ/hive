@@ -97,6 +97,7 @@ import org.apache.hadoop.hive.ql.optimizer.GroupingSetOptimizer;
 import org.apache.hadoop.hive.ql.optimizer.MergeJoinProc;
 import org.apache.hadoop.hive.ql.optimizer.NonBlockingOpDeDupProc;
 import org.apache.hadoop.hive.ql.optimizer.ParallelEdgeFixer;
+import org.apache.hadoop.hive.ql.optimizer.PartialGroupByJoinTransposeOptimizer;
 import org.apache.hadoop.hive.ql.optimizer.ReduceSinkMapJoinProc;
 import org.apache.hadoop.hive.ql.optimizer.RemoveDynamicPruningBySize;
 import org.apache.hadoop.hive.ql.optimizer.SemiJoinReductionMerge;
@@ -183,6 +184,17 @@ public class TezCompiler extends TaskCompiler {
     PerfLogger perfLogger = SessionState.getPerfLogger();
     // Create the context for the walker
     OptimizeTezProcContext procCtx = new OptimizeTezProcContext(conf, pCtx);
+
+    // push map-side group bys below inner joins; needs the statistics, and runs before the top n key
+    // optimization and the dynamic partition pruning so that their operators do not block a push
+    if (procCtx.conf.getBoolVar(ConfVars.PARTIAL_AGGR_JOIN_TRANSPOSE)
+        && procCtx.conf.getBoolVar(ConfVars.HIVE_MAPSIDE_AGGREGATE)
+        && !procCtx.conf.getBoolVar(ConfVars.HIVE_GROUPBY_SKEW)) {
+      perfLogger.perfLogBegin(this.getClass().getName(), PerfLogger.TEZ_COMPILER);
+      runStatsAnnotation(procCtx);
+      new PartialGroupByJoinTransposeOptimizer().transform(procCtx.parseContext);
+      perfLogger.perfLogEnd(this.getClass().getName(), PerfLogger.TEZ_COMPILER, "Partial group by join transpose");
+    }
 
     perfLogger.perfLogBegin(this.getClass().getName(), PerfLogger.TEZ_COMPILER);
     runTopNKeyOptimization(procCtx);
@@ -481,6 +493,11 @@ public class TezCompiler extends TaskCompiler {
         component.add(current);
       } while (current != o);
     }
+  }
+
+  private void runStatsAnnotation(OptimizeTezProcContext procCtx) throws SemanticException {
+    new AnnotateWithStatistics().transform(procCtx.parseContext);
+    new AnnotateWithOpTraits().transform(procCtx.parseContext);
   }
 
   private void runStatsDependentOptimizations(OptimizeTezProcContext procCtx) throws SemanticException {
