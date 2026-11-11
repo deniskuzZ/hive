@@ -2420,6 +2420,11 @@ public class HiveConf extends Configuration {
        "However, if it is on, and the predicted size of the larger input for a given join is greater \n" +
        "than this number, the join will not be converted to a dynamically partitioned hash join. \n" +
        "The value \"-1\" means no limit."),
+    HIVE_CONVERT_JOIN_PARTITIONED_BY_COST("hive.auto.convert.join.partitioned.by.cost", false,
+        "Whether, in LLAP, a map join whose small tables exceed hive.auto.convert.join.noconditionaltask.size, and so\n"
+        + "fit only through hive.llap.mapjoin.memory.oversubscribe.factor, becomes a dynamically partitioned hash join\n"
+        + "when that ships less data: every input once instead of the small tables to every node. A bucket map join\n"
+        + "candidate is decided this way already. Requires hive.optimize.dynamic.partition.hashjoin."),
     HIVE_HASHTABLE_KEY_COUNT_ADJUSTMENT("hive.hashtable.key.count.adjustment", 0.99f,
         "Adjustment to mapjoin hashtable size derived from table and column statistics; the estimate" +
         " of the number of keys is divided by this value. If the value is 0, statistics are not used" +

@@ -222,6 +222,12 @@ public class ConvertJoinMapJoin implements SemanticNodeProcessor {
       return null;
     }
 
+    if (llapInfo != null
+        && partitionedJoinCostsLess(context.conf, joinOp, mapJoinConversion.getBigTablePos(), llapInfo)
+        && convertJoinDynamicPartitionedHashJoin(joinOp, context)) {
+      return null;
+    }
+
     MapJoinOperator mapJoinOp = convertJoinMapJoin(joinOp, context, mapJoinConversion, true);
     if (mapJoinOp == null) {
       fallbackToReduceSideJoin(joinOp, context);
@@ -276,49 +282,14 @@ public class ConvertJoinMapJoin implements SemanticNodeProcessor {
       return convertJoinBucketMapJoin(joinOp, context, mapJoinConversion, tezBucketJoinProcCtx);
     }
 
-    int numExecutorsPerNode = -1;
-    if (llapInfo.hasClusterInfo()) {
-      numExecutorsPerNode = llapInfo.getNumExecutorsPerNode();
-    }
-    if (numExecutorsPerNode == -1) {
-      numExecutorsPerNode = context.conf.getIntVar(ConfVars.LLAP_DAEMON_NUM_EXECUTORS);
-    }
-
-    int numNodes = llapInfo.getKnownExecutorCount()/numExecutorsPerNode;
-
-    LOG.debug("Number of nodes = " + numNodes + ". Number of Executors per node = " + numExecutorsPerNode);
-
-    // Determine the size of small table inputs
     final int mapJoinConversionPos = mapJoinConversion.getBigTablePos();
-    long estimatedTotalSize = 0;
-    for (int pos = 0; pos < joinOp.getParentOperators().size(); pos++) {
-      if (pos == mapJoinConversionPos) {
-        continue;
-      }
-      Operator<? extends OperatorDesc> parentOp = joinOp.getParentOperators().get(pos);
-      estimatedTotalSize = StatsUtils.safeAdd(estimatedTotalSize, computeOnlineDataSize(parentOp.getStatistics()));
-    }
-
-    // Size of bigtable
-    long bigTableSize = computeOnlineDataSize(joinOp.getParentOperators().get(mapJoinConversionPos).getStatistics());
-
-    // Network cost of DPHJ
-    long networkCostDPHJ = StatsUtils.safeAdd(estimatedTotalSize, bigTableSize);
-
-    LOG.info("Cost of dynamically partitioned hash join : total small table size = " + estimatedTotalSize
-    + " bigTableSize = " + bigTableSize + "networkCostDPHJ = " + networkCostDPHJ);
-
-    // Network cost of map side join
-    long networkCostMJ = StatsUtils.safeMult(numNodes, estimatedTotalSize);
-    LOG.info("Cost of Bucket Map Join : numNodes = " + numNodes + " total small table size = "
-    + estimatedTotalSize + " networkCostMJ = " + networkCostMJ);
-
+    long estimatedTotalSize = smallTablesSize(joinOp, mapJoinConversionPos);
     if (estimatedTotalSize <= maxJoinMemory) {
       // mapjoin is applicable; don't try the below algos..
       return false;
     }
 
-    if (networkCostDPHJ < networkCostMJ) {
+    if (partitionedMovesLess(joinOp, mapJoinConversionPos, estimatedTotalSize, llapNodes(context.conf, llapInfo))) {
       LOG.info("Dynamically partitioned Hash Join chosen");
       return convertJoinDynamicPartitionedHashJoin(joinOp, context);
     } else if (numBuckets > 1) {
@@ -328,6 +299,61 @@ public class ConvertJoinMapJoin implements SemanticNodeProcessor {
     // fallback to mapjoin no bucket scaling
     LOG.info("Falling back to mapjoin no bucket scaling");
     return false;
+  }
+
+  /**
+   * Whether a map join whose small tables exceed hive.auto.convert.join.noconditionaltask.size, and so fit in memory
+   * only through LLAP's oversubscription, ships less data as a dynamically partitioned hash join. Small tables within
+   * the configured size stay broadcast: the comparison is the one {@link #selectJoinForLlap} makes for a bucket map
+   * join candidate, made for every map join once oversubscription is what lets it fit.
+   */
+  @VisibleForTesting
+  boolean partitionedJoinCostsLess(HiveConf conf, JoinOperator joinOp, int bigTablePos,
+      LlapClusterStateForCompile llapInfo) {
+    if (!conf.getBoolVar(ConfVars.HIVE_CONVERT_JOIN_PARTITIONED_BY_COST)
+        || !conf.getBoolVar(ConfVars.HIVE_DYNAMIC_PARTITION_HASHJOIN)) {
+      return false;
+    }
+    long smallTablesSize = smallTablesSize(joinOp, bigTablePos);
+    return smallTablesSize > conf.getLongVar(ConfVars.HIVE_CONVERT_JOIN_NOCONDITIONAL_TASK_THRESHOLD)
+        && partitionedMovesLess(joinOp, bigTablePos, smallTablesSize, llapNodes(conf, llapInfo));
+  }
+
+  /**
+   * Network cost of the two ways to join: a dynamically partitioned hash join ships every input once, a map join ships
+   * the small tables to every node.
+   */
+  private boolean partitionedMovesLess(JoinOperator joinOp, int bigTablePos, long smallTablesSize, int numNodes) {
+    long bigTableSize = computeOnlineDataSize(joinOp.getParentOperators().get(bigTablePos).getStatistics());
+    long networkCostDPHJ = StatsUtils.safeAdd(smallTablesSize, bigTableSize);
+    long networkCostMJ = StatsUtils.safeMult(numNodes, smallTablesSize);
+    LOG.info("Network cost: dynamically partitioned hash join {} (small tables {} + big table {}), map join {} ({} nodes)",
+        networkCostDPHJ, smallTablesSize, bigTableSize, networkCostMJ, numNodes);
+    return networkCostDPHJ < networkCostMJ;
+  }
+
+  private long smallTablesSize(JoinOperator joinOp, int bigTablePos) {
+    long size = 0;
+    for (int pos = 0; pos < joinOp.getParentOperators().size(); pos++) {
+      if (pos != bigTablePos) {
+        size = StatsUtils.safeAdd(size, computeOnlineDataSize(joinOp.getParentOperators().get(pos).getStatistics()));
+      }
+    }
+    return size;
+  }
+
+  /** The LLAP daemons the registry knows of; 0 when the cluster has not been read, which keeps a map join broadcast. */
+  private static int llapNodes(HiveConf conf, LlapClusterStateForCompile llapInfo) {
+    if (!llapInfo.hasClusterInfo()) {
+      return 0;
+    }
+    int numExecutorsPerNode = llapInfo.getNumExecutorsPerNode();
+    if (numExecutorsPerNode == -1) {
+      numExecutorsPerNode = conf.getIntVar(ConfVars.LLAP_DAEMON_NUM_EXECUTORS);
+    }
+    int numNodes = llapInfo.getKnownExecutorCount() / numExecutorsPerNode;
+    LOG.debug("Number of nodes = {}. Number of Executors per node = {}", numNodes, numExecutorsPerNode);
+    return numNodes;
   }
 
   public long computeOnlineDataSize(Statistics statistics) {
