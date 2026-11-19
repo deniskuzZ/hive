@@ -58,7 +58,7 @@ public final class HiveBatchIterator implements CloseableIterator<HiveBatchConte
   private final String partitionName;
 
   private final Long firstRowId;
-  private final Long fileSequenceNumber;
+  private final Long dataSequenceNumber;
 
   HiveBatchIterator(RecordReader<NullWritable, VectorizedRowBatch> recordReader, JobConf job,
       int[] partitionColIndices, Object[] partitionValues, FileScanTask task) {
@@ -75,7 +75,7 @@ public final class HiveBatchIterator implements CloseableIterator<HiveBatchConte
     this.partitionName = IcebergTableUtil.toPartitionName(task.spec(), task.file().partition());
 
     this.firstRowId = task.file().firstRowId();
-    this.fileSequenceNumber = task.file().fileSequenceNumber();
+    this.dataSequenceNumber = task.file().dataSequenceNumber();
 
     RowLineageUtils.initializeRowLineageColumns(vrbCtx, batch);
   }
@@ -162,23 +162,23 @@ public final class HiveBatchIterator implements CloseableIterator<HiveBatchConte
 
             case LAST_UPDATED_SEQUENCE_NUMBER:
               LongColumnVector lusnLcv = (LongColumnVector) batch.cols[idx];
-              if (fileSequenceNumber == null) {
+              if (dataSequenceNumber == null) {
                 lusnLcv.noNulls = false;
                 lusnLcv.isNull[0] = true;
                 lusnLcv.isRepeating = true;
                 break;
               }
 
-              // If vector[0] is still -1, apply the file-level sequence number to the whole batch.
+              // If vector[0] is still -1, apply the data sequence number of the file to the whole batch.
               if (lusnLcv.vector[0] == -1L) {
                 for (int i = 0; i < batch.size; i++) {
-                  lusnLcv.vector[i] = fileSequenceNumber;
+                  lusnLcv.vector[i] = dataSequenceNumber;
                 }
               } else {
                 // Lineage data found in file, fill only the gaps where data is missing.
                 for (int i = 0; i < batch.size; i++) {
                   if (!lusnLcv.noNulls && lusnLcv.isNull[i]) {
-                    lusnLcv.vector[i] = fileSequenceNumber;
+                    lusnLcv.vector[i] = dataSequenceNumber;
                     lusnLcv.isNull[i] = false;
                   }
                 }

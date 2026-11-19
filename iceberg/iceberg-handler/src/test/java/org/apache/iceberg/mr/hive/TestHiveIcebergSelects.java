@@ -22,10 +22,13 @@ package org.apache.iceberg.mr.hive;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
+import org.apache.iceberg.DataFile;
 import org.apache.iceberg.FileFormat;
 import org.apache.iceberg.PartitionSpec;
 import org.apache.iceberg.Schema;
+import org.apache.iceberg.Snapshot;
 import org.apache.iceberg.Table;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.data.Record;
@@ -33,6 +36,7 @@ import org.apache.iceberg.mr.InputFormatConfig;
 import org.apache.iceberg.mr.TestHelper;
 import org.apache.iceberg.mr.hive.test.utils.HiveIcebergStorageHandlerTestUtils;
 import org.apache.iceberg.relocated.com.google.common.collect.ImmutableMap;
+import org.apache.iceberg.relocated.com.google.common.collect.Sets;
 import org.apache.iceberg.types.Type;
 import org.apache.iceberg.types.Types;
 import org.junit.Assert;
@@ -301,5 +305,36 @@ public class TestHiveIcebergSelects extends HiveIcebergStorageHandlerWithEngineB
         "SELECT customer_id FROM " + identifier.name() +
             " WHERE PARTITION__NAME = 'last_name=Brown' AND customer_id = 0");
     Assert.assertEquals(1, rows.size());
+  }
+
+  @Test
+  public void testLastUpdatedSequenceNumberAfterUpgradeToV3() throws IOException {
+    // row lineage is supported for Parquet only
+    assumeTrue(fileFormat == FileFormat.PARQUET);
+    Table table = testTables.createTable(shell, "customers", HiveIcebergStorageHandlerTestUtils.CUSTOMER_SCHEMA,
+        fileFormat, HiveIcebergStorageHandlerTestUtils.CUSTOMER_RECORDS, 2);
+    Snapshot append = table.currentSnapshot();
+
+    // a V2 rewrite that keeps the data sequence number of the rows, as the compaction of other engines does
+    TestHelper helper = new TestHelper(shell.metastore().hiveConf(), null, null, null, null, fileFormat, temp);
+    helper.setTable(table);
+    DataFile rewrittenFile = helper.writeFile(null, HiveIcebergStorageHandlerTestUtils.CUSTOMER_RECORDS);
+    table.newRewrite()
+        .validateFromSnapshot(append.snapshotId())
+        .rewriteFiles(Sets.newHashSet(append.addedDataFiles(table.io())), Set.of(rewrittenFile),
+            append.sequenceNumber())
+        .commit();
+
+    shell.executeStatement("ALTER TABLE customers SET TBLPROPERTIES ('format-version'='3')");
+    // assigns row ids to the data files of the upgraded table
+    table.refresh();
+    table.newFastAppend().commit();
+
+    // a row without a last updated sequence number inherits the data sequence number of its data file
+    List<Object[]> rows = shell.executeStatement("SELECT LAST__UPDATED__SEQUENCE__NUMBER FROM customers");
+    Assert.assertEquals(HiveIcebergStorageHandlerTestUtils.CUSTOMER_RECORDS.size(), rows.size());
+    for (Object[] row : rows) {
+      Assert.assertEquals(append.sequenceNumber(), row[0]);
+    }
   }
 }
