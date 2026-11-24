@@ -18,9 +18,11 @@
  */
 package org.apache.hadoop.hive.ql.exec.vector.expressions;
 
+import java.util.Arrays;
 import java.util.Random;
 
 import org.apache.hadoop.hive.ql.exec.vector.BytesColumnVector;
+import org.apache.hadoop.hive.ql.exec.vector.ColumnVector;
 import org.apache.hadoop.hive.ql.exec.vector.LongColumnVector;
 import org.apache.hadoop.hive.ql.exec.vector.VectorizedRowBatch;
 import org.apache.hadoop.hive.ql.metadata.HiveException;
@@ -157,7 +159,9 @@ public class TestMurmurHashExpression {
     BytesColumnVector cvString2 = (BytesColumnVector) ColumnVectorGenUtil.generateColumnVector(
         TypeInfoFactory.getPrimitiveTypeInfo("string"), false, true, SIZE, rand);
 
+    cvString1.noNulls = false;
     cvString1.isNull[0] = true;
+    cvString2.noNulls = false;
     cvString2.isNull[0] = true;
 
     VectorizedRowBatch vrb = new VectorizedRowBatch(3, SIZE);
@@ -362,6 +366,157 @@ public class TestMurmurHashExpression {
 
     for (int i = 0; i < SIZE; i++) {
       Assert.assertEquals(1622654365, ((LongColumnVector) vrb.cols[2]).vector[i]);
+    }
+  }
+
+  /**
+   * The output is a scratch column that an earlier expression of the batch left with NULLs. A hash is never NULL,
+   * so every row it writes must read as not NULL.
+   */
+  @Test
+  public void testMurmurHashOverwritesNullsOfItsOutput() throws HiveException {
+    for (boolean selectedInUse : new boolean[] { false, true }) {
+      LongColumnVector output = new LongColumnVector(SIZE);
+      output.noNulls = false;
+      Arrays.fill(output.isNull, true);
+
+      VectorizedRowBatch vrb = new VectorizedRowBatch(3, SIZE);
+      vrb.cols[0] = ColumnVectorGenUtil.generateColumnVector(
+          TypeInfoFactory.getPrimitiveTypeInfo("int"), false, false, SIZE, rand);
+      vrb.cols[1] = ColumnVectorGenUtil.generateColumnVector(
+          TypeInfoFactory.getPrimitiveTypeInfo("int"), false, false, SIZE, rand);
+      vrb.cols[2] = output;
+      if (selectedInUse) {
+        vrb.selectedInUse = true;
+        vrb.size = SIZE / 2;
+        for (int j = 0; j < vrb.size; j++) {
+          vrb.selected[j] = 2 * j + 1;
+        }
+      }
+
+      new MurmurHashIntColIntCol(0, 1, 2).evaluate(vrb);
+
+      for (int j = 0; j < vrb.size; j++) {
+        int i = selectedInUse ? vrb.selected[j] : j;
+        Assert.assertTrue("row " + i, output.noNulls || !output.isNull[i]);
+      }
+    }
+  }
+
+  /**
+   * The key of a multi-column semijoin, hash(hash(a, b), c), with both scratch columns left with NULLs by earlier
+   * expressions of the batch: the result equals the one over clean scratch columns.
+   */
+  @Test
+  public void testNestedMurmurHashOverScratchColumnsWithNulls() throws HiveException {
+    VectorizedRowBatch clean = new VectorizedRowBatch(5, SIZE);
+    for (int c = 0; c < 3; c++) {
+      clean.cols[c] = ColumnVectorGenUtil.generateColumnVector(
+          TypeInfoFactory.getPrimitiveTypeInfo("bigint"), false, false, SIZE, rand);
+    }
+    clean.cols[3] = new LongColumnVector(SIZE);
+    clean.cols[4] = new LongColumnVector(SIZE);
+    VectorizedRowBatch dirty = new VectorizedRowBatch(5, SIZE);
+    System.arraycopy(clean.cols, 0, dirty.cols, 0, 3);
+    for (int c = 3; c < 5; c++) {
+      dirty.cols[c] = new LongColumnVector(SIZE);
+      dirty.cols[c].noNulls = false;
+      Arrays.fill(dirty.cols[c].isNull, true);
+    }
+
+    for (VectorizedRowBatch vrb : new VectorizedRowBatch[] { clean, dirty }) {
+      MurmurHashIntColIntCol outer = new MurmurHashIntColIntCol(3, 2, 4);
+      outer.setChildExpressions(new VectorExpression[] { new MurmurHashIntColIntCol(0, 1, 3) });
+      outer.evaluate(vrb);
+    }
+
+    LongColumnVector expected = (LongColumnVector) clean.cols[4];
+    LongColumnVector actual = (LongColumnVector) dirty.cols[4];
+    for (int i = 0; i < SIZE; i++) {
+      Assert.assertTrue("row " + i, actual.noNulls || !actual.isNull[i]);
+      Assert.assertEquals("row " + i, expected.vector[i], actual.vector[i]);
+    }
+  }
+
+  /**
+   * Repeating inputs without NULLs, stale isNull entries in them and NULLs left in the output.
+   */
+  @Test
+  public void testMurmurHashRepeatingOverStaleNulls() throws HiveException {
+    long num1 = 42L;
+    long num2 = 7640254796529531955L;
+    LongColumnVector cvLong1 = createLongColumnVector(num1, true);
+    LongColumnVector cvLong2 = createLongColumnVector(num2, true);
+    cvLong1.isNull[0] = true;
+    cvLong2.isNull[0] = true;
+    LongColumnVector output = new LongColumnVector(SIZE);
+    output.noNulls = false;
+    Arrays.fill(output.isNull, true);
+
+    VectorizedRowBatch vrb = new VectorizedRowBatch(3, SIZE);
+    vrb.cols[0] = cvLong1;
+    vrb.cols[1] = cvLong2;
+    vrb.cols[2] = output;
+
+    new MurmurHashIntColIntCol(0, 1, 2).evaluate(vrb);
+
+    Assert.assertTrue(output.isRepeating);
+    Assert.assertFalse(output.isNull[0]);
+    ObjectInspector longOI = PrimitiveObjectInspectorFactory.writableLongObjectInspector;
+    Assert.assertEquals(ObjectInspectorUtils.getBucketHashCode(
+        new Object[] { new LongWritable(num1), new LongWritable(num2) }, new ObjectInspector[] { longOI, longOI }),
+        output.vector[0]);
+  }
+
+  /**
+   * isNull holds no information while noNulls is set, so the values of a column without NULLs are hashed whatever
+   * its isNull says.
+   */
+  @Test
+  public void testMurmurHashReadsIsNullOnlyWithNulls() throws HiveException {
+    LongColumnVector cvInt1 = (LongColumnVector) ColumnVectorGenUtil.generateColumnVector(
+        TypeInfoFactory.getPrimitiveTypeInfo("int"), false, false, SIZE, rand);
+    LongColumnVector cvInt2 = (LongColumnVector) ColumnVectorGenUtil.generateColumnVector(
+        TypeInfoFactory.getPrimitiveTypeInfo("int"), false, false, SIZE, rand);
+    BytesColumnVector cvString1 = (BytesColumnVector) ColumnVectorGenUtil.generateColumnVector(
+        TypeInfoFactory.getPrimitiveTypeInfo("string"), false, false, SIZE, rand);
+    BytesColumnVector cvString2 = (BytesColumnVector) ColumnVectorGenUtil.generateColumnVector(
+        TypeInfoFactory.getPrimitiveTypeInfo("string"), false, false, SIZE, rand);
+    for (ColumnVector cv : new ColumnVector[] { cvInt1, cvInt2, cvString1, cvString2 }) {
+      cv.noNulls = true;
+      Arrays.fill(cv.isNull, true);
+    }
+
+    VectorizedRowBatch vrb = new VectorizedRowBatch(7, SIZE);
+    vrb.cols[0] = cvInt1;
+    vrb.cols[1] = cvInt2;
+    vrb.cols[2] = cvString1;
+    vrb.cols[3] = cvString2;
+    vrb.cols[4] = new LongColumnVector(SIZE);
+    vrb.cols[5] = new LongColumnVector(SIZE);
+    vrb.cols[6] = new LongColumnVector(SIZE);
+
+    new MurmurHashIntColIntCol(0, 1, 4).evaluate(vrb);
+    new MurmurHashStringColIntCol(2, 0, 5).evaluate(vrb);
+    new MurmurHashStringColStringCol(2, 3, 6).evaluate(vrb);
+
+    ObjectInspector longOI = PrimitiveObjectInspectorFactory.writableLongObjectInspector;
+    ObjectInspector stringOI = PrimitiveObjectInspectorFactory.writableStringObjectInspector;
+    for (int i = 0; i < SIZE; i++) {
+      LongWritable long1 = new LongWritable(cvInt1.vector[i]);
+      Text text1 = new Text();
+      text1.set(cvString1.vector[i], cvString1.start[i], cvString1.length[i]);
+      Text text2 = new Text();
+      text2.set(cvString2.vector[i], cvString2.start[i], cvString2.length[i]);
+      Assert.assertEquals(ObjectInspectorUtils.getBucketHashCode(
+          new Object[] { long1, new LongWritable(cvInt2.vector[i]) }, new ObjectInspector[] { longOI, longOI }),
+          ((LongColumnVector) vrb.cols[4]).vector[i]);
+      Assert.assertEquals(ObjectInspectorUtils.getBucketHashCode(
+          new Object[] { text1, long1 }, new ObjectInspector[] { stringOI, longOI }),
+          ((LongColumnVector) vrb.cols[5]).vector[i]);
+      Assert.assertEquals(ObjectInspectorUtils.getBucketHashCode(
+          new Object[] { text1, text2 }, new ObjectInspector[] { stringOI, stringOI }),
+          ((LongColumnVector) vrb.cols[6]).vector[i]);
     }
   }
 }
