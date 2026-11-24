@@ -52,7 +52,7 @@ public class MurmurHashIntColIntCol extends MurmurHashExpression {
 
     // hash of value from 1. column
     int hash = 0;
-    if (!inV1.isNull[idx1]) {
+    if (inV1.noNulls || !inV1.isNull[idx1]) {
       byteBuffer.clear();
       byteBuffer.putLong(inV1.vector[idx1]);
       hash = Murmur3.hash32(byteBuffer.array(), 8);
@@ -60,7 +60,7 @@ public class MurmurHashIntColIntCol extends MurmurHashExpression {
 
     int hash2 = 0;
     // hash of value from 2. column
-    if (!inV2.isNull[idx2]) {
+    if (inV2.noNulls || !inV2.isNull[idx2]) {
       byteBuffer.clear();
       byteBuffer.putLong(inV2.vector[idx2]);
       hash2 = Murmur3.hash32(byteBuffer.array(), 8);

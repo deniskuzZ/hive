@@ -19,6 +19,7 @@
 package org.apache.hadoop.hive.ql.exec.vector.expressions;
 
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 
 import org.apache.hadoop.hive.ql.exec.vector.ColumnVector;
 import org.apache.hadoop.hive.ql.exec.vector.LongColumnVector;
@@ -89,11 +90,17 @@ public abstract class MurmurHashExpression extends VectorExpression {
       return;
     }
 
+    // The output may be a scratch column that an earlier expression left with nulls: a hash is never null.
     if (batch.selectedInUse) {
       for (int j = 0; j != n; j++) {
+        outputIsNull[sel[j]] = false;
         hash(inputColVector1, inputColVector2, outputColVector, sel[j], buffer);
       }
     } else {
+      if (!outputColVector.noNulls) {
+        Arrays.fill(outputIsNull, false);
+        outputColVector.noNulls = true;
+      }
       for (int i = 0; i != n; i++) {
         hash(inputColVector1, inputColVector2, outputColVector, i, buffer);
       }

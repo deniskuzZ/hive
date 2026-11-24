@@ -52,12 +52,12 @@ public class MurmurHashStringColIntCol extends MurmurHashExpression {
     int idx2 = inputColVector2.isRepeating ? 0 : i;
 
     // hash of value from 1. column
-    int hash = inV1.isNull[idx1] ? 0
+    int hash = !inV1.noNulls && inV1.isNull[idx1] ? 0
       : Murmur3.hash32(inV1.vector[idx1], inV1.start[idx1], inV1.length[idx1], Murmur3.DEFAULT_SEED);
 
     // hash of value from 2. column
     int hash2 = 0;
-    if (!inV2.isNull[idx2]) {
+    if (inV2.noNulls || !inV2.isNull[idx2]) {
       byteBuffer.clear();
       byteBuffer.putLong(inV2.vector[idx2]);
       hash2 = Murmur3.hash32(byteBuffer.array(), 8);
